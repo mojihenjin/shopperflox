@@ -9,4 +9,5 @@ requires-python = ">=3.13"
 dependencies = [
     "fastapi[all]>=0.162.7",
     "loguru>=0.8.0",
+    "uuid6>=2025.0.1",
 ]
