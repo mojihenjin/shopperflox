@@ -1,0 +1,9 @@
+[project]
+name = "shopperflox backend"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "Mikhail Mojihen", email = "mojihenjin@proton.me" }
+]
+requires-python = ">=3.13"
+dependencies = []
