@@ -2,6 +2,7 @@ import logging
 import sys
 
 from loguru import logger
+
 from src.core.settings import Settings
 
 

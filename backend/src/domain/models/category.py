@@ -2,8 +2,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import UUID
 
-from src.utils import factory_now
 from uuid6 import uuid7
+
+from src.utils import factory_now
 
 from .base import BaseDomain
 

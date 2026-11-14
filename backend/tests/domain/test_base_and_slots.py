@@ -2,8 +2,9 @@ from dataclasses import dataclass
 from uuid import UUID
 
 import pytest
-from src.domain.models.base import BaseDomain
 from uuid6 import uuid7
+
+from src.domain.models.base import BaseDomain
 
 
 @dataclass(slots=True, kw_only=True)

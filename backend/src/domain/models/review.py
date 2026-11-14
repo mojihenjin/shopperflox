@@ -3,9 +3,10 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
+from uuid6 import uuid7
+
 from src.domain.exceptions import DomainValidationError
 from src.utils import factory_now
-from uuid6 import uuid7
 
 from .base import BaseDomain
 

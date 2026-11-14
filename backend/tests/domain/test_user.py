@@ -1,13 +1,14 @@
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+from uuid6 import uuid7
+
 from src.domain.models import (
     UserAddressDomain,
     UserBanDomain,
     UserDomain,
     UserPersonalDomain,
 )
-from uuid6 import uuid7
 
 
 def test_user_domain_defaults():

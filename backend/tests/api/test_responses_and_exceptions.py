@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
-from main import app
 from pydantic import BaseModel
+
+from main import app
 from src.core import ResponseGenerator, Settings, setup_logging
 
 

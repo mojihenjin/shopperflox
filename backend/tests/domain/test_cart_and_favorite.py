@@ -1,7 +1,8 @@
 from uuid import UUID
 
-from src.domain.models import CartDomain, CartItemDomain, FavoriteDomain
 from uuid6 import uuid7
+
+from src.domain.models import CartDomain, CartItemDomain, FavoriteDomain
 
 
 def test_cart_domain():

@@ -2,6 +2,8 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
+from uuid6 import uuid7
+
 from src.domain.exceptions import DomainValidationError, InvalidStateTransitionError
 from src.domain.models import (
     CartDomain,
@@ -15,7 +17,6 @@ from src.domain.models import (
     ProductVariantDomain,
     ReviewDomain,
 )
-from uuid6 import uuid7
 
 
 def test_cart_owner_invariant():

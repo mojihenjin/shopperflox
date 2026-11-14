@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
+
 from main import app
 from src.core import (
-    http_request_duration_seconds,
     http_requests_in_progress,
     http_requests_total,
 )

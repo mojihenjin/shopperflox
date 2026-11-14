@@ -1,13 +1,14 @@
 from decimal import Decimal
 from uuid import UUID
 
+from uuid6 import uuid7
+
 from src.domain.models import (
     CategoryDomain,
     ProductDomain,
     ProductImageDomain,
     ProductVariantDomain,
 )
-from uuid6 import uuid7
 
 
 def test_category_domain():
