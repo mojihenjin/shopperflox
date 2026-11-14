@@ -1,4 +1,3 @@
-from collections.abc import Iterable
 from typing import Any
 
 from fastapi.responses import JSONResponse
@@ -16,29 +15,25 @@ class ResponseGenerator:
     @classmethod
     def answer(
         cls,
-        body: str | Iterable | None = None,
+        body: Any = None,
         status_code: int = 200,
         errors: list[dict[str, Any]] | None = None,
         metadata: dict[str, Any] | None = None,
         metadata_update: bool = True,
     ) -> BaseResponse:
-        if body is None:
-            body = []
-
         errors = errors or []
-        metadata = metadata or {}
-        meta = metadata.copy()
+        meta = (metadata or {}).copy()
 
         # Only required data
         meta.update(
-            {"length": len(body) if isinstance(body, list | tuple | set | dict) else 0}
+            {"length": len(body) if isinstance(body, list | tuple | set) else 0}
         )
 
         if metadata_update:
             pass
 
         return BaseResponse(
-            body=body, status_code=status_code, errors=errors, metadata=metadata
+            body=body, status_code=status_code, errors=errors, metadata=meta
         )
 
     @classmethod
