@@ -7,11 +7,16 @@ def create_app(settings: Settings):
 
 
 def configurate_app(app: FastAPI):
+    from src.core import MetricsMiddleware
+
+    # Add middlewares
+    app.add_middleware(MetricsMiddleware)
 
     # Include routers
-    from src.api import health
+    from src.api import health, metrics
 
     app.include_router(health.router)
+    app.include_router(metrics.router)
 
     return app
 
