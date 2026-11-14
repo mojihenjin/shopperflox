@@ -1,7 +1,7 @@
 from dataclasses import asdict, dataclass
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class BaseDomain:
     def to_dict(self, exclude: set | None = None):
         exclude = exclude or set()
