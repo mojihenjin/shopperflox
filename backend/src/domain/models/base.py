@@ -1,9 +1,10 @@
 from dataclasses import asdict, dataclass
+from typing import Any
 
 
 @dataclass(slots=True, kw_only=True)
 class BaseDomain:
-    def to_dict(self, exclude: set | None = None):
+    def to_dict(self, exclude: set[str] | None = None) -> dict[str, Any]:
         exclude = exclude or set()
 
         return {
