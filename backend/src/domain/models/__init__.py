@@ -5,7 +5,7 @@ from .favorite import FavoriteDomain
 from .order import OrderDomain, OrderItemDomain, OrderStatus
 from .payment import PaymentDomain, PaymentStatus
 from .product import ProductDomain, ProductImageDomain, ProductVariantDomain
-from .review import ReviewDomain
+from .review import FitFeedback, ReviewDomain
 from .user import (
     UserAddressDomain,
     UserBanDomain,
@@ -19,6 +19,7 @@ __all__ = [
     "CartItemDomain",
     "CategoryDomain",
     "FavoriteDomain",
+    "FitFeedback",
     "OrderDomain",
     "OrderItemDomain",
     "OrderStatus",
