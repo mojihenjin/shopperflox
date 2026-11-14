@@ -40,10 +40,14 @@ def test_cart_item_quantity_invariant():
     cart_id = uuid7()
     variant_id = uuid7()
 
-    with pytest.raises(DomainValidationError, match="quantity must be greater than zero"):
+    with pytest.raises(
+        DomainValidationError, match="quantity must be greater than zero"
+    ):
         CartItemDomain(cart_id=cart_id, variant_id=variant_id, quantity=0)
 
-    with pytest.raises(DomainValidationError, match="quantity must be greater than zero"):
+    with pytest.raises(
+        DomainValidationError, match="quantity must be greater than zero"
+    ):
         CartItemDomain(cart_id=cart_id, variant_id=variant_id, quantity=-2)
 
     valid_item = CartItemDomain(cart_id=cart_id, variant_id=variant_id, quantity=1)
@@ -86,7 +90,9 @@ def test_product_variant_invariants_and_resolve_price():
     author_id = uuid7()
     prod_id = uuid7()
 
-    with pytest.raises(DomainValidationError, match="stock_quantity must be non-negative"):
+    with pytest.raises(
+        DomainValidationError, match="stock_quantity must be non-negative"
+    ):
         ProductVariantDomain(
             product_id=prod_id,
             sku="SKU-1",
@@ -96,7 +102,9 @@ def test_product_variant_invariants_and_resolve_price():
             created_by=author_id,
         )
 
-    with pytest.raises(DomainValidationError, match="price_override must be non-negative"):
+    with pytest.raises(
+        DomainValidationError, match="price_override must be non-negative"
+    ):
         ProductVariantDomain(
             product_id=prod_id,
             sku="SKU-2",
@@ -114,7 +122,9 @@ def test_product_variant_invariants_and_resolve_price():
         color_name="Green",
         created_by=author_id,
     )
-    assert var_no_override.resolve_price(base_price=Decimal("50.00")) == Decimal("50.00")
+    assert var_no_override.resolve_price(base_price=Decimal("50.00")) == Decimal(
+        "50.00"
+    )
 
     # resolve_price with override
     var_with_override = ProductVariantDomain(
@@ -125,13 +135,17 @@ def test_product_variant_invariants_and_resolve_price():
         price_override=Decimal("45.00"),
         created_by=author_id,
     )
-    assert var_with_override.resolve_price(base_price=Decimal("50.00")) == Decimal("45.00")
+    assert var_with_override.resolve_price(base_price=Decimal("50.00")) == Decimal(
+        "45.00"
+    )
 
 
 def test_order_invariants_and_transitions():
     user_id = uuid7()
 
-    with pytest.raises(DomainValidationError, match="total_amount must be non-negative"):
+    with pytest.raises(
+        DomainValidationError, match="total_amount must be non-negative"
+    ):
         OrderDomain(
             user_id=user_id,
             total_amount=Decimal("-0.01"),
@@ -200,7 +214,9 @@ def test_order_item_invariants():
             created_by=author_id,
         )
 
-    with pytest.raises(DomainValidationError, match="quantity must be greater than zero"):
+    with pytest.raises(
+        DomainValidationError, match="quantity must be greater than zero"
+    ):
         OrderItemDomain(
             order_id=order_id,
             title_snapshot="Hat",
@@ -216,7 +232,9 @@ def test_order_item_invariants():
 def test_payment_invariants_and_transitions():
     order_id = uuid7()
 
-    with pytest.raises(DomainValidationError, match="Payment amount must be non-negative"):
+    with pytest.raises(
+        DomainValidationError, match="Payment amount must be non-negative"
+    ):
         PaymentDomain(
             order_id=order_id,
             provider="paypal",

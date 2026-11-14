@@ -19,4 +19,3 @@ class CategoryDomain(BaseDomain):
     parent_id: UUID | None = field(default=None)
     sort_order: int = field(default=0)
     created_at: datetime = field(default_factory=factory_now)
-

@@ -19,6 +19,7 @@ async def monitor_event_loop_lag(interval: float = 1.0) -> None:
         lag = loop.time() - start - interval
         event_loop_lag_seconds.set(max(0.0, lag))
 
+
 http_requests_total = Counter(
     "http_requests_total",
     "Total number of HTTP requests processed",

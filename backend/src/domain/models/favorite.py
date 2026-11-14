@@ -14,4 +14,3 @@ class FavoriteDomain(BaseDomain):
     created_by: UUID
 
     created_at: datetime = field(default_factory=factory_now)
-
