@@ -10,3 +10,19 @@ class DomainValidationError(DomainError):
 
 class InvalidStateTransitionError(DomainError):
     pass
+
+
+class AuthenticationError(DomainError):
+    pass
+
+
+class PermissionDeniedError(DomainError):
+    pass
+
+
+class EntityNotFoundError(DomainError):
+    pass
+
+
+class EntityAlreadyExistsError(DomainError):
+    pass
