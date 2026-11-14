@@ -1,12 +1,12 @@
 from pathlib import Path
 
 
-def test_dockerfile_uses_uv_run_main():
+def test_dockerfile_uses_python_main():
     dockerfile_path = Path(__file__).resolve().parents[2] / "Dockerfile"
     assert dockerfile_path.exists(), f"Dockerfile not found at {dockerfile_path}"
 
     content = dockerfile_path.read_text(encoding="utf-8")
-    assert 'CMD ["uv", "run", "main.py"]' in content
+    assert 'CMD ["python", "main.py"]' in content
 
 
 def test_nginx_conf_structure():
@@ -17,6 +17,7 @@ def test_nginx_conf_structure():
     content = nginx_conf.read_text(encoding="utf-8")
     assert "worker_processes auto;" in content
     assert "server_tokens off;" in content
+    assert "client_max_body_size 15M;" in content
     assert "include /etc/nginx/conf.d/*.conf;" in content
 
 
@@ -38,9 +39,11 @@ def test_nginx_shopperflox_conf_routes_and_security():
     # Health route
     assert "location /health" in content
 
-    # Metrics protection foundation
-    assert "location /metrics" in content
+    # Exact metrics location with satisfy any
+    assert "location = /metrics" in content
+    assert "satisfy any;" in content
     assert "allow 127.0.0.1;" in content
+    assert "allow ::1;" in content
     assert "allow 10.0.0.0/8;" in content
     assert "allow 172.16.0.0/12;" in content
     assert "allow 192.168.0.0/16;" in content
@@ -63,4 +66,6 @@ def test_docker_compose_services():
     assert "prometheus:" in content
     assert "grafana:" in content
     assert '"80:80"' in content
+    assert '"127.0.0.1:9090:9090"' in content
+    assert '"127.0.0.1:3000:3000"' in content
     assert "--storage.tsdb.retention.time=15d" in content
