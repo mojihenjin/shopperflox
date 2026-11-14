@@ -4,7 +4,7 @@ from .metrics import (
     http_requests_in_progress,
     http_requests_total,
 )
-from .responces import BaseResponse, ResponseGenerator
+from .responses import BaseResponse, ResponseGenerator
 from .settings import Settings
 
 settings = Settings()
