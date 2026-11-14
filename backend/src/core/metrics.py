@@ -1,8 +1,23 @@
+import asyncio
 import time
 from typing import Any
 
 from prometheus_client import Counter, Gauge, Histogram
 from starlette.types import Message, Receive, Scope, Send
+
+event_loop_lag_seconds = Gauge(
+    "event_loop_lag_seconds",
+    "Asyncio event loop lag in seconds",
+)
+
+
+async def monitor_event_loop_lag(interval: float = 1.0) -> None:
+    loop = asyncio.get_running_loop()
+    while True:
+        start = loop.time()
+        await asyncio.sleep(interval)
+        lag = loop.time() - start - interval
+        event_loop_lag_seconds.set(max(0.0, lag))
 
 http_requests_total = Counter(
     "http_requests_total",
