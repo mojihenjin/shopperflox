@@ -1,0 +1,15 @@
+#!/bin/sh
+echo "[pre-commit] Running ruff check and format..."
+
+if [ -d "backend" ]; then
+    cd backend || exit 1
+fi
+
+uvx ruff check . --fix || exit 1
+uvx ruff format . || exit 1
+
+if [ -d "../backend" ]; then
+    cd ..
+fi
+
+git add -u
