@@ -8,6 +8,9 @@ from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
+
 
 class ConsoleANSI(StrEnum):
     RESET = "\033[0m"
@@ -116,6 +119,22 @@ class BaseDataclass:
         }
 
 
+def generate_eddsa_private_key(*args) -> str:
+    seed = secrets.token_bytes(32)
+    return seed.hex()
+
+
+def derive_eddsa_public_key(private_key_hex: str) -> str:
+    priv = ed25519.Ed25519PrivateKey.from_private_bytes(
+        bytes.fromhex(private_key_hex.strip())
+    )
+    pub = priv.public_key()
+    return pub.public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    ).hex()
+
+
 @dataclass()
 class Configuration(BaseDataclass):
     THIS_DIR: ClassVar[Path] = Path(__file__).parent
@@ -124,12 +143,25 @@ class Configuration(BaseDataclass):
     FILENAME: str = field(default=".env")
     FILE_EXIST: bool = field(default=False)
     MIGRATE: bool = field(default=False)
+    AUTO: bool = field(default=False)
 
-    fields_autogenerate: dict[str, Callable[[], str]] = field(
-        default_factory=lambda: {"PEPPER": secrets.token_hex}
+    fields_autogenerate: dict[str, Callable[..., str]] = field(
+        default_factory=lambda: {
+            "PEPPER": secrets.token_hex,
+            "JWT_PRIVATE_KEY": generate_eddsa_private_key,
+        }
     )
     env_fields: dict[str, str] = field(
-        default_factory=lambda: {"DB_URL": "", "PEPPER": "", "REDIS_URL": ""}
+        default_factory=lambda: {
+            "DB_URL": (
+                "postgresql+asyncpg://shopperflox:shopperflox@localhost:5432/shopperflox"
+            ),
+            "PEPPER": "",
+            "REDIS_URL": "redis://localhost:6379/0",
+            "JWT_ALGORITHM": "EdDSA",
+            "JWT_PRIVATE_KEY": "",
+            "JWT_PUBLIC_KEY": "",
+        }
     )
     existing_conf: dict[str, str] = field(default_factory=dict)
 
@@ -140,8 +172,8 @@ def conf_from_exist_file(file: Path):
         if line.strip().startswith("#") or "=" not in line:
             continue
 
-        field, value = map(str.strip, line.strip().split("=", 1))
-        _conf[field] = value
+        field_name, value = map(str.strip, line.strip().split("=", 1))
+        _conf[field_name] = value
     return _conf
 
 
@@ -183,7 +215,12 @@ def main(args: list):
         conf.MIGRATE = True
         cons.info("Env migrating")
 
-    conf.FILENAME = cons.prompt_def(text="Filename", default=conf.FILENAME)
+    if "--auto" in args or "-a" in args or "-y" in args:
+        conf.AUTO = True
+        cons.info("Auto mode enabled")
+
+    if not conf.AUTO:
+        conf.FILENAME = cons.prompt_def(text="Filename", default=conf.FILENAME)
 
     conf.FILE_EXIST = (conf.THIS_DIR / conf.FILENAME).exists()
 
@@ -192,10 +229,9 @@ def main(args: list):
 
         conf.existing_conf = conf_from_exist_file(file=(conf.THIS_DIR / conf.FILENAME))
 
-        if not conf.BACKUP_DIR.exists() and cons.prompt_yn(
-            "Create backup dir? (backups)"
-        ):
-            conf.BACKUP_DIR.mkdir()
+        if not conf.BACKUP_DIR.exists():
+            if conf.AUTO or cons.prompt_yn("Create backup dir? (backups)"):
+                conf.BACKUP_DIR.mkdir()
 
         if conf.BACKUP_DIR.exists():
             copy_file(
@@ -210,20 +246,41 @@ def main(args: list):
     new_env: dict = {}
     i: int = 1
 
-    for fld in conf.env_fields:
-        if fld in conf.existing_conf and conf.MIGRATE:
+    for fld, def_val in conf.env_fields.items():
+        if fld in conf.existing_conf and conf.MIGRATE and conf.existing_conf[fld]:
             new_env[fld] = conf.existing_conf[fld]
             continue
+
+        if fld == "JWT_PUBLIC_KEY":
+            priv_key = new_env.get("JWT_PRIVATE_KEY") or conf.existing_conf.get(
+                "JWT_PRIVATE_KEY"
+            )
+            if priv_key:
+                new_env[fld] = derive_eddsa_public_key(priv_key)
+                continue
 
         if fld in conf.fields_autogenerate:
             new_env[fld] = conf.fields_autogenerate[fld](16)
             continue
 
-        new_env[fld] = cons.prompt(f"({i}) {fld}")
-        i += 1
+        if conf.AUTO:
+            new_env[fld] = def_val
+        elif def_val:
+            new_env[fld] = cons.prompt_def(f"({i}) {fld}", default=def_val)
+            i += 1
+        else:
+            new_env[fld] = cons.prompt(f"({i}) {fld}")
+            i += 1
 
     if conf.MIGRATE:
         new_env = conf.existing_conf | new_env
+
+    # Ensure JWT_PUBLIC_KEY is derived if JWT_PRIVATE_KEY exists
+    if "JWT_PRIVATE_KEY" in new_env and new_env["JWT_PRIVATE_KEY"]:
+        if "JWT_PUBLIC_KEY" not in new_env or not new_env["JWT_PUBLIC_KEY"]:
+            new_env["JWT_PUBLIC_KEY"] = derive_eddsa_public_key(
+                new_env["JWT_PRIVATE_KEY"]
+            )
 
     write_env(env_payload=new_env, path=(conf.THIS_DIR / conf.FILENAME))
     cons.info("Env has been saved!")
