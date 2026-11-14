@@ -2,6 +2,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from src.domain.models import (
+    FitFeedback,
     OrderDomain,
     OrderItemDomain,
     OrderStatus,
@@ -74,7 +75,7 @@ def test_review_domain():
         product_id=product_id,
         order_item_id=order_item_id,
         rating=5,
-        fit_feedback="true_to_size",
+        fit_feedback=FitFeedback.TRUE_TO_SIZE,
         comment="Great quality!",
         created_by=user_id,
     )

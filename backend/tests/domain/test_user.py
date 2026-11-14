@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from src.domain.models import (
@@ -24,6 +24,12 @@ def test_user_domain_defaults():
     assert isinstance(user.created_at, datetime)
     assert isinstance(user.updated_at, datetime)
     assert user.deleted_at is None
+    assert user.is_deleted is False
+
+
+def test_user_domain_is_deleted():
+    user = UserDomain(login="alice", deleted_at=datetime.now(tz=UTC))
+    assert user.is_deleted is True
 
 
 def test_user_domain_password_hash_repr():
@@ -33,15 +39,17 @@ def test_user_domain_password_hash_repr():
 
 
 def test_user_personal_domain():
+    user_id = uuid7()
     author_id = uuid7()
     personal = UserPersonalDomain(
+        id=user_id,
         created_by=author_id,
         firstname="John",
         lastname="Doe",
         phone_number="+1234567890",
     )
 
-    assert isinstance(personal.id, UUID)
+    assert personal.id == user_id
     assert personal.created_by == author_id
     assert personal.firstname == "John"
     assert personal.lastname == "Doe"
@@ -61,6 +69,25 @@ def test_user_ban_domain():
     assert ban.user_id == user_id
     assert ban.reason == "Spamming"
     assert ban.ended_at is None
+    assert ban.is_active() is True
+
+    # Ban in the future is still active
+    ban_future = UserBanDomain(
+        user_id=user_id,
+        reason="Temp ban",
+        created_by=author_id,
+        ended_at=datetime.now(tz=UTC) + timedelta(days=1),
+    )
+    assert ban_future.is_active() is True
+
+    # Expired ban is inactive
+    ban_expired = UserBanDomain(
+        user_id=user_id,
+        reason="Expired ban",
+        created_by=author_id,
+        ended_at=datetime.now(tz=UTC) - timedelta(days=1),
+    )
+    assert ban_expired.is_active() is False
 
 
 def test_user_address_domain():
