@@ -63,9 +63,12 @@ def test_docker_compose_services():
     content = compose_path.read_text(encoding="utf-8")
     assert "nginx:" in content
     assert "backend:" in content
+    assert "postgres:" in content
     assert "prometheus:" in content
     assert "grafana:" in content
     assert '"80:80"' in content
+    assert '"127.0.0.1:5432:5432"' in content
     assert '"127.0.0.1:9090:9090"' in content
     assert '"127.0.0.1:3000:3000"' in content
     assert "--storage.tsdb.retention.time=15d" in content
+    assert "pg_isready" in content
