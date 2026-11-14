@@ -296,7 +296,7 @@ async def test_postgres_live_integration():
 
         live_uow = SqlAlchemyUserUnitOfWork()
         user_id = uuid7()
-        user = UserDomain(id=user_id, login=f"pg_user_{user_id.hex[:8]}")
+        user = UserDomain(id=user_id, login=f"pg_user_{user_id.hex}")
 
         async with live_uow:
             await live_uow.users.add(user)

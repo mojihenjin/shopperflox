@@ -1,4 +1,8 @@
+import secrets
+
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
 from uuid6 import uuid7
 
 from src.domain.exceptions import AuthenticationError
@@ -43,86 +47,158 @@ def test_argon2_corrupted_hash_returns_false():
 
 
 def test_jwt_provider_implements_protocol():
-    provider: TokenProviderProtocol = JwtTokenProvider(secret_key=SECRET_KEY_32)
+    provider: TokenProviderProtocol = JwtTokenProvider()
     assert callable(provider.create_access_token)
     assert callable(provider.create_refresh_token)
     assert callable(provider.decode_token)
 
 
-def test_jwt_create_and_decode_access_token():
+def test_jwt_eddsa_default_from_settings():
+    # By default, JwtTokenProvider uses EdDSA with keys from settings (.env)
+    provider = JwtTokenProvider()
+    assert provider.algorithm == "EdDSA"
+
+    user_id = uuid7()
+    permissions = ["users:read", "users:write"]
+
+    access_token = provider.create_access_token(user_id, permissions)
+    assert isinstance(access_token, str)
+
+    payload = provider.decode_token(access_token, expected_type="access")
+    assert payload["sub"] == str(user_id)
+    assert payload["permissions"] == permissions
+    assert payload["type"] == "access"
+
+    refresh_token = provider.create_refresh_token(user_id)
+    payload_refresh = provider.decode_token(refresh_token, expected_type="refresh")
+    assert payload_refresh["sub"] == str(user_id)
+    assert payload_refresh["type"] == "refresh"
+
+
+def test_jwt_eddsa_hex_keys():
+    seed = secrets.token_bytes(32)
+    priv_key = ed25519.Ed25519PrivateKey.from_private_bytes(seed)
+    pub_key = priv_key.public_key()
+    priv_hex = seed.hex()
+    pub_hex = pub_key.public_bytes(
+        serialization.Encoding.Raw, serialization.PublicFormat.Raw
+    ).hex()
+
+    provider = JwtTokenProvider(
+        private_key=priv_hex,
+        public_key=pub_hex,
+        algorithm="EdDSA",
+    )
+    user_id = uuid7()
+    token = provider.create_access_token(user_id, ["admin"])
+    payload = provider.decode_token(token, expected_type="access")
+    assert payload["sub"] == str(user_id)
+    assert payload["permissions"] == ["admin"]
+
+
+def test_jwt_eddsa_pem_keys():
+    priv = ed25519.Ed25519PrivateKey.generate()
+    pub = priv.public_key()
+    pem_priv = priv.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    ).decode()
+    pem_pub = pub.public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode()
+
+    provider = JwtTokenProvider(
+        private_key=pem_priv,
+        public_key=pem_pub,
+        algorithm="EdDSA",
+    )
+    user_id = uuid7()
+    token = provider.create_access_token(user_id, ["editor"])
+    payload = provider.decode_token(token, expected_type="access")
+    assert payload["sub"] == str(user_id)
+    assert payload["permissions"] == ["editor"]
+
+
+def test_jwt_eddsa_verification_only_provider():
+    priv = ed25519.Ed25519PrivateKey.generate()
+    pub_hex = (
+        priv.public_key()
+        .public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+        .hex()
+    )
+
+    signer = JwtTokenProvider(private_key=priv, algorithm="EdDSA")
+    verifier = JwtTokenProvider(public_key=pub_hex, algorithm="EdDSA")
+
+    user_id = uuid7()
+    token = signer.create_access_token(user_id, ["reader"])
+
+    # Verifier with only public key can decode
+    payload = verifier.decode_token(token, expected_type="access")
+    assert payload["sub"] == str(user_id)
+
+    # Verifier without private key cannot sign
+    with pytest.raises(
+        ValueError, match="Private key is required to sign JWT tokens with EdDSA"
+    ):
+        verifier.create_access_token(user_id, ["reader"])
+
+
+def test_jwt_eddsa_wrong_key_fails():
+    priv1 = ed25519.Ed25519PrivateKey.generate()
+    priv2 = ed25519.Ed25519PrivateKey.generate()
+
+    signer = JwtTokenProvider(private_key=priv1, algorithm="EdDSA")
+    wrong_verifier = JwtTokenProvider(public_key=priv2.public_key(), algorithm="EdDSA")
+
+    user_id = uuid7()
+    token = signer.create_access_token(user_id, [])
+
+    with pytest.raises(AuthenticationError, match="Invalid or expired token"):
+        wrong_verifier.decode_token(token)
+
+
+def test_jwt_wrong_type_token_rejected():
+    provider = JwtTokenProvider()
+    user_id = uuid7()
+
+    refresh_token = provider.create_refresh_token(user_id)
+    with pytest.raises(AuthenticationError, match="Invalid or expired token"):
+        provider.decode_token(refresh_token, expected_type="access")
+
+    access_token = provider.create_access_token(user_id, ["read"])
+    with pytest.raises(AuthenticationError, match="Invalid or expired token"):
+        provider.decode_token(access_token, expected_type="refresh")
+
+
+def test_jwt_tampered_token():
+    provider = JwtTokenProvider()
+    user_id = uuid7()
+
+    token = provider.create_access_token(user_id, [])
+    with pytest.raises(AuthenticationError, match="Invalid or expired token"):
+        provider.decode_token(token + "tampered")
+
+
+def test_jwt_expired_token():
+    provider = JwtTokenProvider(access_ttl_minutes=-1)
+    user_id = uuid7()
+    token = provider.create_access_token(user_id, [])
+
+    with pytest.raises(AuthenticationError, match="Invalid or expired token"):
+        provider.decode_token(token)
+
+
+def test_jwt_symmetric_hs256_backward_compatibility():
     provider = JwtTokenProvider(
         secret_key=SECRET_KEY_32,
         algorithm="HS256",
         access_ttl_minutes=10,
     )
     user_id = uuid7()
-    permissions = ["users:read", "users:write"]
-
-    token = provider.create_access_token(user_id, permissions)
-    assert isinstance(token, str)
-
+    token = provider.create_access_token(user_id, ["test"])
     payload = provider.decode_token(token, expected_type="access")
     assert payload["sub"] == str(user_id)
-    assert payload["permissions"] == permissions
-    assert payload["type"] == "access"
-    assert "exp" in payload
-    assert "iat" in payload
-
-
-def test_jwt_create_and_decode_refresh_token():
-    provider = JwtTokenProvider(
-        secret_key=SECRET_KEY_32,
-        algorithm="HS256",
-        refresh_ttl_days=7,
-    )
-    user_id = uuid7()
-
-    token = provider.create_refresh_token(user_id)
-    assert isinstance(token, str)
-
-    payload = provider.decode_token(token, expected_type="refresh")
-    assert payload["sub"] == str(user_id)
-    assert payload["type"] == "refresh"
-    assert "exp" in payload
-
-
-def test_jwt_wrong_type_token_rejected():
-    provider = JwtTokenProvider(secret_key=SECRET_KEY_32)
-    user_id = uuid7()
-
-    refresh_token = provider.create_refresh_token(user_id)
-
-    # Attempting to use refresh token where access token is expected
-    with pytest.raises(AuthenticationError, match="Invalid or expired token"):
-        provider.decode_token(refresh_token, expected_type="access")
-
-    access_token = provider.create_access_token(user_id, ["read"])
-    # Attempting to use access token where refresh token is expected
-    with pytest.raises(AuthenticationError, match="Invalid or expired token"):
-        provider.decode_token(access_token, expected_type="refresh")
-
-
-def test_jwt_tampered_or_invalid_secret():
-    provider = JwtTokenProvider(secret_key=SECRET_KEY_32)
-    other_provider = JwtTokenProvider(secret_key=OTHER_KEY_32)
-    user_id = uuid7()
-
-    token = provider.create_access_token(user_id, [])
-
-    with pytest.raises(AuthenticationError, match="Invalid or expired token"):
-        other_provider.decode_token(token)
-
-    with pytest.raises(AuthenticationError, match="Invalid or expired token"):
-        provider.decode_token(token + "tampered")
-
-
-def test_jwt_expired_token():
-    provider = JwtTokenProvider(
-        secret_key=SECRET_KEY_32,
-        access_ttl_minutes=-1,  # Already expired in the past
-    )
-    user_id = uuid7()
-    token = provider.create_access_token(user_id, [])
-
-    with pytest.raises(AuthenticationError, match="Invalid or expired token"):
-        provider.decode_token(token)
+    assert payload["permissions"] == ["test"]
