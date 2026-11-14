@@ -18,7 +18,7 @@
         "y": 0
       },
       "id": 100,
-      "title": "Application Overview",
+      "title": "Application Traffic & Latency",
       "type": "row"
     },
     {
@@ -52,7 +52,7 @@
         "y": 1
       },
       "id": 1,
-      "title": "Request Rate (RPS) by Route",
+      "title": "Request Rate (RPS) by Route & Status",
       "type": "timeseries",
       "targets": [
         {
@@ -61,54 +61,8 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(http_requests_total[1m])) by (method, path)",
-          "legendFormat": "{{method}} {{path}}",
-          "range": true,
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "req/s",
-            "axisPlacement": "auto",
-            "fillOpacity": 20,
-            "lineWidth": 2
-          },
-          "unit": "reqps"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 1
-      },
-      "id": 2,
-      "title": "Error Rate (4xx & 5xx RPS)",
-      "type": "timeseries",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "Prometheus"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(http_requests_total{status_code=~\"[45].*\"}[1m])) by (status_code, path)",
-          "legendFormat": "status {{status_code}} ({{path}})",
+          "expr": "sum(rate(http_requests_total[1m])) by (method, path, status_code)",
+          "legendFormat": "{{method}} {{path}} ({{status_code}})",
           "range": true,
           "refId": "A"
         }
@@ -140,10 +94,10 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
-        "y": 9
+        "x": 12,
+        "y": 1
       },
-      "id": 3,
+      "id": 2,
       "title": "Request Latency Quantiles (p50, p95, p99)",
       "type": "timeseries",
       "targets": [
@@ -183,6 +137,112 @@
       ]
     },
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 101,
+      "title": "Errors & System Health",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "yellow",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "req/s",
+            "axisPlacement": "auto",
+            "fillOpacity": 20,
+            "lineWidth": 2
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "id": 3,
+      "title": "Error Rate 4xx (Client Errors)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(http_requests_total{status_code=~\"4..\"}[1m])) by (status_code, path)",
+          "legendFormat": "status {{status_code}} ({{path}})",
+          "range": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "red",
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "req/s",
+            "axisPlacement": "auto",
+            "fillOpacity": 25,
+            "lineWidth": 2
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "id": 4,
+      "title": "Error Rate 5xx (Server Errors)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[1m])) by (status_code, path)",
+          "legendFormat": "status {{status_code}} ({{path}})",
+          "range": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
       "datasource": {
         "type": "prometheus",
         "uid": "Prometheus"
@@ -207,10 +267,10 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 12,
-        "y": 9
+        "x": 0,
+        "y": 18
       },
-      "id": 4,
+      "id": 5,
       "title": "In-Flight Active Requests",
       "type": "timeseries",
       "targets": [
@@ -222,6 +282,51 @@
           "editorMode": "code",
           "expr": "sum(http_requests_in_progress) by (method)",
           "legendFormat": "in-flight ({{method}})",
+          "range": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "fillOpacity": 15,
+            "lineWidth": 2
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "id": 6,
+      "title": "Event Loop Lag",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "Prometheus"
+          },
+          "editorMode": "code",
+          "expr": "event_loop_lag_seconds",
+          "legendFormat": "event loop lag",
           "range": true,
           "refId": "A"
         }
@@ -241,5 +346,5 @@
   "timezone": "browser",
   "title": "ShopperFlox - FastAPI & HTTP Metrics",
   "uid": "shopperflox-fastapi",
-  "version": 1
+  "version": 2
 }
