@@ -50,7 +50,44 @@ def configurate_app(app: FastAPI, settings: Settings | None = None):
     app.add_middleware(MetricsMiddleware)
 
     # Exception handlers
-    from src.domain.exceptions import DomainError, InvalidStateTransitionError
+    from src.domain.exceptions import (
+        AuthenticationError,
+        DomainError,
+        EntityAlreadyExistsError,
+        EntityNotFoundError,
+        InvalidStateTransitionError,
+        PermissionDeniedError,
+    )
+
+    @app.exception_handler(AuthenticationError)
+    async def auth_error_handler(request: Request, exc: AuthenticationError):
+        return ResponseGenerator.json_error(
+            status_code=401,
+            errors=[{"detail": exc.message}],
+        )
+
+    @app.exception_handler(PermissionDeniedError)
+    async def permission_denied_handler(request: Request, exc: PermissionDeniedError):
+        return ResponseGenerator.json_error(
+            status_code=403,
+            errors=[{"detail": exc.message}],
+        )
+
+    @app.exception_handler(EntityNotFoundError)
+    async def entity_not_found_handler(request: Request, exc: EntityNotFoundError):
+        return ResponseGenerator.json_error(
+            status_code=404,
+            errors=[{"detail": exc.message}],
+        )
+
+    @app.exception_handler(EntityAlreadyExistsError)
+    async def entity_already_exists_handler(
+        request: Request, exc: EntityAlreadyExistsError
+    ):
+        return ResponseGenerator.json_error(
+            status_code=409,
+            errors=[{"detail": exc.message}],
+        )
 
     @app.exception_handler(InvalidStateTransitionError)
     async def invalid_state_transition_handler(
