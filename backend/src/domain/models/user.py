@@ -63,10 +63,3 @@ class UserAddressDomain(BaseDomain):
     is_default: bool = field(default=False)
     created_at: datetime = field(default_factory=factory_now)
 
-
-__all__ = [
-    "UserAddressDomain",
-    "UserBanDomain",
-    "UserDomain",
-    "UserPersonalDomain",
-]

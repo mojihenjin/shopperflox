@@ -49,9 +49,3 @@ class OrderItemDomain(BaseDomain):
     variant_id: UUID | None = field(default=None)
     created_at: datetime = field(default_factory=factory_now)
 
-
-__all__ = [
-    "OrderDomain",
-    "OrderItemDomain",
-    "OrderStatus",
-]

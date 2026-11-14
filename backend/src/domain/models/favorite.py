@@ -15,5 +15,3 @@ class FavoriteDomain(BaseDomain):
 
     created_at: datetime = field(default_factory=factory_now)
 
-
-__all__ = ["FavoriteDomain"]

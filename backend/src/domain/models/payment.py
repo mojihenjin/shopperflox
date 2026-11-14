@@ -31,8 +31,3 @@ class PaymentDomain(BaseDomain):
     created_at: datetime = field(default_factory=factory_now)
     paid_at: datetime | None = field(default=None)
 
-
-__all__ = [
-    "PaymentDomain",
-    "PaymentStatus",
-]

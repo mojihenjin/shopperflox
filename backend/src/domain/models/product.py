@@ -58,9 +58,3 @@ class ProductImageDomain(BaseDomain):
 
     created_at: datetime = field(default_factory=factory_now)
 
-
-__all__ = [
-    "ProductDomain",
-    "ProductImageDomain",
-    "ProductVariantDomain",
-]
