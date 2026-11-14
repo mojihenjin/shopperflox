@@ -19,17 +19,21 @@ class UserDomain(BaseDomain):
     verified_profile: bool = field(default=False)
     verified_email: bool = field(default=False)
 
-    global_permissions: list = field(default_factory=list)
+    global_permissions: list[str] = field(default_factory=list)
 
     created_by: UUID | None = field(default=None)
     created_at: datetime = field(default_factory=factory_now)
     updated_at: datetime = field(default_factory=factory_now)
     deleted_at: datetime | None = field(default=None)
 
+    @property
+    def is_deleted(self) -> bool:
+        return self.deleted_at is not None
+
 
 @dataclass(slots=True, kw_only=True)
 class UserPersonalDomain(BaseDomain):
-    id: UUID = field(default_factory=uuid7)
+    id: UUID
     created_by: UUID
 
     firstname: str | None = field(default=None)
@@ -50,6 +54,10 @@ class UserBanDomain(BaseDomain):
     created_at: datetime = field(default_factory=factory_now)
     ended_at: datetime | None = field(default=None)
 
+    def is_active(self, at: datetime | None = None) -> bool:
+        check_time = at or factory_now()
+        return self.ended_at is None or self.ended_at > check_time
+
 
 @dataclass(slots=True, kw_only=True)
 class UserAddressDomain(BaseDomain):
@@ -62,4 +70,3 @@ class UserAddressDomain(BaseDomain):
 
     is_default: bool = field(default=False)
     created_at: datetime = field(default_factory=factory_now)
-
