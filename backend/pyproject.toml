@@ -11,3 +11,8 @@ dependencies = [
     "loguru>=0.8.0",
     "uuid6>=2025.0.1",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
