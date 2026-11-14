@@ -6,7 +6,7 @@ router = APIRouter(prefix="/health")
 
 @router.get("/")
 @router.get(
-    "/ready", response_class=BaseResponse[dict[str, bool]], include_in_schema=False
+    "/ready", response_model=BaseResponse[dict[str, bool]], include_in_schema=False
 )
 async def ready_service(resp: Response):
     services: dict = {"API": True}
