@@ -8,6 +8,11 @@ def create_app(settings: Settings):
 
 def configurate_app(app: FastAPI):
 
+    # Include routers
+    from src.api import health
+
+    app.include_router(health.router)
+
     return app
 
 
