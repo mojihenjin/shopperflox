@@ -50,6 +50,24 @@ def configurate_app(app: FastAPI, settings: Settings | None = None):
     app.add_middleware(MetricsMiddleware)
 
     # Exception handlers
+    from src.domain.exceptions import DomainError, InvalidStateTransitionError
+
+    @app.exception_handler(InvalidStateTransitionError)
+    async def invalid_state_transition_handler(
+        request: Request, exc: InvalidStateTransitionError
+    ):
+        return ResponseGenerator.json_error(
+            status_code=409,
+            errors=[{"detail": exc.message}],
+        )
+
+    @app.exception_handler(DomainError)
+    async def domain_error_handler(request: Request, exc: DomainError):
+        return ResponseGenerator.json_error(
+            status_code=400,
+            errors=[{"detail": exc.message}],
+        )
+
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         return ResponseGenerator.json_error(
