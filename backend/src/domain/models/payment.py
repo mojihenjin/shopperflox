@@ -4,6 +4,7 @@ from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID
 
+from src.domain.exceptions import DomainValidationError, InvalidStateTransitionError
 from src.utils import factory_now
 from uuid6 import uuid7
 
@@ -15,6 +16,14 @@ class PaymentStatus(StrEnum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     REFUNDED = "refunded"
+
+
+ALLOWED_PAYMENT_TRANSITIONS: dict[PaymentStatus, set[PaymentStatus]] = {
+    PaymentStatus.PENDING: {PaymentStatus.SUCCEEDED, PaymentStatus.FAILED},
+    PaymentStatus.SUCCEEDED: {PaymentStatus.REFUNDED},
+    PaymentStatus.FAILED: set(),
+    PaymentStatus.REFUNDED: set(),
+}
 
 
 @dataclass(slots=True, kw_only=True)
@@ -31,3 +40,16 @@ class PaymentDomain(BaseDomain):
     created_at: datetime = field(default_factory=factory_now)
     paid_at: datetime | None = field(default=None)
 
+    def __post_init__(self) -> None:
+        if self.amount < 0:
+            raise DomainValidationError("Payment amount must be non-negative")
+
+    def transition_to(self, new_status: PaymentStatus) -> None:
+        allowed = ALLOWED_PAYMENT_TRANSITIONS.get(self.status, set())
+        if new_status not in allowed:
+            raise InvalidStateTransitionError(
+                f"Cannot transition payment from {self.status} to {new_status}"
+            )
+        self.status = new_status
+        if new_status == PaymentStatus.SUCCEEDED and self.paid_at is None:
+            self.paid_at = factory_now()
