@@ -72,3 +72,6 @@ def test_docker_compose_services():
     assert '"127.0.0.1:3000:3000"' in content
     assert "--storage.tsdb.retention.time=15d" in content
     assert "pg_isready" in content
+    assert "env_file:" in content
+    assert "POSTGRES_USER" in content
+    assert "POSTGRES_PASSWORD" in content

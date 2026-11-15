@@ -22,9 +22,11 @@ services:
     restart: unless-stopped
     expose:
       - "8000"
+    env_file:
+      - ./backend/.env
     environment:
       - PYTHONUNBUFFERED=1
-      - DATABASE_URL=postgresql+asyncpg://shopperflox:shopperflox@postgres:5432/shopperflox
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-shopperflox}:${POSTGRES_PASSWORD:-shopperflox}@postgres:5432/${POSTGRES_DB:-shopperflox}
     depends_on:
       postgres:
         condition: service_healthy
@@ -42,12 +44,14 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:5432:5432"
+    env_file:
+      - ./backend/.env
     environment:
-      - POSTGRES_DB=shopperflox
-      - POSTGRES_USER=shopperflox
-      - POSTGRES_PASSWORD=shopperflox
+      - POSTGRES_DB=${POSTGRES_DB:-shopperflox}
+      - POSTGRES_USER=${POSTGRES_USER:-shopperflox}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-shopperflox}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U shopperflox -d shopperflox"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shopperflox} -d ${POSTGRES_DB:-shopperflox}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -83,9 +87,11 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
+    env_file:
+      - ./backend/.env
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - ./deploy/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
