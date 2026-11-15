@@ -14,11 +14,18 @@ from src.domain.interfaces import (
     UserRepositoryProtocol,
 )
 from src.domain.models import (
+    CartDomain,
+    CartItemDomain,
     CategoryDomain,
     FavoriteDomain,
+    OrderDomain,
+    OrderItemDomain,
+    OrderStatus,
+    PaymentDomain,
     ProductDomain,
     ProductImageDomain,
     ProductVariantDomain,
+    ReviewDomain,
     UserAddressDomain,
     UserBanDomain,
     UserDomain,
@@ -364,6 +371,11 @@ class InMemoryProductVariantRepository:
                 return v
         return None
 
+    async def get_by_ids_for_update(
+        self, variant_ids: list[UUID]
+    ) -> list[ProductVariantDomain]:
+        return [self.store[v_id] for v_id in sorted(variant_ids) if v_id in self.store]
+
     async def list_by_product_id(self, product_id: UUID) -> list[ProductVariantDomain]:
         return [v for v in self.store.values() if v.product_id == product_id]
 
@@ -461,3 +473,286 @@ class FakeCatalogUnitOfWork:
 @pytest.fixture
 def catalog_uow():
     return FakeCatalogUnitOfWork()
+
+
+class InMemoryCartRepository:
+    def __init__(self) -> None:
+        self.carts: dict[UUID, CartDomain] = {}
+        self.items: dict[tuple[UUID, UUID], CartItemDomain] = {}
+
+    async def get_by_user_id(self, user_id: UUID) -> CartDomain | None:
+        for c in self.carts.values():
+            if c.user_id == user_id:
+                return c
+        return None
+
+    async def get_or_create_for_user(self, user_id: UUID) -> CartDomain:
+        cart = await self.get_by_user_id(user_id)
+        if cart is not None:
+            return cart
+        cart = CartDomain(id=uuid7(), user_id=user_id, created_by=user_id)
+        self.carts[cart.id] = cart
+        return cart
+
+    async def list_items(self, cart_id: UUID) -> list[CartItemDomain]:
+        return [i for (c_id, _), i in self.items.items() if c_id == cart_id]
+
+    async def get_item(self, cart_id: UUID, variant_id: UUID) -> CartItemDomain | None:
+        return self.items.get((cart_id, variant_id))
+
+    async def upsert_item(
+        self, cart_id: UUID, variant_id: UUID, quantity: int
+    ) -> CartItemDomain:
+        key = (cart_id, variant_id)
+        if key in self.items:
+            item = self.items[key]
+            item.quantity = quantity
+        else:
+            item = CartItemDomain(
+                id=uuid7(),
+                cart_id=cart_id,
+                variant_id=variant_id,
+                quantity=quantity,
+            )
+            self.items[key] = item
+        return item
+
+    async def remove_item(self, cart_id: UUID, variant_id: UUID) -> None:
+        self.items.pop((cart_id, variant_id), None)
+
+    async def clear_cart(self, cart_id: UUID) -> None:
+        to_del = [key for key in self.items if key[0] == cart_id]
+        for key in to_del:
+            self.items.pop(key, None)
+
+
+class InMemoryOrderRepository:
+    def __init__(self) -> None:
+        self.orders: dict[UUID, OrderDomain] = {}
+        self.items: dict[UUID, list[OrderItemDomain]] = {}
+
+    async def get_by_id(
+        self, order_id: UUID, *, for_update: bool = False
+    ) -> OrderDomain | None:
+        return self.orders.get(order_id)
+
+    async def list_items(self, order_id: UUID) -> list[OrderItemDomain]:
+        return self.items.get(order_id, [])
+
+    async def list_by_user_id(
+        self, user_id: UUID, limit: int = 20, offset: int = 0
+    ) -> tuple[list[OrderDomain], int]:
+        user_orders = [o for o in self.orders.values() if o.user_id == user_id]
+        user_orders.sort(key=lambda x: x.created_at, reverse=True)
+        return user_orders[offset : offset + limit], len(user_orders)
+
+    async def list_all(
+        self,
+        status: OrderStatus | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[OrderDomain], int]:
+        all_orders = list(self.orders.values())
+        if status is not None:
+            all_orders = [o for o in all_orders if o.status == status]
+        all_orders.sort(key=lambda x: x.created_at, reverse=True)
+        return all_orders[offset : offset + limit], len(all_orders)
+
+    async def has_user_purchased_product(self, user_id: UUID, product_id: UUID) -> bool:
+        for order in self.orders.values():
+            if order.user_id == user_id and order.status == OrderStatus.DELIVERED:
+                # We check order items' variant
+                items = self.items.get(order.id, [])
+                for i in items:
+                    # In test setup, we can tag or verify variant's product
+                    if getattr(i, "_product_id", None) == product_id:
+                        return True
+        return False
+
+    async def add(
+        self, order: OrderDomain, items: list[OrderItemDomain] | None = None
+    ) -> None:
+        self.orders[order.id] = order
+        if items:
+            self.items[order.id] = list(items)
+
+    async def update(self, order: OrderDomain) -> None:
+        self.orders[order.id] = order
+
+
+class InMemoryPaymentRepository:
+    def __init__(self) -> None:
+        self.payments: dict[UUID, PaymentDomain] = {}
+
+    async def get_by_id(
+        self, payment_id: UUID, *, for_update: bool = False
+    ) -> PaymentDomain | None:
+        return self.payments.get(payment_id)
+
+    async def get_by_order_id(
+        self, order_id: UUID, *, for_update: bool = False
+    ) -> PaymentDomain | None:
+        for p in self.payments.values():
+            if p.order_id == order_id:
+                return p
+        return None
+
+    async def get_by_external_id(
+        self, external_transaction_id: str, *, for_update: bool = False
+    ) -> PaymentDomain | None:
+        for p in self.payments.values():
+            if p.external_id == external_transaction_id:
+                return p
+        return None
+
+    async def add(self, payment: PaymentDomain) -> None:
+        self.payments[payment.id] = payment
+
+    async def update(self, payment: PaymentDomain) -> None:
+        self.payments[payment.id] = payment
+
+
+class InMemoryReviewRepository:
+    def __init__(self) -> None:
+        self.reviews: dict[UUID, ReviewDomain] = {}
+
+    async def get_by_id(self, review_id: UUID) -> ReviewDomain | None:
+        return self.reviews.get(review_id)
+
+    async def get_by_user_and_product(
+        self, user_id: UUID, product_id: UUID
+    ) -> ReviewDomain | None:
+        for r in self.reviews.values():
+            if r.user_id == user_id and r.product_id == product_id:
+                return r
+        return None
+
+    async def list_by_product_id(
+        self, product_id: UUID, limit: int = 20, offset: int = 0
+    ) -> tuple[list[ReviewDomain], int]:
+        matched = [
+            r
+            for r in self.reviews.values()
+            if r.product_id == product_id and r.is_published
+        ]
+        matched.sort(key=lambda x: x.created_at, reverse=True)
+        return matched[offset : offset + limit], len(matched)
+
+    async def add(self, review: ReviewDomain) -> None:
+        self.reviews[review.id] = review
+
+    async def delete(self, review_id: UUID) -> None:
+        self.reviews.pop(review_id, None)
+
+
+class FakeCartUnitOfWork:
+    def __init__(
+        self,
+        variants_repo: InMemoryProductVariantRepository | None = None,
+        products_repo: InMemoryProductRepository | None = None,
+    ) -> None:
+        self.carts = InMemoryCartRepository()
+        self.variants = variants_repo or InMemoryProductVariantRepository()
+        self.products = products_repo or InMemoryProductRepository()
+        self.committed = False
+        self.rolled_back = False
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        if exc_type is not None:
+            await self.rollback()
+
+    async def commit(self) -> None:
+        self.committed = True
+
+    async def rollback(self) -> None:
+        self.rolled_back = True
+
+
+class FakeOrderUnitOfWork:
+    def __init__(
+        self,
+        carts_repo: InMemoryCartRepository | None = None,
+        variants_repo: InMemoryProductVariantRepository | None = None,
+        products_repo: InMemoryProductRepository | None = None,
+        addresses_repo: InMemoryUserAddressRepository | None = None,
+    ) -> None:
+        self.orders = InMemoryOrderRepository()
+        self.carts = carts_repo or InMemoryCartRepository()
+        self.variants = variants_repo or InMemoryProductVariantRepository()
+        self.products = products_repo or InMemoryProductRepository()
+        self.addresses = addresses_repo or InMemoryUserAddressRepository()
+        self.payments = InMemoryPaymentRepository()
+        self.committed = False
+        self.rolled_back = False
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        if exc_type is not None:
+            await self.rollback()
+
+    async def commit(self) -> None:
+        self.committed = True
+
+    async def rollback(self) -> None:
+        self.rolled_back = True
+
+
+class FakeReviewUnitOfWork:
+    def __init__(
+        self,
+        orders_repo: InMemoryOrderRepository | None = None,
+        products_repo: InMemoryProductRepository | None = None,
+    ) -> None:
+        self.reviews = InMemoryReviewRepository()
+        self.orders = orders_repo or InMemoryOrderRepository()
+        self.products = products_repo or InMemoryProductRepository()
+        self.committed = False
+        self.rolled_back = False
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        if exc_type is not None:
+            await self.rollback()
+
+    async def commit(self) -> None:
+        self.committed = True
+
+    async def rollback(self) -> None:
+        self.rolled_back = True
+
+
+@pytest.fixture
+def cart_uow():
+    return FakeCartUnitOfWork()
+
+
+@pytest.fixture
+def order_uow():
+    return FakeOrderUnitOfWork()
+
+
+@pytest.fixture
+def review_uow():
+    return FakeReviewUnitOfWork()
