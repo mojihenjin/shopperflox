@@ -1,3 +1,11 @@
+from .catalog import (
+    CatalogUnitOfWorkProtocol,
+    CategoryRepositoryProtocol,
+    FavoriteRepositoryProtocol,
+    ProductImageRepositoryProtocol,
+    ProductRepositoryProtocol,
+    ProductVariantRepositoryProtocol,
+)
 from .security import (
     PasswordHasherProtocol,
     TokenBlacklistProtocol,
@@ -13,7 +21,13 @@ from .user import (
 )
 
 __all__ = [
+    "CatalogUnitOfWorkProtocol",
+    "CategoryRepositoryProtocol",
+    "FavoriteRepositoryProtocol",
     "PasswordHasherProtocol",
+    "ProductImageRepositoryProtocol",
+    "ProductRepositoryProtocol",
+    "ProductVariantRepositoryProtocol",
     "TokenBlacklistProtocol",
     "TokenProviderProtocol",
     "UnitOfWorkProtocol",
