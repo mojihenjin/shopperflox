@@ -3,6 +3,8 @@ from typing import Any
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from src.utils import get_len
+
 
 class BaseResponse[T](BaseModel):
     body: T | None = None
@@ -25,9 +27,7 @@ class ResponseGenerator:
         meta = (metadata or {}).copy()
 
         # Only required data
-        meta.update(
-            {"length": len(body) if isinstance(body, list | tuple | set) else 0}
-        )
+        meta.update({"length": get_len(body=body)})
 
         if metadata_update:
             pass
