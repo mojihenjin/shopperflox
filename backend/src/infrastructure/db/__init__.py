@@ -1,11 +1,21 @@
 from .models import (
     Base,
+    CategoryModel,
+    FavoriteModel,
+    ProductImageModel,
+    ProductModel,
+    ProductVariantModel,
     UserAddressModel,
     UserBanModel,
     UserModel,
     UserPersonalModel,
 )
 from .repositories import (
+    SqlAlchemyCategoryRepository,
+    SqlAlchemyFavoriteRepository,
+    SqlAlchemyProductImageRepository,
+    SqlAlchemyProductRepository,
+    SqlAlchemyProductVariantRepository,
     SqlAlchemyUserAddressRepository,
     SqlAlchemyUserBanRepository,
     SqlAlchemyUserPersonalRepository,
@@ -18,10 +28,21 @@ from .session import (
     engine,
     get_session,
 )
-from .uow import SqlAlchemyUserUnitOfWork
+from .uow import SqlAlchemyCatalogUnitOfWork, SqlAlchemyUserUnitOfWork
 
 __all__ = [
     "Base",
+    "CategoryModel",
+    "FavoriteModel",
+    "ProductImageModel",
+    "ProductModel",
+    "ProductVariantModel",
+    "SqlAlchemyCatalogUnitOfWork",
+    "SqlAlchemyCategoryRepository",
+    "SqlAlchemyFavoriteRepository",
+    "SqlAlchemyProductImageRepository",
+    "SqlAlchemyProductRepository",
+    "SqlAlchemyProductVariantRepository",
     "SqlAlchemyUserAddressRepository",
     "SqlAlchemyUserBanRepository",
     "SqlAlchemyUserPersonalRepository",

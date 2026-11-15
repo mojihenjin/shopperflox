@@ -1,3 +1,10 @@
+from .catalog import (
+    SqlAlchemyCategoryRepository,
+    SqlAlchemyFavoriteRepository,
+    SqlAlchemyProductImageRepository,
+    SqlAlchemyProductRepository,
+    SqlAlchemyProductVariantRepository,
+)
 from .user import (
     SqlAlchemyUserAddressRepository,
     SqlAlchemyUserBanRepository,
@@ -6,6 +13,11 @@ from .user import (
 )
 
 __all__ = [
+    "SqlAlchemyCategoryRepository",
+    "SqlAlchemyFavoriteRepository",
+    "SqlAlchemyProductImageRepository",
+    "SqlAlchemyProductRepository",
+    "SqlAlchemyProductVariantRepository",
     "SqlAlchemyUserAddressRepository",
     "SqlAlchemyUserBanRepository",
     "SqlAlchemyUserPersonalRepository",
