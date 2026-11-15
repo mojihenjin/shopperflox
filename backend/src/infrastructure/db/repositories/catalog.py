@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.exceptions import EntityAlreadyExistsError, EntityNotFoundError
 from src.domain.models import (
+    BrandSearchResult,
     CategoryDomain,
     FavoriteDomain,
     ProductDomain,
@@ -104,6 +105,7 @@ class SqlAlchemyProductRepository:
             category_id=model.category_id,
             title=model.title,
             slug=model.slug,
+            brand=model.brand,
             base_price=model.base_price,
             created_by=model.created_by,
             description=model.description,
@@ -188,6 +190,7 @@ class SqlAlchemyProductRepository:
             category_id=product.category_id,
             title=product.title,
             slug=product.slug,
+            brand=product.brand,
             base_price=product.base_price,
             description=product.description,
             attributes=product.attributes,
@@ -212,6 +215,7 @@ class SqlAlchemyProductRepository:
         model.category_id = product.category_id
         model.title = product.title
         model.slug = product.slug
+        model.brand = product.brand
         model.base_price = product.base_price
         model.description = product.description
         model.attributes = product.attributes
@@ -224,6 +228,57 @@ class SqlAlchemyProductRepository:
             raise EntityAlreadyExistsError(
                 f"Product with slug '{product.slug}' already exists"
             ) from exc
+
+    async def search_products(self, query: str, limit: int = 10) -> list[ProductDomain]:
+        escaped = (
+            query.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
+        if not escaped:
+            return []
+        pattern = f"%{escaped}%"
+        stmt = (
+            select(ProductModel)
+            .where(
+                ProductModel.is_published.is_(True),
+                ProductModel.deleted_at.is_(None),
+                or_(
+                    ProductModel.title.ilike(pattern, escape="\\"),
+                    ProductModel.description.ilike(pattern, escape="\\"),
+                    ProductModel.brand.ilike(pattern, escape="\\"),
+                ),
+            )
+            .order_by(ProductModel.created_at.desc())
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        models = result.scalars().all()
+        return [self._to_domain(m) for m in models]
+
+    async def search_brands(
+        self, query: str, limit: int = 10
+    ) -> list[BrandSearchResult]:
+        escaped = (
+            query.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
+        if not escaped:
+            return []
+        pattern = f"%{escaped}%"
+        stmt = (
+            select(ProductModel.brand, func.count(ProductModel.id))
+            .where(
+                ProductModel.is_published.is_(True),
+                ProductModel.deleted_at.is_(None),
+                ProductModel.brand.isnot(None),
+                ProductModel.brand != "",
+                ProductModel.brand.ilike(pattern, escape="\\"),
+            )
+            .group_by(ProductModel.brand)
+            .order_by(func.count(ProductModel.id).desc(), ProductModel.brand.asc())
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        rows = result.all()
+        return [BrandSearchResult(name=row[0], products_count=row[1]) for row in rows]
 
 
 class SqlAlchemyProductVariantRepository:
@@ -277,6 +332,34 @@ class SqlAlchemyProductVariantRepository:
         )
         result = await self.session.execute(stmt)
         return [self._to_domain(m) for m in result.scalars().all()]
+
+    async def search_variants(
+        self, query: str, limit: int = 10
+    ) -> list[ProductVariantDomain]:
+        escaped = (
+            query.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
+        if not escaped:
+            return []
+        pattern = f"%{escaped}%"
+        stmt = (
+            select(ProductVariantModel)
+            .join(ProductModel, ProductVariantModel.product_id == ProductModel.id)
+            .where(
+                ProductModel.is_published.is_(True),
+                ProductModel.deleted_at.is_(None),
+                or_(
+                    ProductVariantModel.sku.ilike(pattern, escape="\\"),
+                    ProductVariantModel.color_name.ilike(pattern, escape="\\"),
+                    ProductVariantModel.size.ilike(pattern, escape="\\"),
+                ),
+            )
+            .order_by(ProductVariantModel.created_at.desc())
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        models = result.scalars().all()
+        return [self._to_domain(m) for m in models]
 
     async def add(self, variant: ProductVariantDomain) -> None:
         model = ProductVariantModel(

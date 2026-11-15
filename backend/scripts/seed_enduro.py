@@ -194,6 +194,7 @@ async def seed_enduro() -> None:
                 "category_id": cat_id,
                 "title": f"Enduro Product {p:05d}",
                 "slug": f"enduro-product-{p:05d}",
+                "brand": f"Brand_{(p % 50):02d}",
                 "base_price": base_price,
                 "description": f"High performance load testing product {p}",
                 "attributes": {

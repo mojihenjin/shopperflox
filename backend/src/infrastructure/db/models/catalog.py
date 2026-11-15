@@ -49,6 +49,7 @@ class ProductModel(Base):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(255), nullable=False)
+    brand: Mapped[str | None] = mapped_column(String(128), nullable=True)
     base_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     attributes: Mapped[dict[str, Any]] = mapped_column(default=dict, nullable=False)
@@ -70,6 +71,18 @@ class ProductModel(Base):
             sqlite_where=text("deleted_at IS NULL"),
         ),
         Index("ix_products_category_id", "category_id"),
+        Index(
+            "ix_products_title_trgm",
+            "title",
+            postgresql_using="gin",
+            postgresql_ops={"title": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_products_brand_trgm",
+            "brand",
+            postgresql_using="gin",
+            postgresql_ops={"brand": "gin_trgm_ops"},
+        ),
     )
 
 
@@ -105,6 +118,24 @@ class ProductVariantModel(Base):
             name="chk_product_variants_price_override_non_negative",
         ),
         Index("ix_product_variants_product_id", "product_id"),
+        Index(
+            "ix_product_variants_sku_trgm",
+            "sku",
+            postgresql_using="gin",
+            postgresql_ops={"sku": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_product_variants_color_name_trgm",
+            "color_name",
+            postgresql_using="gin",
+            postgresql_ops={"color_name": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_product_variants_size_trgm",
+            "size",
+            postgresql_using="gin",
+            postgresql_ops={"size": "gin_trgm_ops"},
+        ),
     )
 
 
