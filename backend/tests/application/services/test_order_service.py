@@ -60,7 +60,7 @@ async def test_order_service_checkout_and_cancel_flow(order_uow):
     await order_uow.carts.upsert_item(cart.id, variant.id, 3)
 
     # 4. Checkout
-    order, items, payment = await service.checkout(
+    order, items, payment, _ = await service.checkout(
         user_id=user_id,
         address_id=address.id,
         comment="Leave at door",
@@ -126,7 +126,7 @@ async def test_order_service_forbidden_cancel(order_uow):
     cart = await order_uow.carts.get_or_create_for_user(user_id)
     await order_uow.carts.upsert_item(cart.id, variant.id, 1)
 
-    order, _, _ = await service.checkout(user_id=user_id, address_id=address.id)
+    order, _, _, _ = await service.checkout(user_id=user_id, address_id=address.id)
 
     # Stranger cannot cancel
     with pytest.raises(PermissionDeniedError):
