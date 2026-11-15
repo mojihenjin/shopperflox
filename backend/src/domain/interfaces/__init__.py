@@ -1,3 +1,7 @@
+from .cart import (
+    CartRepositoryProtocol,
+    CartUnitOfWorkProtocol,
+)
 from .catalog import (
     CatalogUnitOfWorkProtocol,
     CategoryRepositoryProtocol,
@@ -5,6 +9,13 @@ from .catalog import (
     ProductImageRepositoryProtocol,
     ProductRepositoryProtocol,
     ProductVariantRepositoryProtocol,
+)
+from .order import (
+    OrderRepositoryProtocol,
+    OrderUnitOfWorkProtocol,
+    PaymentRepositoryProtocol,
+    ReviewRepositoryProtocol,
+    ReviewUnitOfWorkProtocol,
 )
 from .security import (
     PasswordHasherProtocol,
@@ -21,13 +32,20 @@ from .user import (
 )
 
 __all__ = [
+    "CartRepositoryProtocol",
+    "CartUnitOfWorkProtocol",
     "CatalogUnitOfWorkProtocol",
     "CategoryRepositoryProtocol",
     "FavoriteRepositoryProtocol",
+    "OrderRepositoryProtocol",
+    "OrderUnitOfWorkProtocol",
     "PasswordHasherProtocol",
+    "PaymentRepositoryProtocol",
     "ProductImageRepositoryProtocol",
     "ProductRepositoryProtocol",
     "ProductVariantRepositoryProtocol",
+    "ReviewRepositoryProtocol",
+    "ReviewUnitOfWorkProtocol",
     "TokenBlacklistProtocol",
     "TokenProviderProtocol",
     "UnitOfWorkProtocol",

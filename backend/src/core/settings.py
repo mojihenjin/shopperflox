@@ -59,6 +59,10 @@ class Settings(BaseSettings):
         default=30,
         validation_alias=AliasChoices("JWT_REFRESH_TTL_DAYS", "jwt_refresh_ttl_days"),
     )
+    webhook_secret: str = Field(
+        default="dev_webhook_secret",
+        validation_alias=AliasChoices("WEBHOOK_SECRET", "webhook_secret"),
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="UTF-8", extra="ignore"

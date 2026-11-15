@@ -22,10 +22,10 @@ class ReviewDomain(BaseDomain):
     id: UUID = field(default_factory=uuid7)
     user_id: UUID
     product_id: UUID
-    order_item_id: UUID
     rating: int
     created_by: UUID
 
+    order_item_id: UUID | None = field(default=None)
     fit_feedback: FitFeedback | None = field(default=None)
     comment: str | None = field(default=None)
     is_published: bool = field(default=True)

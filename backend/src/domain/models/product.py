@@ -37,6 +37,9 @@ class ProductDomain(BaseDomain):
     def is_available(self) -> bool:
         return self.is_published and self.deleted_at is None
 
+    def resolve_price(self, variant: "ProductVariantDomain") -> Decimal:
+        return variant.resolve_price(self.base_price)
+
 
 @dataclass(slots=True, kw_only=True)
 class ProductVariantDomain(BaseDomain):

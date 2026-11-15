@@ -57,6 +57,10 @@ class ProductVariantRepositoryProtocol(Protocol):
 
     async def get_by_sku(self, sku: str) -> ProductVariantDomain | None: ...
 
+    async def get_by_ids_for_update(
+        self, variant_ids: list[UUID]
+    ) -> list[ProductVariantDomain]: ...
+
     async def list_by_product_id(
         self, product_id: UUID
     ) -> list[ProductVariantDomain]: ...
