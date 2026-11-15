@@ -197,11 +197,15 @@ class SqlAlchemyUserAddressRepository:
         model = await self.session.get(UserAddressModel, address_id)
         return self._to_domain(model) if model else None
 
-    async def list_by_user_id(self, user_id: UUID) -> list[UserAddressDomain]:
+    async def list_by_user_id(
+        self, user_id: UUID, *, limit: int = 50, offset: int = 0
+    ) -> list[UserAddressDomain]:
         stmt = (
             select(UserAddressModel)
             .where(UserAddressModel.user_id == user_id)
             .order_by(UserAddressModel.created_at.desc())
+            .offset(offset)
+            .limit(limit)
         )
         result = await self.session.scalars(stmt)
         return [self._to_domain(m) for m in result]
@@ -300,6 +304,24 @@ class SqlAlchemyUserBanRepository:
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
         return self._to_domain(model) if model else None
+
+    async def list_active_by_user_id(
+        self, user_id: UUID, at: datetime | None = None
+    ) -> list[UserBanDomain]:
+        check_time = at or factory_now()
+        stmt = (
+            select(UserBanModel)
+            .where(
+                UserBanModel.user_id == user_id,
+                or_(
+                    UserBanModel.ended_at.is_(None),
+                    UserBanModel.ended_at > check_time,
+                ),
+            )
+            .order_by(UserBanModel.created_at.desc())
+        )
+        result = await self.session.scalars(stmt)
+        return [self._to_domain(m) for m in result]
 
     async def list_by_user_id(self, user_id: UUID) -> list[UserBanDomain]:
         stmt = (

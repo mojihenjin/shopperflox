@@ -84,6 +84,16 @@ class UserBanModel(Base):
     created_at: Mapped[datetime] = mapped_column(nullable=False)
     ended_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
+    __table_args__ = (
+        Index(
+            "uq_user_bans_active",
+            "user_id",
+            unique=True,
+            postgresql_where=text("ended_at IS NULL"),
+            sqlite_where=text("ended_at IS NULL"),
+        ),
+    )
+
 
 class UserAddressModel(Base):
     __tablename__ = "user_addresses"

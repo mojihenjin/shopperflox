@@ -41,7 +41,9 @@ class UserPersonalRepositoryProtocol(Protocol):
 class UserAddressRepositoryProtocol(Protocol):
     async def get_by_id(self, address_id: UUID) -> UserAddressDomain | None: ...
 
-    async def list_by_user_id(self, user_id: UUID) -> list[UserAddressDomain]: ...
+    async def list_by_user_id(
+        self, user_id: UUID, *, limit: int = 50, offset: int = 0
+    ) -> list[UserAddressDomain]: ...
 
     async def get_default_by_user_id(
         self, user_id: UUID
@@ -60,6 +62,10 @@ class UserBanRepositoryProtocol(Protocol):
     async def get_active_by_user_id(
         self, user_id: UUID, at: datetime | None = None
     ) -> UserBanDomain | None: ...
+
+    async def list_active_by_user_id(
+        self, user_id: UUID, at: datetime | None = None
+    ) -> list[UserBanDomain]: ...
 
     async def list_by_user_id(self, user_id: UUID) -> list[UserBanDomain]: ...
 

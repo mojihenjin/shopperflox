@@ -79,14 +79,19 @@ class UserModerationService:
             if target is None or target.is_deleted:
                 raise EntityNotFoundError("Target user not found")
 
-            active_ban = await self.uow.bans.get_active_by_user_id(target_user_id)
-            if active_ban is None or not active_ban.is_active():
+            now = factory_now()
+            active_bans = await self.uow.bans.list_active_by_user_id(
+                target_user_id, at=now
+            )
+            if not active_bans:
                 raise EntityNotFoundError("No active ban found for user")
 
-            active_ban.ended_at = factory_now()
-            await self.uow.bans.update(active_ban)
+            for ban in active_bans:
+                ban.ended_at = now
+                await self.uow.bans.update(ban)
+
             await self.uow.commit()
-            return active_ban
+            return active_bans[0]
 
     async def set_permissions(
         self,
