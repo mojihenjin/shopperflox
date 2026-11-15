@@ -9,7 +9,6 @@ async def test_users_address_management_and_no_leak(client):
         json={
             "login": "bob_user",
             "password": "Password123!",
-            "email": "bob@example.com",
         },
     )
     login_resp = await client.post(
@@ -111,7 +110,6 @@ async def test_users_address_limit_and_pagination(client):
         json={
             "login": "limit_user",
             "password": "Password123!",
-            "email": "limit@example.com",
         },
     )
     login_resp = await client.post(

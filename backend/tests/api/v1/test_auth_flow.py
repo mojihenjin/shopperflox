@@ -2,19 +2,31 @@ import pytest
 
 
 @pytest.mark.anyio
-async def test_full_auth_flow(client):
-    # 1. Register a new user
+async def test_full_auth_flow(client, test_task_queue):
+    # 1. Register a new user with email
     register_payload = {
         "login": "alice_flow",
         "password": "Password123!",
         "email": "alice_flow@example.com",
     }
     reg_resp = await client.post("/api/v1/auth/register", json=register_payload)
-    assert reg_resp.status_code == 201
-    reg_data = reg_resp.json()
-    assert reg_data["status_code"] == 201
+    assert reg_resp.status_code == 200
+    reg_init = reg_resp.json()["body"]
+    assert reg_init["requires_verification"] is True
+    token = reg_init["verification_token"]
+    assert token
+
+    # Get code from queue and confirm verification
+    code = test_task_queue.sent_emails[-1][2]
+    confirm_resp = await client.post(
+        "/api/v1/auth/verification-code",
+        json={"verification_token": token, "code": code},
+    )
+    assert confirm_resp.status_code == 201
+    reg_data = confirm_resp.json()
     assert reg_data["body"]["login"] == "alice_flow"
     assert reg_data["body"]["email"] == "alice_flow@example.com"
+    assert reg_data["body"]["verified_email"] is True
     # Categorically no password_hash in response
     assert "password_hash" not in reg_data["body"]
     assert "password" not in reg_data["body"]

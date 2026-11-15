@@ -16,7 +16,6 @@ from src.api.dependencies import (
     get_token_blacklist,
     get_user_uow,
 )
-from src.domain.interfaces import EmailVerificationData
 from src.infrastructure.db.models import Base
 from src.infrastructure.db.session import create_sessionmaker
 from src.infrastructure.db.uow import (
@@ -42,31 +41,37 @@ class InMemoryTokenBlacklist:
 
 class InMemoryEmailVerificationStore:
     def __init__(self) -> None:
-        self.cooldowns: set = set()
-        self.codes: dict = {}
+        self.cooldowns: set[str] = set()
+        self.sessions: dict[str, dict] = {}
 
-    async def is_cooldown_active(self, user_id) -> bool:
-        return user_id in self.cooldowns
+    async def save_session(
+        self, token: str, payload: dict, ttl_seconds: int = 600
+    ) -> None:
+        self.sessions[token] = dict(payload)
 
-    async def set_cooldown(self, user_id, ttl_seconds: int = 60) -> None:
-        self.cooldowns.add(user_id)
+    async def get_session(self, token: str) -> dict | None:
+        session = self.sessions.get(token)
+        return dict(session) if session else None
 
-    async def save_code(self, user_id, code: str, ttl_seconds: int = 600) -> None:
-        self.codes[user_id] = EmailVerificationData(code=code, attempts=0)
-
-    async def get_code_data(self, user_id) -> EmailVerificationData | None:
-        return self.codes.get(user_id)
-
-    async def increment_attempts(self, user_id) -> int:
-        entry = self.codes.get(user_id)
-        if entry is None:
+    async def increment_attempts(self, token: str) -> int:
+        session = self.sessions.get(token)
+        if not session:
             return 5
-        updated = EmailVerificationData(code=entry.code, attempts=entry.attempts + 1)
-        self.codes[user_id] = updated
-        return updated.attempts
+        attempts = int(session.get("attempts", 0)) + 1
+        session["attempts"] = attempts
+        if attempts >= 5:
+            self.sessions.pop(token, None)
+        return attempts
 
-    async def delete_code(self, user_id) -> None:
-        self.codes.pop(user_id, None)
+    async def delete_session(self, token: str) -> None:
+        self.sessions.pop(token, None)
+
+    async def check_and_set_cooldown(self, email: str, ttl_seconds: int = 60) -> bool:
+        clean = email.strip().lower()
+        if clean in self.cooldowns:
+            return False
+        self.cooldowns.add(clean)
+        return True
 
 
 class InMemoryTaskQueue:

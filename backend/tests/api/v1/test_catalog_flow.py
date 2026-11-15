@@ -13,17 +13,15 @@ async def test_full_catalog_and_favorites_flow(client):
         json={
             "login": "catalog_admin",
             "password": "Password123!",
-            "email": "catalog_admin@example.com",
         },
     )
-    admin_id = reg_admin.json()["body"]["id"]
+    admin_id = reg_admin.json()["body"]["user"]["id"]
 
     reg_user = await client.post(
         "/api/v1/auth/register",
         json={
             "login": "catalog_user",
             "password": "Password123!",
-            "email": "catalog_user@example.com",
         },
     )
     assert reg_user.status_code == 201

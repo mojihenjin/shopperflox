@@ -14,10 +14,9 @@ async def test_search_3_in_1_endpoint(client):
         json={
             "login": "search_admin",
             "password": "Password123!",
-            "email": "search_admin@example.com",
         },
     )
-    admin_id = reg.json()["body"]["id"]
+    admin_id = reg.json()["body"]["user"]["id"]
 
     uow_factory = client._transport.app.dependency_overrides[get_user_uow]
     uow = uow_factory()

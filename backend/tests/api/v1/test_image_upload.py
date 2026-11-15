@@ -15,10 +15,9 @@ async def test_product_image_upload_and_validation(client):
         json={
             "login": "image_admin",
             "password": "Password123!",
-            "email": "image_admin@example.com",
         },
     )
-    admin_id = reg.json()["body"]["id"]
+    admin_id = reg.json()["body"]["user"]["id"]
 
     # Grant catalog:manage
     uow_factory = client._transport.app.dependency_overrides[get_user_uow]

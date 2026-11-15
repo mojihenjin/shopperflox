@@ -2,7 +2,11 @@ from .auth import (
     LoginRequest,
     RefreshTokenRequest,
     RegisterRequest,
+    RegisterResponse,
+    SendEmailCodeRequest,
     TokenPairResponse,
+    VerificationInitResponse,
+    VerifyCodeRequest,
     VerifyEmailRequest,
 )
 from .cart import (
@@ -87,8 +91,10 @@ __all__ = [
     "ProductVariantUpdateRequest",
     "RefreshTokenRequest",
     "RegisterRequest",
+    "RegisterResponse",
     "ReviewResponse",
     "SearchResultResponse",
+    "SendEmailCodeRequest",
     "SetPermissionsRequest",
     "TokenPairResponse",
     "UpdatePersonalRequest",
@@ -97,5 +103,7 @@ __all__ = [
     "UserPersonalResponse",
     "UserProfileResponse",
     "UserResponse",
+    "VerificationInitResponse",
+    "VerifyCodeRequest",
     "VerifyEmailRequest",
 ]

@@ -1,3 +1,4 @@
+from .auth import RegisterResultDomain
 from .base import BaseDomain
 from .cart import CartDomain, CartItemDomain
 from .category import CategoryDomain
@@ -30,6 +31,7 @@ __all__ = [
     "ProductDomain",
     "ProductImageDomain",
     "ProductVariantDomain",
+    "RegisterResultDomain",
     "ReviewDomain",
     "SearchResultDomain",
     "UserAddressDomain",

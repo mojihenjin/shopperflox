@@ -9,20 +9,18 @@ async def test_moderation_ban_and_instant_revocation(client):
         json={
             "login": "superadmin",
             "password": "Password123!",
-            "email": "admin@example.com",
         },
     )
-    admin_id = reg_admin.json()["body"]["id"]
+    admin_id = reg_admin.json()["body"]["user"]["id"]
 
     reg_target = await client.post(
         "/api/v1/auth/register",
         json={
             "login": "bad_actor",
             "password": "Password123!",
-            "email": "bad@example.com",
         },
     )
-    target_id = reg_target.json()["body"]["id"]
+    target_id = reg_target.json()["body"]["user"]["id"]
 
     # Login regular user and get access token
     target_login = await client.post(

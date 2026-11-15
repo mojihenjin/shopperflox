@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Protocol
+from typing import Any, Protocol
 from uuid import UUID
 
 
@@ -10,26 +10,20 @@ class PaymentSessionResult:
     confirmation_url: str
 
 
-@dataclass(slots=True, frozen=True)
-class EmailVerificationData:
-    code: str
-    attempts: int = 0
-
-
 class EmailVerificationStoreProtocol(Protocol):
-    async def is_cooldown_active(self, user_id: UUID) -> bool: ...
-
-    async def set_cooldown(self, user_id: UUID, ttl_seconds: int = 60) -> None: ...
-
-    async def save_code(
-        self, user_id: UUID, code: str, ttl_seconds: int = 600
+    async def save_session(
+        self, token: str, payload: dict[str, Any], ttl_seconds: int = 600
     ) -> None: ...
 
-    async def get_code_data(self, user_id: UUID) -> EmailVerificationData | None: ...
+    async def get_session(self, token: str) -> dict[str, Any] | None: ...
 
-    async def increment_attempts(self, user_id: UUID) -> int: ...
+    async def increment_attempts(self, token: str) -> int: ...
 
-    async def delete_code(self, user_id: UUID) -> None: ...
+    async def delete_session(self, token: str) -> None: ...
+
+    async def check_and_set_cooldown(
+        self, email: str, ttl_seconds: int = 60
+    ) -> bool: ...
 
 
 class EmailTransportProtocol(Protocol):

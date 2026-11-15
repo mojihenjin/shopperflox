@@ -17,7 +17,7 @@ from src.domain.interfaces import (
     TokenProviderProtocol,
     UserUnitOfWorkProtocol,
 )
-from src.domain.models import UserDomain, UserPersonalDomain
+from src.domain.models import RegisterResultDomain, UserDomain, UserPersonalDomain
 from src.utils import factory_now
 
 
@@ -45,36 +45,90 @@ class AuthService:
         password: str,
         email: str | None = None,
         created_by: UUID | None = None,
-    ) -> UserDomain:
+    ) -> RegisterResultDomain:
         clean_login = login.strip()
         if not clean_login:
             raise DomainValidationError("Login cannot be empty")
 
         clean_email = email.strip().lower() if email else None
 
+        if clean_email is None:
+            # Scenario 1: Registration without email (immediate creation)
+            async with self.uow:
+                if await self.uow.users.exists_active(login=clean_login):
+                    raise EntityAlreadyExistsError(
+                        f"User with login '{clean_login}' already exists"
+                    )
+
+                hashed_password = self.hasher.hash(password)
+                user = UserDomain(
+                    login=clean_login,
+                    email=None,
+                    password_hash=hashed_password,
+                    verified_email=False,
+                    created_by=created_by,
+                )
+                personal = UserPersonalDomain(
+                    id=user.id,
+                    created_by=created_by or user.id,
+                )
+
+                await self.uow.users.add(user)
+                await self.uow.personal.add(personal)
+                await self.uow.commit()
+
+            return RegisterResultDomain(
+                requires_verification=False,
+                verification_token=None,
+                user=user,
+            )
+
+        # Scenario 2: Registration with email (requires verification code)
         async with self.uow:
             if await self.uow.users.exists_active(login=clean_login, email=clean_email):
                 raise EntityAlreadyExistsError(
                     f"User with login '{clean_login}' or email '{clean_email}' already exists"
                 )
 
-            hashed_password = self.hasher.hash(password)
-            user = UserDomain(
-                login=clean_login,
-                email=clean_email,
-                password_hash=hashed_password,
-                created_by=created_by,
+        if self.verification_store:
+            is_allowed = await self.verification_store.check_and_set_cooldown(
+                clean_email, ttl_seconds=60
             )
-            personal = UserPersonalDomain(
-                id=user.id,
-                created_by=created_by or user.id,
+            if not is_allowed:
+                raise DomainValidationError(
+                    "Verification code request cooldown is active"
+                )
+
+        # Immediately hash password (raw password is NEVER stored in Redis)
+        hashed_password = self.hasher.hash(password)
+
+        code_val = secrets.randbelow(1_000_000)
+        code_str = f"{code_val // 1000:03d}-{code_val % 1000:03d}"
+
+        if self.task_queue:
+            await self.task_queue.enqueue_email(
+                clean_email,
+                "Код подтверждения ShopperFlox",
+                code_str,
             )
 
-            await self.uow.users.add(user)
-            await self.uow.personal.add(personal)
-            await self.uow.commit()
+        token = secrets.token_urlsafe(32)
+        payload = {
+            "flow": "register",
+            "login": clean_login,
+            "password_hash": hashed_password,
+            "email": clean_email,
+            "code": code_str,
+            "attempts": 0,
+        }
+        if self.verification_store:
+            await self.verification_store.save_session(token, payload, ttl_seconds=600)
 
-        return user
+        return RegisterResultDomain(
+            requires_verification=True,
+            verification_token=token,
+            user=None,
+        )
 
     async def login(
         self,
@@ -171,61 +225,143 @@ class AuthService:
 
             return user
 
-    async def request_email_verification(self, user_id: UUID) -> None:
+    async def request_bind_email_code(
+        self,
+        *,
+        user_id: UUID,
+        current_email: str | None,
+        verified_email: bool,
+        new_email: str,
+    ) -> str:
+        clean_new_email = new_email.strip().lower()
+        if not clean_new_email:
+            raise DomainValidationError("Email cannot be empty")
+
+        if (
+            current_email
+            and current_email.strip().lower() == clean_new_email
+            and verified_email
+        ):
+            raise DomainValidationError("Email already verified")
+
         async with self.uow:
-            user = await self.uow.users.get_by_id(user_id)
-            if user is None or user.is_deleted:
-                raise EntityNotFoundError("User not found")
-            if not user.email:
-                raise DomainValidationError("User has no email registered")
-            if user.verified_email:
-                raise DomainValidationError("Email already verified")
-
-            if self.verification_store:
-                if await self.verification_store.is_cooldown_active(user_id):
-                    raise DomainValidationError(
-                        "Verification code request cooldown is active"
-                    )
-
-                code_val = secrets.randbelow(1_000_000)
-                formatted_code = f"{code_val // 1000:03d}-{code_val % 1000:03d}"
-
-                await self.verification_store.save_code(
-                    user_id, formatted_code, ttl_seconds=600
+            existing = await self.uow.users.get_by_email(clean_new_email)
+            if existing and existing.id != user_id:
+                raise EntityAlreadyExistsError(
+                    f"User with email '{clean_new_email}' already exists"
                 )
-                await self.verification_store.set_cooldown(user_id, ttl_seconds=60)
 
-                if self.task_queue:
-                    await self.task_queue.enqueue_email(
-                        user.email,
-                        "Код подтверждения ShopperFlox",
-                        formatted_code,
-                    )
+        if self.verification_store:
+            is_allowed = await self.verification_store.check_and_set_cooldown(
+                clean_new_email, ttl_seconds=60
+            )
+            if not is_allowed:
+                raise DomainValidationError(
+                    "Verification code request cooldown is active"
+                )
 
-    async def confirm_email_verification(self, user_id: UUID, code: str) -> None:
+        code_val = secrets.randbelow(1_000_000)
+        code_str = f"{code_val // 1000:03d}-{code_val % 1000:03d}"
+
+        if self.task_queue:
+            await self.task_queue.enqueue_email(
+                clean_new_email,
+                "Код подтверждения ShopperFlox",
+                code_str,
+            )
+
+        token = secrets.token_urlsafe(32)
+        payload = {
+            "flow": "bind_email",
+            "user_id": str(user_id),
+            "email": clean_new_email,
+            "code": code_str,
+            "attempts": 0,
+        }
+        if self.verification_store:
+            await self.verification_store.save_session(token, payload, ttl_seconds=600)
+
+        return token
+
+    async def confirm_verification_code(
+        self,
+        *,
+        token: str,
+        code: str,
+    ) -> tuple[UserDomain, int]:
         digits = "".join(ch for ch in code if ch.isdigit())
         if len(digits) != 6:
             raise DomainValidationError("Invalid verification code format")
-        normalized_input = f"{digits[:3]}-{digits[3:]}"
+        normalized_code = f"{digits[:3]}-{digits[3:]}"
 
         if not self.verification_store:
-            raise DomainValidationError("Verification code expired or not requested")
+            raise DomainValidationError("Verification session expired or invalid")
 
-        data = await self.verification_store.get_code_data(user_id)
-        if data is None:
-            raise DomainValidationError("Verification code expired or not requested")
+        session = await self.verification_store.get_session(token)
+        if not session:
+            raise DomainValidationError("Verification session expired or invalid")
 
-        if not hmac.compare_digest(data.code, normalized_input):
-            attempts = await self.verification_store.increment_attempts(user_id)
-            if attempts >= 5:
-                await self.verification_store.delete_code(user_id)
+        expected_code = session.get("code", "")
+        if not hmac.compare_digest(expected_code, normalized_code):
+            await self.verification_store.increment_attempts(token)
             raise AuthenticationError("Invalid verification code")
 
-        await self.verification_store.delete_code(user_id)
-        async with self.uow:
-            user = await self.uow.users.get_by_id(user_id)
-            if user is None or user.is_deleted:
-                raise EntityNotFoundError("User not found")
-            user.verified_email = True
-            await self.uow.users.update(user)
-            await self.uow.commit()
+        await self.verification_store.delete_session(token)
+
+        flow = session.get("flow")
+        if flow == "register":
+            login = session["login"]
+            password_hash = session["password_hash"]
+            email = session["email"]
+
+            async with self.uow:
+                if await self.uow.users.exists_active(login=login, email=email):
+                    raise EntityAlreadyExistsError(
+                        f"User with login '{login}' or email '{email}' already exists"
+                    )
+
+                user = UserDomain(
+                    login=login,
+                    email=email,
+                    password_hash=password_hash,
+                    verified_email=True,
+                )
+                personal = UserPersonalDomain(
+                    id=user.id,
+                    created_by=user.id,
+                )
+
+                await self.uow.users.add(user)
+                await self.uow.personal.add(personal)
+                try:
+                    await self.uow.commit()
+                except Exception as exc:
+                    raise EntityAlreadyExistsError(
+                        f"User with login '{login}' or email '{email}' already exists"
+                    ) from exc
+
+            return user, 201
+
+        if flow == "bind_email":
+            user_id = UUID(session["user_id"])
+            email = session["email"]
+
+            async with self.uow:
+                user = await self.uow.users.get_by_id(user_id)
+                if user is None or user.is_deleted:
+                    raise EntityNotFoundError("User not found")
+
+                existing = await self.uow.users.get_by_email(email)
+                if existing and existing.id != user.id:
+                    raise EntityAlreadyExistsError(
+                        f"User with email '{email}' already exists"
+                    )
+
+                user.email = email
+                user.verified_email = True
+                await self.uow.users.update(user)
+                await self.uow.commit()
+
+            return user, 200
+
+        raise DomainValidationError("Unknown verification flow")

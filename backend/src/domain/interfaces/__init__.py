@@ -12,7 +12,6 @@ from .catalog import (
 )
 from .integrations import (
     EmailTransportProtocol,
-    EmailVerificationData,
     EmailVerificationStoreProtocol,
     FileStorageProtocol,
     PaymentGatewayProtocol,
@@ -46,7 +45,6 @@ __all__ = [
     "CatalogUnitOfWorkProtocol",
     "CategoryRepositoryProtocol",
     "EmailTransportProtocol",
-    "EmailVerificationData",
     "EmailVerificationStoreProtocol",
     "FavoriteRepositoryProtocol",
     "FileStorageProtocol",

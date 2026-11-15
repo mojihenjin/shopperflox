@@ -13,18 +13,62 @@ from src.domain.exceptions import (
 from src.domain.models import UserBanDomain, UserDomain
 
 
+class MockVerificationStore:
+    def __init__(self):
+        self.sessions = {}
+        self.cooldowns = set()
+
+    async def save_session(self, token, payload, ttl_seconds=600):
+        self.sessions[token] = dict(payload)
+
+    async def get_session(self, token):
+        s = self.sessions.get(token)
+        return dict(s) if s else None
+
+    async def increment_attempts(self, token):
+        s = self.sessions.get(token)
+        if not s:
+            return 5
+        attempts = int(s.get("attempts", 0)) + 1
+        s["attempts"] = attempts
+        if attempts >= 5:
+            self.sessions.pop(token, None)
+        return attempts
+
+    async def delete_session(self, token):
+        self.sessions.pop(token, None)
+
+    async def check_and_set_cooldown(self, email, ttl_seconds=60):
+        clean = email.strip().lower()
+        if clean in self.cooldowns:
+            return False
+        self.cooldowns.add(clean)
+        return True
+
+
+class MockTaskQueue:
+    def __init__(self):
+        self.sent = []
+
+    async def enqueue_email(self, to_email, subject, body_text):
+        self.sent.append((to_email, subject, body_text))
+
+
 @pytest.mark.anyio
 async def test_register_success(uow, hasher, token_provider):
     service = AuthService(uow=uow, hasher=hasher, token_provider=token_provider)
 
-    user = await service.register(
+    res = await service.register(
         login="  Alice  ",
         password="secretpassword",
-        email=" Alice@Example.COM ",
     )
 
+    assert res.requires_verification is False
+    assert res.verification_token is None
+    user = res.user
+    assert user is not None
     assert user.login == "Alice"
-    assert user.email == "alice@example.com"
+    assert user.email is None
     assert user.password_hash == "hashed_secretpassword"
     assert uow.committed is True
 
@@ -58,11 +102,21 @@ async def test_register_duplicate_login_fails(uow, hasher, token_provider):
 
 @pytest.mark.anyio
 async def test_register_duplicate_email_fails(uow, hasher, token_provider):
-    service = AuthService(uow=uow, hasher=hasher, token_provider=token_provider)
+    store = MockVerificationStore()
+    queue = MockTaskQueue()
+    service = AuthService(
+        uow=uow,
+        hasher=hasher,
+        token_provider=token_provider,
+        verification_store=store,
+        task_queue=queue,
+    )
 
-    await service.register(
+    res = await service.register(
         login="charlie1", password="password123", email="charlie@test.com"
     )
+    code = queue.sent[0][2]
+    await service.confirm_verification_code(token=res.verification_token, code=code)
 
     with pytest.raises(EntityAlreadyExistsError, match="already exists"):
         await service.register(
@@ -73,7 +127,8 @@ async def test_register_duplicate_email_fails(uow, hasher, token_provider):
 @pytest.mark.anyio
 async def test_login_by_login_success(uow, hasher, token_provider):
     service = AuthService(uow=uow, hasher=hasher, token_provider=token_provider)
-    registered_user = await service.register(login="david", password="correct_password")
+    reg_res = await service.register(login="david", password="correct_password")
+    registered_user = reg_res.user
 
     user, access_token, refresh_token = await service.login(
         identifier="david", password="correct_password"
@@ -92,9 +147,21 @@ async def test_login_by_login_success(uow, hasher, token_provider):
 
 @pytest.mark.anyio
 async def test_login_by_email_success(uow, hasher, token_provider):
-    service = AuthService(uow=uow, hasher=hasher, token_provider=token_provider)
-    registered_user = await service.register(
+    store = MockVerificationStore()
+    queue = MockTaskQueue()
+    service = AuthService(
+        uow=uow,
+        hasher=hasher,
+        token_provider=token_provider,
+        verification_store=store,
+        task_queue=queue,
+    )
+    reg_res = await service.register(
         login="emma", password="password123", email="emma@domain.com"
+    )
+    code = queue.sent[0][2]
+    registered_user, _ = await service.confirm_verification_code(
+        token=reg_res.verification_token, code=code
     )
 
     user, access_token, refresh_token = await service.login(
@@ -128,7 +195,8 @@ async def test_login_unknown_user_timing_attack_mitigation(uow, hasher, token_pr
 @pytest.mark.anyio
 async def test_login_banned_user_forbidden(uow, hasher, token_provider):
     service = AuthService(uow=uow, hasher=hasher, token_provider=token_provider)
-    user = await service.register(login="banned_user", password="password123")
+    reg = await service.register(login="banned_user", password="password123")
+    user = reg.user
 
     # Add active ban
     ban = UserBanDomain(
@@ -146,7 +214,8 @@ async def test_login_banned_user_forbidden(uow, hasher, token_provider):
 @pytest.mark.anyio
 async def test_verify_access(uow, hasher, token_provider):
     service = AuthService(uow=uow, hasher=hasher, token_provider=token_provider)
-    user = await service.register(login="george", password="password123")
+    reg = await service.register(login="george", password="password123")
+    user = reg.user
 
     # Non-existent user -> error
     with pytest.raises(AuthenticationError, match="not found or deleted"):

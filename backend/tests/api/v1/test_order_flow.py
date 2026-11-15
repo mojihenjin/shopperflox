@@ -17,7 +17,6 @@ async def test_full_order_and_review_lifecycle(client):
     admin_reg = {
         "login": "admin_shop",
         "password": "Password123!",
-        "email": "admin_shop@example.com",
     }
     from uuid import UUID
 
@@ -25,7 +24,7 @@ async def test_full_order_and_review_lifecycle(client):
     from src.api.dependencies import get_user_uow
 
     reg_resp = await client.post("/api/v1/auth/register", json=admin_reg)
-    admin_id = reg_resp.json()["body"]["id"]
+    admin_id = reg_resp.json()["body"]["user"]["id"]
 
     get_uow_fn = app.dependency_overrides[get_user_uow]
     uow = get_uow_fn()
@@ -80,7 +79,6 @@ async def test_full_order_and_review_lifecycle(client):
     buyer_reg = {
         "login": "customer_one",
         "password": "Password123!",
-        "email": "customer@example.com",
     }
     await client.post("/api/v1/auth/register", json=buyer_reg)
     buyer_login = await client.post(
