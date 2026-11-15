@@ -6,6 +6,7 @@ from uuid import UUID
 import jwt
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
+from uuid6 import uuid7
 
 from src.core import settings
 from src.domain.exceptions import AuthenticationError
@@ -137,26 +138,25 @@ class JwtTokenProvider:
                 priv_source = private_key or secret_key or settings.jwt_private_key
                 pub_source = public_key or settings.jwt_public_key
 
-                if priv_source:
-                    self._private_key: ed25519.Ed25519PrivateKey | None = (
-                        _load_ed25519_private_key(priv_source)
-                    )
-                else:
-                    self._private_key = None
+                if not priv_source:
+                    raise RuntimeError("JWT_PRIVATE_KEY is required but not configured")
+
+                self._private_key: ed25519.Ed25519PrivateKey | None = (
+                    _load_ed25519_private_key(priv_source)
+                )
 
                 if pub_source:
                     self._public_key: ed25519.Ed25519PublicKey | None = (
                         _load_ed25519_public_key(pub_source)
                     )
-                elif self._private_key is not None:
-                    self._public_key = self._private_key.public_key()
                 else:
-                    self._private_key = ed25519.Ed25519PrivateKey.generate()
                     self._public_key = self._private_key.public_key()
 
             self.secret_key = ""
         else:
             sym_key = secret_key or private_key or settings.jwt_secret_key
+            if not sym_key:
+                raise RuntimeError("JWT secret key is required but not configured")
             self.secret_key = sym_key if isinstance(sym_key, str) else str(sym_key)
             self._private_key = None
             self._public_key = None
@@ -168,6 +168,7 @@ class JwtTokenProvider:
             "sub": str(user_id),
             "permissions": permissions,
             "type": "access",
+            "jti": str(uuid7()),
             "iat": int(now.timestamp()),
             "exp": int(expire.timestamp()),
         }
@@ -185,6 +186,7 @@ class JwtTokenProvider:
         payload = {
             "sub": str(user_id),
             "type": "refresh",
+            "jti": str(uuid7()),
             "iat": int(now.timestamp()),
             "exp": int(expire.timestamp()),
         }

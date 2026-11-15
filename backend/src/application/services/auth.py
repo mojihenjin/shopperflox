@@ -8,10 +8,12 @@ from src.domain.exceptions import (
 )
 from src.domain.interfaces import (
     PasswordHasherProtocol,
+    TokenBlacklistProtocol,
     TokenProviderProtocol,
     UserUnitOfWorkProtocol,
 )
 from src.domain.models import UserDomain, UserPersonalDomain
+from src.utils import factory_now
 
 
 class AuthService:
@@ -20,10 +22,12 @@ class AuthService:
         uow: UserUnitOfWorkProtocol,
         hasher: PasswordHasherProtocol,
         token_provider: TokenProviderProtocol,
+        blacklist: TokenBlacklistProtocol | None = None,
     ) -> None:
         self.uow = uow
         self.hasher = hasher
         self.token_provider = token_provider
+        self.blacklist = blacklist
 
     async def register(
         self,
@@ -78,7 +82,7 @@ class AuthService:
                 user = await self.uow.users.get_by_login(clean_id)
 
             if user is None or user.password_hash is None:
-                self.hasher.verify(password, "$dummy$hash$timing$protection")
+                await self.hasher.verify_dummy(password)
                 raise AuthenticationError("Invalid credentials")
 
             if not self.hasher.verify(password, user.password_hash):
@@ -103,13 +107,33 @@ class AuthService:
         payload = self.token_provider.decode_token(
             refresh_token, expected_type="refresh"
         )
+        jti = payload.get("jti")
+        if jti and self.blacklist and await self.blacklist.is_revoked(jti):
+            raise AuthenticationError("Token has been revoked")
+
         user_id = UUID(payload["sub"])
         user = await self.verify_access(user_id=user_id)
+
+        if jti and self.blacklist:
+            exp = payload.get("exp", 0)
+            ttl = max(int(exp - factory_now().timestamp()), 1)
+            await self.blacklist.revoke(jti, ttl_seconds=ttl)
+
         new_access = self.token_provider.create_access_token(
             user.id, user.global_permissions
         )
         new_refresh = self.token_provider.create_refresh_token(user.id)
         return user, new_access, new_refresh
+
+    async def logout(self, *, refresh_token: str) -> None:
+        payload = self.token_provider.decode_token(
+            refresh_token, expected_type="refresh"
+        )
+        jti = payload.get("jti")
+        if jti and self.blacklist:
+            exp = payload.get("exp", 0)
+            ttl = max(int(exp - factory_now().timestamp()), 1)
+            await self.blacklist.revoke(jti, ttl_seconds=ttl)
 
     async def verify_access(
         self,
