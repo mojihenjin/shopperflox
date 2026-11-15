@@ -3,6 +3,7 @@ from typing import Protocol
 from uuid import UUID
 
 from src.domain.models import (
+    BrandSearchResult,
     CategoryDomain,
     FavoriteDomain,
     ProductDomain,
@@ -51,6 +52,14 @@ class ProductRepositoryProtocol(Protocol):
 
     async def update(self, product: ProductDomain) -> None: ...
 
+    async def search_products(
+        self, query: str, limit: int = 10
+    ) -> list[ProductDomain]: ...
+
+    async def search_brands(
+        self, query: str, limit: int = 10
+    ) -> list[BrandSearchResult]: ...
+
 
 class ProductVariantRepositoryProtocol(Protocol):
     async def get_by_id(self, variant_id: UUID) -> ProductVariantDomain | None: ...
@@ -63,6 +72,10 @@ class ProductVariantRepositoryProtocol(Protocol):
 
     async def list_by_product_id(
         self, product_id: UUID
+    ) -> list[ProductVariantDomain]: ...
+
+    async def search_variants(
+        self, query: str, limit: int = 10
     ) -> list[ProductVariantDomain]: ...
 
     async def add(self, variant: ProductVariantDomain) -> None: ...

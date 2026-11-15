@@ -22,6 +22,7 @@ class ProductDomain(BaseDomain):
     created_by: UUID
 
     description: str | None = field(default=None)
+    brand: str | None = field(default=None)
     attributes: dict[str, Any] = field(default_factory=dict)
     is_published: bool = field(default=False)
 

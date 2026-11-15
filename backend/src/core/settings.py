@@ -64,6 +64,76 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("WEBHOOK_SECRET", "webhook_secret"),
     )
 
+    # Email
+    email_backend: Literal["console", "smtp"] = Field(
+        default="console",
+        validation_alias=AliasChoices("EMAIL_BACKEND", "email_backend"),
+    )
+    smtp_host: str = Field(
+        default="localhost",
+        validation_alias=AliasChoices("SMTP_HOST", "smtp_host"),
+    )
+    smtp_port: int = Field(
+        default=587,
+        validation_alias=AliasChoices("SMTP_PORT", "smtp_port"),
+    )
+    smtp_user: str = Field(
+        default="",
+        validation_alias=AliasChoices("SMTP_USER", "smtp_user"),
+    )
+    smtp_password: str = Field(
+        default="",
+        validation_alias=AliasChoices("SMTP_PASSWORD", "smtp_password"),
+    )
+    smtp_from: str = Field(
+        default="noreply@shopper.flox",
+        validation_alias=AliasChoices("SMTP_FROM", "smtp_from"),
+    )
+    smtp_use_tls: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("SMTP_USE_TLS", "smtp_use_tls"),
+    )
+
+    # File Storage
+    storage_backend: Literal["local", "s3"] = Field(
+        default="local",
+        validation_alias=AliasChoices("STORAGE_BACKEND", "storage_backend"),
+    )
+    media_local_dir: str = Field(
+        default="/app/media",
+        validation_alias=AliasChoices("MEDIA_LOCAL_DIR", "media_local_dir"),
+    )
+    media_base_url: str = Field(
+        default="/media",
+        validation_alias=AliasChoices("MEDIA_BASE_URL", "media_base_url"),
+    )
+    s3_endpoint_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("S3_ENDPOINT_URL", "s3_endpoint_url"),
+    )
+    s3_bucket: str = Field(
+        default="shopperflox",
+        validation_alias=AliasChoices("S3_BUCKET", "s3_bucket"),
+    )
+    s3_access_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("S3_ACCESS_KEY", "s3_access_key"),
+    )
+    s3_secret_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("S3_SECRET_KEY", "s3_secret_key"),
+    )
+    s3_region: str = Field(
+        default="ru-1",
+        validation_alias=AliasChoices("S3_REGION", "s3_region"),
+    )
+
+    # Payment Gateway
+    payment_backend: Literal["stub"] = Field(
+        default="stub",
+        validation_alias=AliasChoices("PAYMENT_BACKEND", "payment_backend"),
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="UTF-8", extra="ignore"
     )
