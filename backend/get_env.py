@@ -239,8 +239,9 @@ def write_env(env_payload: dict[str, str], path: Path):
     path.write_text(content, encoding="utf-8")
 
     # Mirror to root .env if writing backend/.env for docker compose
-    if path.parent.name == "backend":
-        root_env = path.parent.parent / path.name
+    resolved = path.resolve()
+    if resolved.parent.name == "backend":
+        root_env = resolved.parent.parent / resolved.name
         if root_env.parent.exists():
             root_env.write_text(content, encoding="utf-8")
 
