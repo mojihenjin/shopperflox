@@ -14,7 +14,15 @@ class Argon2PasswordHasher:
         hasher: PasswordHash | None = None,
         pepper: str | None = None,
     ) -> None:
-        self._hasher = hasher or PasswordHash((Argon2Hasher(),))
+        if hasher is not None:
+            self._hasher = hasher
+        elif settings.enduro_attack:
+            self._hasher = PasswordHash(
+                (Argon2Hasher(time_cost=1, memory_cost=1024, parallelism=1),)
+            )
+        else:
+            self._hasher = PasswordHash((Argon2Hasher(),))
+
         self.pepper = pepper if pepper is not None else settings.pepper
         prepared_dummy = self._prepare_password("dummy-timing-protection")
         self._dummy_hash = self._hasher.hash(prepared_dummy)

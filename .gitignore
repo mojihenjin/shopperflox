@@ -2,3 +2,6 @@
 .env.*
 *.env
 backups/
+k6_users.json
+**/k6_users.json
+

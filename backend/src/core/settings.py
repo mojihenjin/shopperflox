@@ -1,10 +1,18 @@
-from pydantic import AliasChoices, Field
+from typing import Literal, Self
+
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     app_title: str = "ShopperFlox"
     version: str = "0.1.0"
+    app_env: Literal["dev", "test", "production"] = Field(
+        default="dev", validation_alias=AliasChoices("APP_ENV", "app_env")
+    )
+    enduro_attack: bool = Field(
+        default=False, validation_alias=AliasChoices("ENDURO_ATTACK", "enduro_attack")
+    )
     debug: bool = Field(default=False, validation_alias=AliasChoices("DEBUG", "debug"))
     log_level: str = "INFO"
     log_json: bool = False
@@ -55,3 +63,11 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="UTF-8", extra="ignore"
     )
+
+    @model_validator(mode="after")
+    def validate_enduro_not_in_production(self) -> Self:
+        if self.app_env == "production" and self.enduro_attack:
+            raise ValueError(
+                "ENDURO_ATTACK mode is strictly prohibited when APP_ENV is 'production'"
+            )
+        return self

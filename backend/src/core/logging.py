@@ -27,16 +27,18 @@ class InterceptHandler(logging.Handler):
 def setup_logging(settings: Settings) -> None:
     logger.remove()
 
+    effective_level = "WARNING" if settings.enduro_attack else settings.log_level
+
     if settings.log_json:
         logger.add(
             sys.stdout,
-            level=settings.log_level,
+            level=effective_level,
             serialize=True,
         )
     else:
         logger.add(
             sys.stdout,
-            level=settings.log_level,
+            level=effective_level,
             colorize=True,
             format=(
                 "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
@@ -47,7 +49,7 @@ def setup_logging(settings: Settings) -> None:
 
     intercept_handler = InterceptHandler()
     logging.root.handlers = [intercept_handler]
-    logging.root.setLevel(settings.log_level)
+    logging.root.setLevel(effective_level)
 
     loggers_to_intercept = (
         "uvicorn",

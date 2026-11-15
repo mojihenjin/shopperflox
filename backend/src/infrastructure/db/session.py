@@ -17,10 +17,12 @@ def create_engine(url: str | None = None, **kwargs) -> AsyncEngine:
         "echo": settings.db_echo,
     }
     if "sqlite" not in db_url:
+        pool_size = 30 if settings.enduro_attack else settings.db_pool_size
+        max_overflow = 20 if settings.enduro_attack else settings.db_max_overflow
         engine_kwargs.update(
             {
-                "pool_size": settings.db_pool_size,
-                "max_overflow": settings.db_max_overflow,
+                "pool_size": pool_size,
+                "max_overflow": max_overflow,
             }
         )
     engine_kwargs.update(kwargs)
