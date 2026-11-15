@@ -14,6 +14,11 @@ from src.domain.interfaces import (
     UserRepositoryProtocol,
 )
 from src.domain.models import (
+    CategoryDomain,
+    FavoriteDomain,
+    ProductDomain,
+    ProductImageDomain,
+    ProductVariantDomain,
     UserAddressDomain,
     UserBanDomain,
     UserDomain,
@@ -247,3 +252,200 @@ def blacklist():
 @pytest.fixture
 def token_provider():
     return FakeTokenProvider()
+
+
+class InMemoryCategoryRepository:
+    def __init__(self) -> None:
+        self.store: dict[UUID, CategoryDomain] = {}
+
+    async def get_by_id(self, category_id: UUID) -> CategoryDomain | None:
+        return self.store.get(category_id)
+
+    async def get_by_slug(self, slug: str) -> CategoryDomain | None:
+        for c in self.store.values():
+            if c.slug == slug:
+                return c
+        return None
+
+    async def list_all(self) -> list[CategoryDomain]:
+        return sorted(self.store.values(), key=lambda c: (c.sort_order, c.name))
+
+    async def add(self, category: CategoryDomain) -> None:
+        self.store[category.id] = category
+
+    async def update(self, category: CategoryDomain) -> None:
+        self.store[category.id] = category
+
+    async def delete(self, category_id: UUID) -> None:
+        self.store.pop(category_id, None)
+
+
+class InMemoryProductRepository:
+    def __init__(self) -> None:
+        self.store: dict[UUID, ProductDomain] = {}
+
+    async def get_by_id(
+        self, product_id: UUID, *, include_unpublished: bool = False
+    ) -> ProductDomain | None:
+        p = self.store.get(product_id)
+        if not p or p.deleted_at is not None:
+            return None
+        if not include_unpublished and not p.is_published:
+            return None
+        return p
+
+    async def get_by_slug(
+        self, slug: str, *, include_unpublished: bool = False
+    ) -> ProductDomain | None:
+        for p in self.store.values():
+            if p.slug == slug and p.deleted_at is None:
+                if not include_unpublished and not p.is_published:
+                    continue
+                return p
+        return None
+
+    async def list_catalog(
+        self,
+        *,
+        category_id: UUID | None = None,
+        min_price: Any = None,
+        max_price: Any = None,
+        search: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[ProductDomain], int]:
+        matched = []
+        for p in self.store.values():
+            if not p.is_published or p.deleted_at is not None:
+                continue
+            if category_id is not None and p.category_id != category_id:
+                continue
+            if min_price is not None and p.base_price < min_price:
+                continue
+            if max_price is not None and p.base_price > max_price:
+                continue
+            if search:
+                s = search.lower()
+                desc = p.description.lower() if p.description else ""
+                if s not in p.title.lower() and s not in desc:
+                    continue
+            matched.append(p)
+        return matched[offset : offset + limit], len(matched)
+
+    async def add(self, product: ProductDomain) -> None:
+        self.store[product.id] = product
+
+    async def update(self, product: ProductDomain) -> None:
+        self.store[product.id] = product
+
+
+class InMemoryProductVariantRepository:
+    def __init__(self) -> None:
+        self.store: dict[UUID, ProductVariantDomain] = {}
+
+    async def get_by_id(self, variant_id: UUID) -> ProductVariantDomain | None:
+        return self.store.get(variant_id)
+
+    async def get_by_sku(self, sku: str) -> ProductVariantDomain | None:
+        for v in self.store.values():
+            if v.sku == sku:
+                return v
+        return None
+
+    async def list_by_product_id(self, product_id: UUID) -> list[ProductVariantDomain]:
+        return [v for v in self.store.values() if v.product_id == product_id]
+
+    async def add(self, variant: ProductVariantDomain) -> None:
+        self.store[variant.id] = variant
+
+    async def update(self, variant: ProductVariantDomain) -> None:
+        self.store[variant.id] = variant
+
+    async def delete(self, variant_id: UUID) -> None:
+        self.store.pop(variant_id, None)
+
+
+class InMemoryProductImageRepository:
+    def __init__(self) -> None:
+        self.store: dict[UUID, ProductImageDomain] = {}
+
+    async def get_by_id(self, image_id: UUID) -> ProductImageDomain | None:
+        return self.store.get(image_id)
+
+    async def list_by_product_id(self, product_id: UUID) -> list[ProductImageDomain]:
+        imgs = [i for i in self.store.values() if i.product_id == product_id]
+        return sorted(imgs, key=lambda x: (x.sort_order, x.created_at))
+
+    async def unset_main_for_product(self, product_id: UUID) -> None:
+        for i in self.store.values():
+            if i.product_id == product_id and i.is_main:
+                i.is_main = False
+
+    async def add(self, image: ProductImageDomain) -> None:
+        self.store[image.id] = image
+
+    async def update(self, image: ProductImageDomain) -> None:
+        self.store[image.id] = image
+
+    async def delete(self, image_id: UUID) -> None:
+        self.store.pop(image_id, None)
+
+
+class InMemoryFavoriteRepository:
+    def __init__(self, product_repo: InMemoryProductRepository) -> None:
+        self.store: dict[tuple[UUID, UUID], FavoriteDomain] = {}
+        self.product_repo = product_repo
+
+    async def exists(self, user_id: UUID, product_id: UUID) -> bool:
+        return (user_id, product_id) in self.store
+
+    async def list_user_favorite_products(
+        self, user_id: UUID, *, limit: int = 20, offset: int = 0
+    ) -> tuple[list[ProductDomain], int]:
+        prods = []
+        for u, p_id in self.store:
+            if u == user_id:
+                p = await self.product_repo.get_by_id(p_id, include_unpublished=False)
+                if p and p.is_available:
+                    prods.append(p)
+        return prods[offset : offset + limit], len(prods)
+
+    async def add(self, favorite: FavoriteDomain) -> None:
+        self.store[(favorite.user_id, favorite.product_id)] = favorite
+
+    async def delete(self, user_id: UUID, product_id: UUID) -> None:
+        self.store.pop((user_id, product_id), None)
+
+
+class FakeCatalogUnitOfWork:
+    def __init__(self) -> None:
+        self.categories = InMemoryCategoryRepository()
+        self.products = InMemoryProductRepository()
+        self.variants = InMemoryProductVariantRepository()
+        self.images = InMemoryProductImageRepository()
+        self.favorites = InMemoryFavoriteRepository(self.products)
+        self.committed = False
+        self.rolled_back = False
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        if exc_type is not None:
+            await self.rollback()
+
+    async def commit(self) -> None:
+        self.committed = True
+
+    async def rollback(self) -> None:
+        self.rolled_back = True
+
+
+@pytest.fixture
+def catalog_uow():
+    return FakeCatalogUnitOfWork()
