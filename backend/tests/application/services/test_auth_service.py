@@ -17,6 +17,7 @@ class MockVerificationStore:
     def __init__(self):
         self.sessions = {}
         self.cooldowns = set()
+        self.user_cooldowns = set()
 
     async def save_session(self, token, payload, ttl_seconds=600):
         self.sessions[token] = dict(payload)
@@ -28,11 +29,12 @@ class MockVerificationStore:
     async def increment_attempts(self, token):
         s = self.sessions.get(token)
         if not s:
-            return 5
+            return -1
         attempts = int(s.get("attempts", 0)) + 1
         s["attempts"] = attempts
         if attempts >= 5:
             self.sessions.pop(token, None)
+            return 5
         return attempts
 
     async def delete_session(self, token):
@@ -43,6 +45,13 @@ class MockVerificationStore:
         if clean in self.cooldowns:
             return False
         self.cooldowns.add(clean)
+        return True
+
+    async def check_and_set_user_cooldown(self, user_id, ttl_seconds=60):
+        uid = str(user_id)
+        if uid in self.user_cooldowns:
+            return False
+        self.user_cooldowns.add(uid)
         return True
 
 
@@ -276,6 +285,37 @@ async def test_refresh_tokens_with_rotation_and_blacklist(
     # Re-using the old refresh token must be rejected because its jti is blacklisted
     with pytest.raises(AuthenticationError, match="Token has been revoked"):
         await service.refresh_tokens(refresh_token=refresh_token)
+
+
+@pytest.mark.anyio
+async def test_bind_email_user_cooldown(uow, hasher, token_provider):
+    vstore = MockVerificationStore()
+    service = AuthService(
+        uow=uow,
+        hasher=hasher,
+        token_provider=token_provider,
+        verification_store=vstore,
+    )
+    reg = await service.register(login="cooldown_user", password="password123")
+    user = reg.user
+
+    # First bind request succeeds
+    token = await service.request_bind_email_code(
+        user_id=user.id,
+        current_email=None,
+        verified_email=False,
+        new_email="cooldown1@example.com",
+    )
+    assert token is not None
+
+    # Immediate second request from same user with different email fails with user cooldown
+    with pytest.raises(DomainValidationError, match="cooldown is active for this user"):
+        await service.request_bind_email_code(
+            user_id=user.id,
+            current_email=None,
+            verified_email=False,
+            new_email="cooldown2@example.com",
+        )
 
 
 @pytest.mark.anyio

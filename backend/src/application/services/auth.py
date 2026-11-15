@@ -252,6 +252,13 @@ class AuthService:
                 )
 
         if self.verification_store:
+            user_allowed = await self.verification_store.check_and_set_user_cooldown(
+                user_id, ttl_seconds=60
+            )
+            if not user_allowed:
+                raise DomainValidationError(
+                    "Verification code request cooldown is active for this user"
+                )
             is_allowed = await self.verification_store.check_and_set_cooldown(
                 clean_new_email, ttl_seconds=60
             )

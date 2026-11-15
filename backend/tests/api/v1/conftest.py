@@ -1,3 +1,5 @@
+from uuid import UUID
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -42,6 +44,7 @@ class InMemoryTokenBlacklist:
 class InMemoryEmailVerificationStore:
     def __init__(self) -> None:
         self.cooldowns: set[str] = set()
+        self.user_cooldowns: set[str] = set()
         self.sessions: dict[str, dict] = {}
 
     async def save_session(
@@ -56,11 +59,12 @@ class InMemoryEmailVerificationStore:
     async def increment_attempts(self, token: str) -> int:
         session = self.sessions.get(token)
         if not session:
-            return 5
+            return -1
         attempts = int(session.get("attempts", 0)) + 1
         session["attempts"] = attempts
         if attempts >= 5:
             self.sessions.pop(token, None)
+            return 5
         return attempts
 
     async def delete_session(self, token: str) -> None:
@@ -71,6 +75,15 @@ class InMemoryEmailVerificationStore:
         if clean in self.cooldowns:
             return False
         self.cooldowns.add(clean)
+        return True
+
+    async def check_and_set_user_cooldown(
+        self, user_id: UUID, ttl_seconds: int = 60
+    ) -> bool:
+        uid = str(user_id)
+        if uid in self.user_cooldowns:
+            return False
+        self.user_cooldowns.add(uid)
         return True
 
 

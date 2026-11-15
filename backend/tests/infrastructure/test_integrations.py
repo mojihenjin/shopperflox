@@ -1,3 +1,4 @@
+import asyncio
 from decimal import Decimal
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from src.infrastructure.messaging import (
     get_email_transport,
 )
 from src.infrastructure.payments import StubPaymentGateway
+from src.infrastructure.redis.verification import RedisEmailVerificationStore
 from src.infrastructure.storage import LocalFileStorage, get_file_storage
 
 pytestmark = pytest.mark.anyio
@@ -62,3 +64,43 @@ async def test_email_transports_and_queue():
         subject="Taskiq Test",
         body_text="123-456",
     )
+
+
+async def test_redis_verification_store_concurrent_attempts():
+    store = RedisEmailVerificationStore()
+    token = f"test_concurrent_{uuid7()}"
+    try:
+        await store.save_session(
+            token, {"flow": "register", "attempts": 0, "code": "123-456"}
+        )
+
+        # 10 parallel attempts via asyncio.gather
+        results = await asyncio.gather(
+            *[store.increment_attempts(token) for _ in range(10)]
+        )
+        sorted_res = sorted(results)
+
+        # Exactly 5 attempts processed (1..5) and 5 got -1 because session was atomically destroyed
+        assert sorted_res == [-1, -1, -1, -1, -1, 1, 2, 3, 4, 5]
+
+        # Session is deleted in Redis
+        session = await store.get_session(token)
+        assert session is None
+    finally:
+        await store.delete_session(token)
+        await store.aclose()
+
+
+async def test_redis_verification_store_user_cooldown():
+    store = RedisEmailVerificationStore()
+    user_id = uuid7()
+    try:
+        first = await store.check_and_set_user_cooldown(user_id, ttl_seconds=60)
+        assert first is True
+
+        second = await store.check_and_set_user_cooldown(user_id, ttl_seconds=60)
+        assert second is False
+    finally:
+        key = f"email_verify_user_cooldown:{user_id}"
+        await store._client.delete(key)
+        await store.aclose()

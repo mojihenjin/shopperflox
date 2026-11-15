@@ -25,6 +25,10 @@ class EmailVerificationStoreProtocol(Protocol):
         self, email: str, ttl_seconds: int = 60
     ) -> bool: ...
 
+    async def check_and_set_user_cooldown(
+        self, user_id: UUID, ttl_seconds: int = 60
+    ) -> bool: ...
+
 
 class EmailTransportProtocol(Protocol):
     async def send_email(self, to_email: str, subject: str, body_text: str) -> None: ...

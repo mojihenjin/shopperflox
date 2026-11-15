@@ -34,7 +34,10 @@ def test_nginx_shopperflox_conf_routes_and_security():
     assert "server backend:8000;" in content
 
     # Rate-limited auth location
-    assert "location ~ ^/api/v1/auth/(login|register)" in content
+    assert (
+        "location ~ ^/api/v1/auth/(login|register|email/send-code|verification-code)"
+        in content
+    )
     assert "limit_req zone=auth_limit" in content
     assert "limit_req_status 429;" in content
 
