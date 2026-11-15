@@ -41,6 +41,7 @@ class ProductCreateRequest(BaseModel):
     category_id: UUID
     title: str = Field(min_length=1, max_length=255)
     slug: str = Field(min_length=1, max_length=255)
+    brand: str | None = Field(default=None, max_length=128)
     base_price: Decimal = Field(ge=0)
     description: str | None = None
     attributes: dict[str, Any] = Field(default_factory=dict)
@@ -53,6 +54,7 @@ class ProductUpdateRequest(BaseModel):
     category_id: UUID | None = None
     title: str | None = Field(default=None, min_length=1, max_length=255)
     slug: str | None = Field(default=None, min_length=1, max_length=255)
+    brand: str | None = Field(default=None, max_length=128)
     base_price: Decimal | None = Field(default=None, ge=0)
     description: str | None = None
     attributes: dict[str, Any] | None = None
@@ -66,6 +68,7 @@ class ProductResponse(BaseModel):
     category_id: UUID
     title: str
     slug: str
+    brand: str | None = None
     base_price: Decimal
     description: str | None = None
     attributes: dict[str, Any] = Field(default_factory=dict)

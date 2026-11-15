@@ -1,7 +1,7 @@
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 
 from src.api.dependencies import get_catalog_service, require_permission
 from src.api.v1.schemas import (
@@ -76,6 +76,7 @@ async def create_product(
         category_id=req.category_id,
         title=req.title,
         slug=req.slug,
+        brand=req.brand,
         base_price=req.base_price,
         description=req.description,
         attributes=req.attributes,
@@ -100,6 +101,7 @@ async def update_product(
         category_id=req.category_id,
         title=req.title,
         slug=req.slug,
+        brand=req.brand,
         base_price=req.base_price,
         description=req.description,
         attributes=req.attributes,
@@ -187,6 +189,35 @@ async def add_product_image(
         alt_text=req.alt_text,
         sort_order=req.sort_order,
         is_main=req.is_main,
+    )
+    return ResponseGenerator.answer(
+        body=ProductImageResponse.model_validate(image),
+        status_code=status.HTTP_201_CREATED,
+    )
+
+
+@router.post(
+    "/products/{product_id}/images/upload",
+    response_model=BaseResponse[ProductImageResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_product_image(
+    product_id: UUID,
+    file: UploadFile = File(...),
+    alt_text: str | None = Form(default=None),
+    sort_order: int = Form(default=0),
+    is_main: bool = Form(default=False),
+    current_user: UserDomain = Depends(require_permission("catalog:manage")),
+    catalog_service: CatalogService = Depends(get_catalog_service),
+):
+    data = await file.read()
+    image = await catalog_service.upload_product_image(
+        actor=current_user,
+        product_id=product_id,
+        file_data=data,
+        alt_text=alt_text,
+        sort_order=sort_order,
+        is_main=is_main,
     )
     return ResponseGenerator.answer(
         body=ProductImageResponse.model_validate(image),

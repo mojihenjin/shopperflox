@@ -8,7 +8,10 @@ from src.domain.exceptions import (
     EntityNotFoundError,
     PermissionDeniedError,
 )
-from src.domain.interfaces import OrderUnitOfWorkProtocol
+from src.domain.interfaces import (
+    OrderUnitOfWorkProtocol,
+    PaymentGatewayProtocol,
+)
 from src.domain.models import (
     OrderDomain,
     OrderItemDomain,
@@ -20,15 +23,20 @@ from src.domain.models import (
 
 
 class OrderService:
-    def __init__(self, uow: OrderUnitOfWorkProtocol) -> None:
+    def __init__(
+        self,
+        uow: OrderUnitOfWorkProtocol,
+        payment_gateway: PaymentGatewayProtocol | None = None,
+    ) -> None:
         self.uow = uow
+        self.payment_gateway = payment_gateway
 
     async def checkout(
         self,
         user_id: UUID,
         address_id: UUID,
         comment: str | None = None,
-    ) -> tuple[OrderDomain, list[OrderItemDomain], PaymentDomain]:
+    ) -> tuple[OrderDomain, list[OrderItemDomain], PaymentDomain, str | None]:
         async with self.uow:
             address = await self.uow.addresses.get_by_id(address_id)
             if address is None or address.user_id != user_id:
@@ -103,10 +111,23 @@ class OrderService:
                 created_by=user_id,
             )
 
+            confirmation_url: str | None = None
+            external_id: str | None = None
+            if self.payment_gateway:
+                session_res = await self.payment_gateway.create_payment(
+                    order_id=order_id,
+                    amount=total_amount,
+                    currency="RUB",
+                    description=f"Order {order_id}",
+                )
+                confirmation_url = session_res.confirmation_url
+                external_id = session_res.external_transaction_id
+
             payment = PaymentDomain(
                 order_id=order_id,
-                provider="mock",
+                provider="stub" if self.payment_gateway else "mock",
                 amount=total_amount,
+                external_id=external_id,
                 status=PaymentStatus.PENDING,
                 created_by=user_id,
             )
@@ -116,7 +137,7 @@ class OrderService:
             await self.uow.carts.clear_cart(cart.id)
             await self.uow.commit()
 
-            return order, order_items, payment
+            return order, order_items, payment, confirmation_url
 
     async def get_order(
         self, actor: UserDomain, order_id: UUID

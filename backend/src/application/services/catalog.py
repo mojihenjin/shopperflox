@@ -2,25 +2,36 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from uuid6 import uuid7
+
 from src.domain.exceptions import (
     DomainValidationError,
     EntityNotFoundError,
     PermissionDeniedError,
 )
-from src.domain.interfaces import CatalogUnitOfWorkProtocol
+from src.domain.interfaces import (
+    CatalogUnitOfWorkProtocol,
+    FileStorageProtocol,
+)
 from src.domain.models import (
     CategoryDomain,
     ProductDomain,
     ProductImageDomain,
     ProductVariantDomain,
+    SearchResultDomain,
     UserDomain,
 )
 from src.utils import factory_now
 
 
 class CatalogService:
-    def __init__(self, uow: CatalogUnitOfWorkProtocol) -> None:
+    def __init__(
+        self,
+        uow: CatalogUnitOfWorkProtocol,
+        storage: FileStorageProtocol | None = None,
+    ) -> None:
         self.uow = uow
+        self.storage = storage
 
     def _check_permission(self, actor: UserDomain) -> None:
         if not actor or (
@@ -168,6 +179,7 @@ class CatalogService:
         title: str,
         slug: str,
         base_price: Decimal,
+        brand: str | None = None,
         description: str | None = None,
         attributes: dict[str, Any] | None = None,
         is_published: bool = False,
@@ -175,6 +187,7 @@ class CatalogService:
         self._check_permission(actor)
         title = title.strip()
         slug = slug.strip()
+        clean_brand = brand.strip() if brand else None
         if not title or not slug:
             raise DomainValidationError("Product title and slug cannot be empty")
 
@@ -187,6 +200,7 @@ class CatalogService:
                 category_id=category_id,
                 title=title,
                 slug=slug,
+                brand=clean_brand,
                 base_price=base_price,
                 description=description,
                 attributes=attributes or {},
@@ -205,6 +219,7 @@ class CatalogService:
         category_id: UUID | None = None,
         title: str | None = None,
         slug: str | None = None,
+        brand: str | None = ...,  # type: ignore[assignment]
         base_price: Decimal | None = None,
         description: str | None = None,
         attributes: dict[str, Any] | None = None,
@@ -235,6 +250,9 @@ class CatalogService:
                 if not slug_clean:
                     raise DomainValidationError("Product slug cannot be empty")
                 product.slug = slug_clean
+
+            if brand is not ...:
+                product.brand = brand.strip() if brand else None
 
             if base_price is not None:
                 product.base_price = base_price
@@ -396,3 +414,95 @@ class CatalogService:
             await self.uow.images.add(image)
             await self.uow.commit()
             return image
+
+    @staticmethod
+    def _detect_image_format(data: bytes) -> tuple[str, str]:
+        if len(data) < 12:
+            raise DomainValidationError("Invalid or corrupted image file")
+
+        # JPEG: \xff\xd8\xff
+        if data.startswith(b"\xff\xd8\xff"):
+            return "jpg", "image/jpeg"
+
+        # PNG: \x89PNG\r\n\x1a\n
+        if data.startswith(b"\x89PNG\r\n\x1a\n"):
+            return "png", "image/png"
+
+        # WebP: RIFF....WEBP
+        if data.startswith(b"RIFF") and data[8:12] == b"WEBP":
+            return "webp", "image/webp"
+
+        raise DomainValidationError(
+            "Unsupported image format. Allowed formats: JPEG, PNG, WebP"
+        )
+
+    async def upload_product_image(
+        self,
+        *,
+        actor: UserDomain,
+        product_id: UUID,
+        file_data: bytes,
+        alt_text: str | None = None,
+        sort_order: int = 0,
+        is_main: bool = False,
+    ) -> ProductImageDomain:
+        self._check_permission(actor)
+
+        if len(file_data) > 5 * 1024 * 1024:
+            raise DomainValidationError("File size exceeds 5 MB limit")
+
+        ext, content_type = self._detect_image_format(file_data)
+
+        if not self.storage:
+            raise DomainValidationError("File storage is not configured")
+
+        async with self.uow:
+            product = await self.uow.products.get_by_id(
+                product_id, include_unpublished=True
+            )
+            if product is None or product.deleted_at is not None:
+                raise EntityNotFoundError("Product not found")
+
+            image_id = uuid7()
+            key = f"products/{product_id}/{image_id}.{ext}"
+            public_url = await self.storage.upload_file(
+                key=key,
+                data=file_data,
+                content_type=content_type,
+            )
+
+            existing_images = await self.uow.images.list_by_product_id(product_id)
+            should_be_main = is_main or len(existing_images) == 0
+
+            if should_be_main:
+                await self.uow.images.unset_main_for_product(product_id)
+
+            image = ProductImageDomain(
+                id=image_id,
+                product_id=product_id,
+                url=public_url,
+                alt_text=alt_text,
+                sort_order=sort_order,
+                is_main=should_be_main,
+                created_by=actor.id,
+            )
+            await self.uow.images.add(image)
+            await self.uow.commit()
+            return image
+
+    async def search(self, query: str, limit: int = 10) -> SearchResultDomain:
+        clean_q = query.strip()
+        if len(clean_q) < 2:
+            raise DomainValidationError("Search query must be at least 2 characters")
+        if len(clean_q) > 100:
+            raise DomainValidationError("Search query must not exceed 100 characters")
+
+        async with self.uow:
+            products = await self.uow.products.search_products(clean_q, limit=limit)
+            brands = await self.uow.products.search_brands(clean_q, limit=limit)
+            variants = await self.uow.variants.search_variants(clean_q, limit=limit)
+            return SearchResultDomain(
+                products=products,
+                brands=brands,
+                variants=variants,
+            )

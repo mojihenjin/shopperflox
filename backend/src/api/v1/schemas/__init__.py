@@ -3,6 +3,7 @@ from .auth import (
     RefreshTokenRequest,
     RegisterRequest,
     TokenPairResponse,
+    VerifyEmailRequest,
 )
 from .cart import (
     CartItemRequest,
@@ -43,6 +44,10 @@ from .review import (
     CreateReviewRequest,
     ReviewResponse,
 )
+from .search import (
+    BrandSearchResponse,
+    SearchResultResponse,
+)
 from .users import (
     CreateAddressRequest,
     UpdatePersonalRequest,
@@ -54,6 +59,7 @@ from .users import (
 
 __all__ = [
     "BanUserRequest",
+    "BrandSearchResponse",
     "CartItemRequest",
     "CartItemResponse",
     "CartResponse",
@@ -82,6 +88,7 @@ __all__ = [
     "RefreshTokenRequest",
     "RegisterRequest",
     "ReviewResponse",
+    "SearchResultResponse",
     "SetPermissionsRequest",
     "TokenPairResponse",
     "UpdatePersonalRequest",
@@ -90,4 +97,5 @@ __all__ = [
     "UserPersonalResponse",
     "UserProfileResponse",
     "UserResponse",
+    "VerifyEmailRequest",
 ]

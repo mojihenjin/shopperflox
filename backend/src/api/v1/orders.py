@@ -32,7 +32,7 @@ async def checkout(
     current_user: UserDomain = Depends(get_current_user),
     order_service: OrderService = Depends(get_order_service),
 ):
-    order, items, payment = await order_service.checkout(
+    order, items, payment, confirmation_url = await order_service.checkout(
         user_id=current_user.id,
         address_id=req.address_id,
         comment=req.comment,
@@ -66,6 +66,7 @@ async def checkout(
         provider=payment.provider,
         amount=payment.amount,
         external_id=payment.external_id,
+        confirmation_url=confirmation_url,
         status=payment.status,
         paid_at=payment.paid_at,
     )
@@ -73,6 +74,7 @@ async def checkout(
     resp_data = OrderCheckoutResponse(
         order=order_resp,
         payment=payment_resp,
+        confirmation_url=confirmation_url,
     )
     return ResponseGenerator.answer(body=resp_data, status_code=201)
 

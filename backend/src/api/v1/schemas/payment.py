@@ -16,6 +16,7 @@ class PaymentResponse(BaseModel):
     provider: str
     amount: Decimal
     external_id: str | None = None
+    confirmation_url: str | None = None
     status: PaymentStatus
     paid_at: datetime | None = None
 

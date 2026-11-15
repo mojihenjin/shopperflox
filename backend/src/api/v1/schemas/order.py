@@ -52,3 +52,4 @@ class OrderResponse(BaseModel):
 class OrderCheckoutResponse(BaseModel):
     order: OrderResponse
     payment: PaymentResponse
+    confirmation_url: str | None = None

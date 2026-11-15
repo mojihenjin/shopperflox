@@ -19,9 +19,13 @@ from src.domain.exceptions import AuthenticationError, PermissionDeniedError
 from src.domain.interfaces import (
     CartUnitOfWorkProtocol,
     CatalogUnitOfWorkProtocol,
+    EmailVerificationStoreProtocol,
+    FileStorageProtocol,
     OrderUnitOfWorkProtocol,
     PasswordHasherProtocol,
+    PaymentGatewayProtocol,
     ReviewUnitOfWorkProtocol,
+    TaskQueueProtocol,
     TokenBlacklistProtocol,
     TokenProviderProtocol,
     UserUnitOfWorkProtocol,
@@ -35,8 +39,14 @@ from src.infrastructure.db import (
     SqlAlchemyUserUnitOfWork,
     async_session_maker,
 )
-from src.infrastructure.redis import RedisTokenBlacklist
+from src.infrastructure.messaging import TaskiqEmailQueue
+from src.infrastructure.payments import StubPaymentGateway
+from src.infrastructure.redis import (
+    RedisEmailVerificationStore,
+    RedisTokenBlacklist,
+)
 from src.infrastructure.security import Argon2PasswordHasher, JwtTokenProvider
+from src.infrastructure.storage import get_file_storage as create_file_storage
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -70,17 +80,57 @@ def get_token_blacklist(request: Request) -> TokenBlacklistProtocol:
     return blacklist
 
 
+def get_email_verification_store(
+    request: Request,
+) -> EmailVerificationStoreProtocol:
+    store = getattr(request.app.state, "email_verification_store", None)
+    if store is None:
+        store = RedisEmailVerificationStore()
+        request.app.state.email_verification_store = store
+    return store
+
+
+def get_task_queue(request: Request) -> TaskQueueProtocol:
+    queue = getattr(request.app.state, "task_queue", None)
+    if queue is None:
+        queue = TaskiqEmailQueue()
+        request.app.state.task_queue = queue
+    return queue
+
+
+def get_file_storage(request: Request) -> FileStorageProtocol:
+    storage = getattr(request.app.state, "file_storage", None)
+    if storage is None:
+        storage = create_file_storage()
+        request.app.state.file_storage = storage
+    return storage
+
+
+def get_payment_gateway(request: Request) -> PaymentGatewayProtocol:
+    gw = getattr(request.app.state, "payment_gateway", None)
+    if gw is None:
+        gw = StubPaymentGateway()
+        request.app.state.payment_gateway = gw
+    return gw
+
+
 def get_auth_service(
     uow: UserUnitOfWorkProtocol = Depends(get_user_uow),
     hasher: PasswordHasherProtocol = Depends(get_password_hasher),
     token_provider: TokenProviderProtocol = Depends(get_token_provider),
     blacklist: TokenBlacklistProtocol = Depends(get_token_blacklist),
+    verification_store: EmailVerificationStoreProtocol = Depends(
+        get_email_verification_store
+    ),
+    task_queue: TaskQueueProtocol = Depends(get_task_queue),
 ) -> AuthService:
     return AuthService(
         uow=uow,
         hasher=hasher,
         token_provider=token_provider,
         blacklist=blacklist,
+        verification_store=verification_store,
+        task_queue=task_queue,
     )
 
 
@@ -103,8 +153,9 @@ def get_catalog_uow(request: Request) -> CatalogUnitOfWorkProtocol:
 
 def get_catalog_service(
     uow: CatalogUnitOfWorkProtocol = Depends(get_catalog_uow),
+    storage: FileStorageProtocol = Depends(get_file_storage),
 ) -> CatalogService:
-    return CatalogService(uow=uow)
+    return CatalogService(uow=uow, storage=storage)
 
 
 def get_favorite_service(
@@ -131,8 +182,9 @@ def get_order_uow(request: Request) -> OrderUnitOfWorkProtocol:
 
 def get_order_service(
     uow: OrderUnitOfWorkProtocol = Depends(get_order_uow),
+    payment_gateway: PaymentGatewayProtocol = Depends(get_payment_gateway),
 ) -> OrderService:
-    return OrderService(uow=uow)
+    return OrderService(uow=uow, payment_gateway=payment_gateway)
 
 
 def get_payment_service(

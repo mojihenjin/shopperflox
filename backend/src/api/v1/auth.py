@@ -1,15 +1,17 @@
 from fastapi import APIRouter, Depends, status
 
-from src.api.dependencies import get_auth_service
+from src.api.dependencies import get_auth_service, get_current_user
 from src.api.v1.schemas import (
     LoginRequest,
     RefreshTokenRequest,
     RegisterRequest,
     TokenPairResponse,
     UserResponse,
+    VerifyEmailRequest,
 )
 from src.application.services import AuthService
 from src.core import BaseResponse, ResponseGenerator
+from src.domain.models import UserDomain
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -73,4 +75,25 @@ async def logout(
     auth_service: AuthService = Depends(get_auth_service),
 ):
     await auth_service.logout(refresh_token=req.refresh_token)
+    return ResponseGenerator.answer(body=None, status_code=200)
+
+
+@router.post("/email/send-code", response_model=BaseResponse[None])
+async def send_verification_code(
+    current_user: UserDomain = Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    await auth_service.request_email_verification(user_id=current_user.id)
+    return ResponseGenerator.answer(body=None, status_code=200)
+
+
+@router.post("/email/verify", response_model=BaseResponse[None])
+async def verify_email(
+    req: VerifyEmailRequest,
+    current_user: UserDomain = Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    await auth_service.confirm_email_verification(
+        user_id=current_user.id, code=req.code
+    )
     return ResponseGenerator.answer(body=None, status_code=200)
