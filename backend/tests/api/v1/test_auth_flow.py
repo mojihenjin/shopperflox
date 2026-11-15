@@ -1,0 +1,90 @@
+import pytest
+
+
+@pytest.mark.anyio
+async def test_full_auth_flow(client):
+    # 1. Register a new user
+    register_payload = {
+        "login": "alice_flow",
+        "password": "Password123!",
+        "email": "alice_flow@example.com",
+    }
+    reg_resp = await client.post("/api/v1/auth/register", json=register_payload)
+    assert reg_resp.status_code == 201
+    reg_data = reg_resp.json()
+    assert reg_data["status_code"] == 201
+    assert reg_data["body"]["login"] == "alice_flow"
+    assert reg_data["body"]["email"] == "alice_flow@example.com"
+    # Categorically no password_hash in response
+    assert "password_hash" not in reg_data["body"]
+    assert "password" not in reg_data["body"]
+
+    # 2. Login with login
+    login_payload = {
+        "identifier": "alice_flow",
+        "password": "Password123!",
+    }
+    login_resp = await client.post("/api/v1/auth/login", json=login_payload)
+    assert login_resp.status_code == 200
+    login_data = login_resp.json()
+    assert login_data["status_code"] == 200
+    access_token = login_data["body"]["access_token"]
+    refresh_token = login_data["body"]["refresh_token"]
+    assert access_token
+    assert refresh_token
+    assert login_data["body"]["token_type"] == "bearer"
+
+    # Also login with email
+    login_email_resp = await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": "alice_flow@example.com", "password": "Password123!"},
+    )
+    assert login_email_resp.status_code == 200
+
+    # 3. Request /api/v1/users/me with valid access_token
+    headers = {"Authorization": f"Bearer {access_token}"}
+    me_resp = await client.get("/api/v1/users/me", headers=headers)
+    assert me_resp.status_code == 200
+    me_data = me_resp.json()
+    assert me_data["status_code"] == 200
+    assert me_data["body"]["user"]["login"] == "alice_flow"
+    assert "password_hash" not in me_data["body"]["user"]
+
+    # 4. Attempt to pass refresh_token in Authorization: Bearer (expect 401)
+    refresh_as_bearer_headers = {"Authorization": f"Bearer {refresh_token}"}
+    unauthorized_resp = await client.get(
+        "/api/v1/users/me", headers=refresh_as_bearer_headers
+    )
+    assert unauthorized_resp.status_code == 401
+    unauthorized_data = unauthorized_resp.json()
+    assert unauthorized_data["status_code"] == 401
+    assert any(
+        "expected 'access'" in err["detail"] or "Invalid" in err["detail"]
+        for err in unauthorized_data["errors"]
+    )
+
+    # Attempt to access /api/v1/users/me with no header (expect 401)
+    no_auth_resp = await client.get("/api/v1/users/me")
+    assert no_auth_resp.status_code == 401
+
+    # 5. Refresh tokens through /api/v1/auth/refresh
+    refresh_req = {"refresh_token": refresh_token}
+    refresh_resp = await client.post("/api/v1/auth/refresh", json=refresh_req)
+    assert refresh_resp.status_code == 200
+    refreshed_data = refresh_resp.json()
+    new_access_token = refreshed_data["body"]["access_token"]
+    new_refresh_token = refreshed_data["body"]["refresh_token"]
+    assert new_access_token
+    assert new_refresh_token
+
+    # 6. Verify newly refreshed access token works on /users/me
+    new_headers = {"Authorization": f"Bearer {new_access_token}"}
+    new_me_resp = await client.get("/api/v1/users/me", headers=new_headers)
+    assert new_me_resp.status_code == 200
+    assert new_me_resp.json()["body"]["user"]["login"] == "alice_flow"
+
+    # 7. Attempt to pass access_token as refresh_token into /auth/refresh (expect 401)
+    invalid_refresh_resp = await client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": new_access_token}
+    )
+    assert invalid_refresh_resp.status_code == 401
