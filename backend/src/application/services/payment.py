@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import logging
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -11,6 +12,8 @@ from src.domain.exceptions import (
 )
 from src.domain.interfaces import OrderUnitOfWorkProtocol
 from src.domain.models import OrderStatus, PaymentDomain, PaymentStatus
+
+logger = logging.getLogger(__name__)
 
 
 class PaymentService:
@@ -47,6 +50,24 @@ class PaymentService:
             order = await self.uow.orders.get_by_id(order_id, for_update=True)
             if order is None:
                 raise EntityNotFoundError("Order not found")
+
+            # Check if this is a late webhook for an already cancelled order or failed payment
+            if status == "succeeded" and (
+                order.status == OrderStatus.CANCELLED
+                or payment.status == PaymentStatus.FAILED
+            ):
+                payment.external_id = external_transaction_id
+                payment.transition_to(PaymentStatus.REFUNDED)
+                await self.uow.payments.update(payment)
+                await self.uow.commit()
+                logger.critical(
+                    "Late payment webhook received for cancelled order %s (payment %s, transaction %s). "
+                    "Payment marked as REFUNDED. Immediate refund to customer required!",
+                    order.id,
+                    payment.id,
+                    external_transaction_id,
+                )
+                return payment
 
             # Idempotency check: terminal status payments cannot be modified
             if payment.status in {

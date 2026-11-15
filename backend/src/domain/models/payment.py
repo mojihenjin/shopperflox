@@ -20,9 +20,13 @@ class PaymentStatus(StrEnum):
 
 
 ALLOWED_PAYMENT_TRANSITIONS: dict[PaymentStatus, set[PaymentStatus]] = {
-    PaymentStatus.PENDING: {PaymentStatus.SUCCEEDED, PaymentStatus.FAILED},
+    PaymentStatus.PENDING: {
+        PaymentStatus.SUCCEEDED,
+        PaymentStatus.FAILED,
+        PaymentStatus.REFUNDED,
+    },
     PaymentStatus.SUCCEEDED: {PaymentStatus.REFUNDED},
-    PaymentStatus.FAILED: set(),
+    PaymentStatus.FAILED: {PaymentStatus.REFUNDED},
     PaymentStatus.REFUNDED: set(),
 }
 

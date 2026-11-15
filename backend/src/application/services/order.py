@@ -31,12 +31,27 @@ class OrderService:
         self.uow = uow
         self.payment_gateway = payment_gateway
 
+    async def _restore_order_stock(self, order: OrderDomain) -> None:
+        items = await self.uow.orders.list_items(order.id)
+        variant_ids = sorted(
+            [item.variant_id for item in items if item.variant_id is not None]
+        )
+        if variant_ids:
+            variants = await self.uow.variants.get_by_ids_for_update(variant_ids)
+            variant_map = {v.id: v for v in variants}
+            for item in items:
+                if item.variant_id and item.variant_id in variant_map:
+                    variant = variant_map[item.variant_id]
+                    variant.stock_quantity += item.quantity
+                    await self.uow.variants.update(variant)
+
     async def checkout(
         self,
         user_id: UUID,
         address_id: UUID,
         comment: str | None = None,
     ) -> tuple[OrderDomain, list[OrderItemDomain], PaymentDomain, str | None]:
+        # Phase 1: Short DB transaction (validate, lock SKUs, decrement stock, create pending Order & Payment, clear cart)
         async with self.uow:
             address = await self.uow.addresses.get_by_id(address_id)
             if address is None or address.user_id != user_id:
@@ -111,23 +126,11 @@ class OrderService:
                 created_by=user_id,
             )
 
-            confirmation_url: str | None = None
-            external_id: str | None = None
-            if self.payment_gateway:
-                session_res = await self.payment_gateway.create_payment(
-                    order_id=order_id,
-                    amount=total_amount,
-                    currency="RUB",
-                    description=f"Order {order_id}",
-                )
-                confirmation_url = session_res.confirmation_url
-                external_id = session_res.external_transaction_id
-
             payment = PaymentDomain(
                 order_id=order_id,
                 provider="stub" if self.payment_gateway else "mock",
                 amount=total_amount,
-                external_id=external_id,
+                external_id=None,
                 status=PaymentStatus.PENDING,
                 created_by=user_id,
             )
@@ -137,7 +140,63 @@ class OrderService:
             await self.uow.carts.clear_cart(cart.id)
             await self.uow.commit()
 
-            return order, order_items, payment, confirmation_url
+        # Phase 2: Outside DB transaction (call payment gateway without holding DB connection / row locks)
+        confirmation_url: str | None = None
+        external_id: str | None = None
+        gateway_error: Exception | None = None
+
+        if self.payment_gateway:
+            try:
+                session_res = await self.payment_gateway.create_payment(
+                    order_id=order_id,
+                    amount=total_amount,
+                    currency="RUB",
+                    description=f"Order {order_id}",
+                )
+                confirmation_url = session_res.confirmation_url
+                external_id = session_res.external_transaction_id
+            except Exception as exc:
+                gateway_error = exc
+
+        # Phase 3: Short DB transaction (confirm payment or roll back stock and mark order cancelled)
+        if gateway_error is not None:
+            async with self.uow:
+                restored_order = await self.uow.orders.get_by_id(
+                    order_id, for_update=True
+                )
+                if restored_order:
+                    restored_order.transition_to(OrderStatus.CANCELLED)
+                    await self._restore_order_stock(restored_order)
+                    await self.uow.orders.update(restored_order)
+
+                restored_payment = await self.uow.payments.get_by_order_id(
+                    order_id, for_update=True
+                )
+                if (
+                    restored_payment
+                    and restored_payment.status == PaymentStatus.PENDING
+                ):
+                    restored_payment.transition_to(PaymentStatus.FAILED)
+                    await self.uow.payments.update(restored_payment)
+
+                await self.uow.commit()
+
+            raise DomainValidationError(
+                f"Payment gateway failed to initialize payment: {gateway_error}"
+            )
+
+        if external_id is not None:
+            async with self.uow:
+                persisted_payment = await self.uow.payments.get_by_order_id(
+                    order_id, for_update=True
+                )
+                if persisted_payment:
+                    persisted_payment.external_id = external_id
+                    await self.uow.payments.update(persisted_payment)
+                    payment = persisted_payment
+                await self.uow.commit()
+
+        return order, order_items, payment, confirmation_url
 
     async def get_order(
         self, actor: UserDomain, order_id: UUID
@@ -206,24 +265,16 @@ class OrderService:
                     )
 
             order.transition_to(OrderStatus.CANCELLED)
-
-            items = await self.uow.orders.list_items(order.id)
-            variant_ids = sorted(
-                [item.variant_id for item in items if item.variant_id is not None]
-            )
-            if variant_ids:
-                variants = await self.uow.variants.get_by_ids_for_update(variant_ids)
-                variant_map = {v.id: v for v in variants}
-                for item in items:
-                    if item.variant_id and item.variant_id in variant_map:
-                        variant = variant_map[item.variant_id]
-                        variant.stock_quantity += item.quantity
-                        await self.uow.variants.update(variant)
+            await self._restore_order_stock(order)
 
             payment = await self.uow.payments.get_by_order_id(order.id, for_update=True)
-            if payment and payment.status == PaymentStatus.PENDING:
-                payment.transition_to(PaymentStatus.FAILED)
-                await self.uow.payments.update(payment)
+            if payment:
+                if payment.status == PaymentStatus.PENDING:
+                    payment.transition_to(PaymentStatus.FAILED)
+                    await self.uow.payments.update(payment)
+                elif payment.status == PaymentStatus.SUCCEEDED:
+                    payment.transition_to(PaymentStatus.REFUNDED)
+                    await self.uow.payments.update(payment)
 
             await self.uow.orders.update(order)
             await self.uow.commit()
@@ -247,7 +298,26 @@ class OrderService:
             if order is None:
                 raise EntityNotFoundError("Order not found")
 
+            old_status = order.status
             order.transition_to(new_status)
+
+            if new_status == OrderStatus.CANCELLED and old_status not in {
+                OrderStatus.CANCELLED,
+                OrderStatus.REFUNDED,
+                OrderStatus.DELIVERED,
+            }:
+                await self._restore_order_stock(order)
+                payment = await self.uow.payments.get_by_order_id(
+                    order.id, for_update=True
+                )
+                if payment:
+                    if payment.status == PaymentStatus.PENDING:
+                        payment.transition_to(PaymentStatus.FAILED)
+                        await self.uow.payments.update(payment)
+                    elif payment.status == PaymentStatus.SUCCEEDED:
+                        payment.transition_to(PaymentStatus.REFUNDED)
+                        await self.uow.payments.update(payment)
+
             await self.uow.orders.update(order)
             await self.uow.commit()
 

@@ -1,12 +1,15 @@
 from decimal import Decimal
+from unittest.mock import AsyncMock
 
 import pytest
 from uuid6 import uuid7
 
 from src.application.services import OrderService
 from src.domain.exceptions import (
+    DomainValidationError,
     PermissionDeniedError,
 )
+from src.domain.interfaces import PaymentGatewayProtocol
 from src.domain.models import (
     OrderStatus,
     PaymentStatus,
@@ -131,3 +134,129 @@ async def test_order_service_forbidden_cancel(order_uow):
     # Stranger cannot cancel
     with pytest.raises(PermissionDeniedError):
         await service.cancel_order(actor=other_user, order_id=order.id)
+
+
+async def test_order_service_checkout_gateway_failure_restores_stock(order_uow):
+    mock_gateway = AsyncMock(spec=PaymentGatewayProtocol)
+    mock_gateway.create_payment.side_effect = RuntimeError(
+        "Payment network connection failed"
+    )
+
+    service = OrderService(uow=order_uow, payment_gateway=mock_gateway)
+    user_id = uuid7()
+
+    address = UserAddressDomain(
+        user_id=user_id,
+        city="Munich",
+        street="Marienplatz 2",
+        postal_code="80331",
+        created_by=user_id,
+    )
+    await order_uow.addresses.add(address)
+
+    product = ProductDomain(
+        category_id=uuid7(),
+        title="Jacket",
+        slug="jacket",
+        base_price=Decimal("120.00"),
+        is_published=True,
+        created_by=user_id,
+    )
+    await order_uow.products.add(product)
+
+    variant = ProductVariantDomain(
+        product_id=product.id,
+        sku="JK-XL",
+        size="XL",
+        color_name="Black",
+        stock_quantity=8,
+        created_by=user_id,
+    )
+    await order_uow.variants.add(variant)
+
+    cart = await order_uow.carts.get_or_create_for_user(user_id)
+    await order_uow.carts.upsert_item(cart.id, variant.id, 3)
+
+    # Checkout fails at Phase 2 (gateway)
+    with pytest.raises(DomainValidationError, match="Payment gateway failed"):
+        await service.checkout(user_id=user_id, address_id=address.id)
+
+    # Stock must be restored to 8
+    updated_variant = await order_uow.variants.get_by_id(variant.id)
+    assert updated_variant.stock_quantity == 8
+
+    # Order must be CANCELLED and payment FAILED
+    orders, total = await order_uow.orders.list_by_user_id(user_id)
+    assert total == 1
+    assert orders[0].status == OrderStatus.CANCELLED
+
+    payment = await order_uow.payments.get_by_order_id(orders[0].id)
+    assert payment is not None
+    assert payment.status == PaymentStatus.FAILED
+
+
+async def test_admin_cancel_order_restores_stock_and_refunds_payment(order_uow):
+    service = OrderService(uow=order_uow)
+    admin = UserDomain(id=uuid7(), login="admin", global_permissions=["orders:manage"])
+    user_id = uuid7()
+
+    address = UserAddressDomain(
+        user_id=user_id,
+        city="Hamburg",
+        street="Hafenstr 5",
+        postal_code="20359",
+        created_by=user_id,
+    )
+    await order_uow.addresses.add(address)
+
+    product = ProductDomain(
+        category_id=uuid7(),
+        title="Shoes",
+        slug="shoes",
+        base_price=Decimal("80.00"),
+        is_published=True,
+        created_by=user_id,
+    )
+    await order_uow.products.add(product)
+
+    variant = ProductVariantDomain(
+        product_id=product.id,
+        sku="SH-42",
+        size="42",
+        color_name="White",
+        stock_quantity=10,
+        created_by=user_id,
+    )
+    await order_uow.variants.add(variant)
+
+    cart = await order_uow.carts.get_or_create_for_user(user_id)
+    await order_uow.carts.upsert_item(cart.id, variant.id, 4)
+
+    order, _, payment, _ = await service.checkout(
+        user_id=user_id, address_id=address.id
+    )
+    assert order.status == OrderStatus.PENDING_PAYMENT
+
+    # Simulate payment already succeeded
+    payment.transition_to(PaymentStatus.SUCCEEDED)
+    order.transition_to(OrderStatus.PAID)
+    await order_uow.payments.update(payment)
+    await order_uow.orders.update(order)
+
+    # Stock quantity after checkout is 6
+    v1 = await order_uow.variants.get_by_id(variant.id)
+    assert v1.stock_quantity == 6
+
+    # Admin cancels paid order
+    updated = await service.update_order_status(
+        admin=admin, order_id=order.id, new_status=OrderStatus.CANCELLED
+    )
+    assert updated.status == OrderStatus.CANCELLED
+
+    # Stock restored back to 10
+    v2 = await order_uow.variants.get_by_id(variant.id)
+    assert v2.stock_quantity == 10
+
+    # Payment transitioned to REFUNDED
+    updated_payment = await order_uow.payments.get_by_order_id(order.id)
+    assert updated_payment.status == PaymentStatus.REFUNDED
