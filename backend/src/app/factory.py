@@ -40,6 +40,9 @@ def create_app(settings: Settings):
         title=settings.app_title,
         version=settings.version,
         lifespan=lifespan,
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+        openapi_url="/api/openapi.json",
     )
 
 
@@ -154,6 +157,17 @@ def configurate_app(app: FastAPI, settings: Settings | None = None):
     app.include_router(health.router)
     app.include_router(metrics.router)
     app.include_router(v1_router)
+
+    from fastapi.responses import RedirectResponse
+
+    @app.get("/api", include_in_schema=False)
+    @app.get("/api/", include_in_schema=False)
+    async def redirect_api_root():
+        return RedirectResponse(url="/api/docs")
+
+    @app.get("/docs", include_in_schema=False)
+    async def redirect_legacy_docs():
+        return RedirectResponse(url="/api/docs")
 
     return app
 
