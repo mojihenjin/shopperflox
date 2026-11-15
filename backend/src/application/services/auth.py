@@ -95,6 +95,22 @@ class AuthService:
 
             return user, access_token, refresh_token
 
+    async def refresh_tokens(
+        self,
+        *,
+        refresh_token: str,
+    ) -> tuple[UserDomain, str, str]:
+        payload = self.token_provider.decode_token(
+            refresh_token, expected_type="refresh"
+        )
+        user_id = UUID(payload["sub"])
+        user = await self.verify_access(user_id=user_id)
+        new_access = self.token_provider.create_access_token(
+            user.id, user.global_permissions
+        )
+        new_refresh = self.token_provider.create_refresh_token(user.id)
+        return user, new_access, new_refresh
+
     async def verify_access(
         self,
         *,

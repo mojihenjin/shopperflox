@@ -93,6 +93,25 @@ class UserService:
             await self.uow.commit()
             return personal
 
+    async def list_addresses(
+        self,
+        *,
+        actor_id: UUID,
+        target_user_id: UUID,
+    ) -> list[UserAddressDomain]:
+        async with self.uow:
+            actor = await self.uow.users.get_by_id(actor_id)
+            if actor is None or actor.is_deleted:
+                raise AuthenticationError("Actor user not found or deleted")
+
+            self._ensure_actor_access(actor, target_user_id, "users:read")
+
+            target_user = await self.uow.users.get_by_id(target_user_id)
+            if target_user is None or target_user.is_deleted:
+                raise EntityNotFoundError("User not found")
+
+            return await self.uow.addresses.list_by_user_id(target_user_id)
+
     async def add_address(
         self,
         *,
