@@ -51,6 +51,10 @@ async def test_register_duplicate_login_fails(uow, hasher, token_provider):
     with pytest.raises(EntityAlreadyExistsError, match="already exists"):
         await service.register(login="bob", password="different_password")
 
+    # Case-insensitive duplicate check
+    with pytest.raises(EntityAlreadyExistsError, match="already exists"):
+        await service.register(login="BOB", password="different_password")
+
 
 @pytest.mark.anyio
 async def test_register_duplicate_email_fails(uow, hasher, token_provider):
@@ -78,6 +82,12 @@ async def test_login_by_login_success(uow, hasher, token_provider):
     assert user.id == registered_user.id
     assert access_token.startswith(f"access_{user.id}")
     assert refresh_token.startswith(f"refresh_{user.id}")
+
+    # Case-insensitive login check
+    user_upper, _, _ = await service.login(
+        identifier="DaViD", password="correct_password"
+    )
+    assert user_upper.id == registered_user.id
 
 
 @pytest.mark.anyio

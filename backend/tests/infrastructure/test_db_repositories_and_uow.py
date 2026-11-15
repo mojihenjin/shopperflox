@@ -51,22 +51,33 @@ async def test_user_repository_crud_and_partial_unique_indexes(uow):
         assert by_login is not None
         assert by_login.id == user_id_1
 
+        # Case-insensitive login and email query check
+        by_login_upper = await uow.users.get_by_login("ALICE")
+        assert by_login_upper is not None
+        assert by_login_upper.id == user_id_1
+
         by_email = await uow.users.get_by_email("alice@example.com")
         assert by_email is not None
         assert by_email.id == user_id_1
 
-        assert await uow.users.exists_active("alice") is True
-        assert await uow.users.exists_active("bob") is False
+        by_email_upper = await uow.users.get_by_email("ALICE@EXAMPLE.COM")
+        assert by_email_upper is not None
+        assert by_email_upper.id == user_id_1
 
-    # Attempting to add duplicate active login raises EntityAlreadyExistsError
+        assert await uow.users.exists_active("alice") is True
+        assert await uow.users.exists_active("AliCe") is True
+        assert await uow.users.exists_active("bob") is False
+        assert await uow.users.exists_active("other", "ALICE@EXAMPLE.COM") is True
+
+    # Attempting to add duplicate active login with different case raises EntityAlreadyExistsError
     user_dup_login = UserDomain(
         id=uuid7(),
-        login="alice",
+        login="ALICE",
         email="different@example.com",
     )
     with pytest.raises(
         EntityAlreadyExistsError,
-        match="User with login 'alice' or email 'different@example.com' already exists",
+        match="User with login 'ALICE' or email 'different@example.com' already exists",
     ):
         async with uow:
             await uow.users.add(user_dup_login)

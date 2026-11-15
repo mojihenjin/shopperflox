@@ -39,21 +39,33 @@ class InMemoryUserRepository:
         return user
 
     async def get_by_login(self, login: str) -> UserDomain | None:
+        clean = login.strip().lower()
         for user in self.store.values():
-            if user.login == login and not user.is_deleted:
+            if user.login.strip().lower() == clean and not user.is_deleted:
                 return user
         return None
 
     async def get_by_email(self, email: str) -> UserDomain | None:
+        clean = email.strip().lower()
         for user in self.store.values():
-            if user.email == email and not user.is_deleted:
+            if (
+                user.email
+                and user.email.strip().lower() == clean
+                and not user.is_deleted
+            ):
                 return user
         return None
 
     async def exists_active(self, login: str, email: str | None = None) -> bool:
+        clean_login = login.strip().lower()
+        clean_email = email.strip().lower() if email else None
         for user in self.store.values():
             if not user.is_deleted:
-                if user.login == login or (email and user.email == email):
+                if user.login.strip().lower() == clean_login or (
+                    clean_email
+                    and user.email
+                    and user.email.strip().lower() == clean_email
+                ):
                     return True
         return False
 

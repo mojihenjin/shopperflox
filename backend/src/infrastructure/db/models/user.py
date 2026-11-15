@@ -29,14 +29,14 @@ class UserModel(Base):
     __table_args__ = (
         Index(
             "uq_users_login_active",
-            "login",
+            text("lower(login)"),
             unique=True,
             postgresql_where=text("deleted_at IS NULL"),
             sqlite_where=text("deleted_at IS NULL"),
         ),
         Index(
             "uq_users_email_active",
-            "email",
+            text("lower(email)"),
             unique=True,
             postgresql_where=text("deleted_at IS NULL AND email IS NOT NULL"),
             sqlite_where=text("deleted_at IS NULL AND email IS NOT NULL"),

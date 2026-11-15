@@ -34,6 +34,13 @@ async def test_full_auth_flow(client):
     assert refresh_token
     assert login_data["body"]["token_type"] == "bearer"
 
+    # Also login with case-insensitive login
+    login_case_resp = await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": "ALICE_FLOW", "password": "Password123!"},
+    )
+    assert login_case_resp.status_code == 200
+
     # Also login with email
     login_email_resp = await client.post(
         "/api/v1/auth/login",

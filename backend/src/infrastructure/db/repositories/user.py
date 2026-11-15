@@ -52,7 +52,8 @@ class SqlAlchemyUserRepository:
 
     async def get_by_login(self, login: str) -> UserDomain | None:
         stmt = select(UserModel).where(
-            UserModel.login == login, UserModel.deleted_at.is_(None)
+            func.lower(UserModel.login) == login.strip().lower(),
+            UserModel.deleted_at.is_(None),
         )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
@@ -60,16 +61,17 @@ class SqlAlchemyUserRepository:
 
     async def get_by_email(self, email: str) -> UserDomain | None:
         stmt = select(UserModel).where(
-            UserModel.email == email, UserModel.deleted_at.is_(None)
+            func.lower(UserModel.email) == email.strip().lower(),
+            UserModel.deleted_at.is_(None),
         )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
         return self._to_domain(model) if model else None
 
     async def exists_active(self, login: str, email: str | None = None) -> bool:
-        cond = UserModel.login == login
+        cond = func.lower(UserModel.login) == login.strip().lower()
         if email:
-            cond = or_(cond, UserModel.email == email)
+            cond = or_(cond, func.lower(UserModel.email) == email.strip().lower())
         stmt = select(func.count()).where(cond, UserModel.deleted_at.is_(None))
         count = await self.session.scalar(stmt)
         return bool(count and count > 0)
