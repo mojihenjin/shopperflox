@@ -27,7 +27,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-shopperflox}:${POSTGRES_PASSWORD:-shopperflox}@postgres:5432/${POSTGRES_DB:-shopperflox}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
