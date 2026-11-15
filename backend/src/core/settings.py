@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_title: str = "ShopperFlox"
     version: str = "0.1.0"
+    debug: bool = Field(default=False, validation_alias=AliasChoices("DEBUG", "debug"))
     log_level: str = "INFO"
     log_json: bool = False
 

@@ -2,6 +2,7 @@ from uuid import UUID
 
 from src.domain.exceptions import (
     AuthenticationError,
+    DomainValidationError,
     EntityAlreadyExistsError,
     EntityNotFoundError,
     PermissionDeniedError,
@@ -16,6 +17,8 @@ from src.utils import factory_now
 
 
 class UserService:
+    MAX_USER_ADDRESSES: int = 20
+
     def __init__(self, uow: UserUnitOfWorkProtocol) -> None:
         self.uow = uow
 
@@ -98,6 +101,8 @@ class UserService:
         *,
         actor_id: UUID,
         target_user_id: UUID,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[UserAddressDomain]:
         async with self.uow:
             actor = await self.uow.users.get_by_id(actor_id)
@@ -110,7 +115,9 @@ class UserService:
             if target_user is None or target_user.is_deleted:
                 raise EntityNotFoundError("User not found")
 
-            return await self.uow.addresses.list_by_user_id(target_user_id)
+            return await self.uow.addresses.list_by_user_id(
+                target_user_id, limit=limit, offset=offset
+            )
 
     async def add_address(
         self,
@@ -134,8 +141,13 @@ class UserService:
                 raise EntityNotFoundError("User not found")
 
             existing_addresses = await self.uow.addresses.list_by_user_id(
-                target_user_id
+                target_user_id, limit=self.MAX_USER_ADDRESSES + 1
             )
+            if len(existing_addresses) >= self.MAX_USER_ADDRESSES:
+                raise DomainValidationError(
+                    f"User cannot have more than {self.MAX_USER_ADDRESSES} addresses"
+                )
+
             if not existing_addresses:
                 is_default = True
 

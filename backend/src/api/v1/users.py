@@ -52,12 +52,16 @@ async def update_my_personal(
 
 @router.get("/me/addresses", response_model=BaseResponse[list[UserAddressResponse]])
 async def list_my_addresses(
+    limit: int = 50,
+    offset: int = 0,
     current_user: UserDomain = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service),
 ):
     addresses = await user_service.list_addresses(
         actor_id=current_user.id,
         target_user_id=current_user.id,
+        limit=limit,
+        offset=offset,
     )
     return ResponseGenerator.answer(
         body=[UserAddressResponse.model_validate(a) for a in addresses]
