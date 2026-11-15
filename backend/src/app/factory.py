@@ -19,6 +19,13 @@ from src.middlewares import add_process_time_header
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from src.infrastructure.db import async_session_maker
+    from src.infrastructure.security import Argon2PasswordHasher, JwtTokenProvider
+
+    app.state.async_session_factory = async_session_maker
+    app.state.password_hasher = Argon2PasswordHasher()
+    app.state.token_provider = JwtTokenProvider()
+
     task = asyncio.create_task(monitor_event_loop_lag())
     try:
         yield
@@ -44,6 +51,17 @@ def configurate_app(app: FastAPI, settings: Settings | None = None):
 
     # Initialize logging
     setup_logging(settings=settings)
+
+    # Initialize state singletons fallback
+    from src.infrastructure.db import async_session_maker
+    from src.infrastructure.security import Argon2PasswordHasher, JwtTokenProvider
+
+    if not hasattr(app.state, "async_session_factory"):
+        app.state.async_session_factory = async_session_maker
+    if not hasattr(app.state, "password_hasher"):
+        app.state.password_hasher = Argon2PasswordHasher()
+    if not hasattr(app.state, "token_provider"):
+        app.state.token_provider = JwtTokenProvider()
 
     # Middlewares
     app.middleware("http")(add_process_time_header)
@@ -131,9 +149,11 @@ def configurate_app(app: FastAPI, settings: Settings | None = None):
 
     # Include routers
     from src.api import health, metrics
+    from src.api.v1 import v1_router
 
     app.include_router(health.router)
     app.include_router(metrics.router)
+    app.include_router(v1_router)
 
     return app
 
