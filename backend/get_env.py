@@ -7,6 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import ClassVar
+from urllib.parse import urlparse
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
@@ -119,6 +120,17 @@ class BaseDataclass:
         }
 
 
+def generate_login(*args, prefix: str = "shopper", length: int = 6) -> str:
+    suffix = "".join(
+        secrets.choice("abcdefghijklmnopqrstuvwxyz0123456789") for _ in range(length)
+    )
+    return f"{prefix}_{suffix}"
+
+
+def generate_password(length: int = 16, *args) -> str:
+    return secrets.token_urlsafe(length)
+
+
 def generate_eddsa_private_key(*args) -> str:
     seed = secrets.token_bytes(32)
     return seed.hex()
@@ -147,20 +159,26 @@ class Configuration(BaseDataclass):
 
     fields_autogenerate: dict[str, Callable[..., str]] = field(
         default_factory=lambda: {
+            "POSTGRES_USER": generate_login,
+            "POSTGRES_PASSWORD": generate_password,
+            "GRAFANA_ADMIN_PASSWORD": generate_password,
             "PEPPER": secrets.token_hex,
             "JWT_PRIVATE_KEY": generate_eddsa_private_key,
         }
     )
     env_fields: dict[str, str] = field(
         default_factory=lambda: {
-            "DB_URL": (
-                "postgresql+asyncpg://shopperflox:shopperflox@localhost:5432/shopperflox"
-            ),
+            "POSTGRES_DB": "shopperflox",
+            "POSTGRES_USER": "",
+            "POSTGRES_PASSWORD": "",
+            "DB_URL": "",
             "PEPPER": "",
             "REDIS_URL": "redis://localhost:6379/0",
             "JWT_ALGORITHM": "EdDSA",
             "JWT_PRIVATE_KEY": "",
             "JWT_PUBLIC_KEY": "",
+            "GRAFANA_ADMIN_USER": "admin",
+            "GRAFANA_ADMIN_PASSWORD": "",
         }
     )
     existing_conf: dict[str, str] = field(default_factory=dict)
@@ -168,12 +186,26 @@ class Configuration(BaseDataclass):
 
 def conf_from_exist_file(file: Path):
     _conf = {}
-    for line in file.read_text().split("\n"):
+    for line in file.read_text(encoding="utf-8").split("\n"):
         if line.strip().startswith("#") or "=" not in line:
             continue
 
         field_name, value = map(str.strip, line.strip().split("=", 1))
         _conf[field_name] = value
+
+    # Extract user/password from DB_URL if not explicitly present
+    if "DB_URL" in _conf and "@" in _conf["DB_URL"]:
+        try:
+            parsed = urlparse(_conf["DB_URL"])
+            if parsed.username and "POSTGRES_USER" not in _conf:
+                _conf["POSTGRES_USER"] = parsed.username
+            if parsed.password and "POSTGRES_PASSWORD" not in _conf:
+                _conf["POSTGRES_PASSWORD"] = parsed.password
+            if parsed.path.lstrip("/") and "POSTGRES_DB" not in _conf:
+                _conf["POSTGRES_DB"] = parsed.path.lstrip("/")
+        except Exception:
+            pass
+
     return _conf
 
 
@@ -202,8 +234,15 @@ def write_env(env_payload: dict[str, str], path: Path):
         f"# FILE GENERATED: {datetime.now().strftime('%H:%M:%S %d-%m-%Y')}",
         *(f"{fld}={val}" for fld, val in env_payload.items()),
     ]
+    content = "\n".join(lines) + "\n"
 
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    path.write_text(content, encoding="utf-8")
+
+    # Mirror to root .env if writing backend/.env for docker compose
+    if path.parent.name == "backend":
+        root_env = path.parent.parent / path.name
+        if root_env.parent.exists():
+            root_env.write_text(content, encoding="utf-8")
 
 
 cons = Console()
@@ -259,8 +298,39 @@ def main(args: list):
                 new_env[fld] = derive_eddsa_public_key(priv_key)
                 continue
 
+        if fld == "DB_URL":
+            pg_user = (
+                new_env.get("POSTGRES_USER")
+                or conf.existing_conf.get("POSTGRES_USER")
+                or "shopperflox"
+            )
+            pg_pass = (
+                new_env.get("POSTGRES_PASSWORD")
+                or conf.existing_conf.get("POSTGRES_PASSWORD")
+                or "shopperflox"
+            )
+            pg_db = (
+                new_env.get("POSTGRES_DB")
+                or conf.existing_conf.get("POSTGRES_DB")
+                or "shopperflox"
+            )
+            generated_db_url = (
+                f"postgresql+asyncpg://{pg_user}:{pg_pass}@localhost:5432/{pg_db}"
+            )
+            if conf.AUTO:
+                new_env[fld] = generated_db_url
+            else:
+                new_env[fld] = cons.prompt_def(f"({i}) {fld}", default=generated_db_url)
+                i += 1
+            continue
+
         if fld in conf.fields_autogenerate:
-            new_env[fld] = conf.fields_autogenerate[fld](16)
+            gen_val = conf.fields_autogenerate[fld](16)
+            if conf.AUTO:
+                new_env[fld] = gen_val
+            else:
+                new_env[fld] = cons.prompt_def(f"({i}) {fld}", default=gen_val)
+                i += 1
             continue
 
         if conf.AUTO:
