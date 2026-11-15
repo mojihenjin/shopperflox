@@ -1,4 +1,8 @@
-from .security import PasswordHasherProtocol, TokenProviderProtocol
+from .security import (
+    PasswordHasherProtocol,
+    TokenBlacklistProtocol,
+    TokenProviderProtocol,
+)
 from .uow import UnitOfWorkProtocol
 from .user import (
     UserAddressRepositoryProtocol,
@@ -10,6 +14,7 @@ from .user import (
 
 __all__ = [
     "PasswordHasherProtocol",
+    "TokenBlacklistProtocol",
     "TokenProviderProtocol",
     "UnitOfWorkProtocol",
     "UserAddressRepositoryProtocol",

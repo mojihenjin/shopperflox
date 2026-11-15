@@ -20,11 +20,13 @@ from src.middlewares import add_process_time_header
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from src.infrastructure.db import async_session_maker
+    from src.infrastructure.redis import RedisTokenBlacklist
     from src.infrastructure.security import Argon2PasswordHasher, JwtTokenProvider
 
     app.state.async_session_factory = async_session_maker
     app.state.password_hasher = Argon2PasswordHasher()
     app.state.token_provider = JwtTokenProvider()
+    app.state.token_blacklist = RedisTokenBlacklist()
 
     task = asyncio.create_task(monitor_event_loop_lag())
     try:
@@ -33,6 +35,11 @@ async def lifespan(app: FastAPI):
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await task
+        if hasattr(app.state, "token_blacklist") and hasattr(
+            app.state.token_blacklist, "aclose"
+        ):
+            with contextlib.suppress(Exception):
+                await app.state.token_blacklist.aclose()
 
 
 def create_app(settings: Settings):
@@ -57,6 +64,7 @@ def configurate_app(app: FastAPI, settings: Settings | None = None):
 
     # Initialize state singletons fallback
     from src.infrastructure.db import async_session_maker
+    from src.infrastructure.redis import RedisTokenBlacklist
     from src.infrastructure.security import Argon2PasswordHasher, JwtTokenProvider
 
     if not hasattr(app.state, "async_session_factory"):
@@ -65,6 +73,8 @@ def configurate_app(app: FastAPI, settings: Settings | None = None):
         app.state.password_hasher = Argon2PasswordHasher()
     if not hasattr(app.state, "token_provider"):
         app.state.token_provider = JwtTokenProvider()
+    if not hasattr(app.state, "token_blacklist"):
+        app.state.token_blacklist = RedisTokenBlacklist()
 
     # Middlewares
     app.middleware("http")(add_process_time_header)

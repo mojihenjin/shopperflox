@@ -7,11 +7,13 @@ from src.application.services import AuthService, UserModerationService, UserSer
 from src.domain.exceptions import AuthenticationError, PermissionDeniedError
 from src.domain.interfaces import (
     PasswordHasherProtocol,
+    TokenBlacklistProtocol,
     TokenProviderProtocol,
     UserUnitOfWorkProtocol,
 )
 from src.domain.models import UserDomain
 from src.infrastructure.db import SqlAlchemyUserUnitOfWork, async_session_maker
+from src.infrastructure.redis import RedisTokenBlacklist
 from src.infrastructure.security import Argon2PasswordHasher, JwtTokenProvider
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -38,12 +40,26 @@ def get_token_provider(request: Request) -> TokenProviderProtocol:
     return provider
 
 
+def get_token_blacklist(request: Request) -> TokenBlacklistProtocol:
+    blacklist = getattr(request.app.state, "token_blacklist", None)
+    if blacklist is None:
+        blacklist = RedisTokenBlacklist()
+        request.app.state.token_blacklist = blacklist
+    return blacklist
+
+
 def get_auth_service(
     uow: UserUnitOfWorkProtocol = Depends(get_user_uow),
     hasher: PasswordHasherProtocol = Depends(get_password_hasher),
     token_provider: TokenProviderProtocol = Depends(get_token_provider),
+    blacklist: TokenBlacklistProtocol = Depends(get_token_blacklist),
 ) -> AuthService:
-    return AuthService(uow=uow, hasher=hasher, token_provider=token_provider)
+    return AuthService(
+        uow=uow,
+        hasher=hasher,
+        token_provider=token_provider,
+        blacklist=blacklist,
+    )
 
 
 def get_user_service(

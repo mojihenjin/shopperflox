@@ -27,8 +27,11 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-shopperflox}:${POSTGRES_PASSWORD:-shopperflox}@postgres:5432/${POSTGRES_DB:-shopperflox}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health/live\")'"]
@@ -57,6 +60,22 @@ services:
       retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - shopperflox-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: shopperflox-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
     networks:
       - shopperflox-network
 
@@ -107,6 +126,7 @@ volumes:
   prometheus_data:
   grafana_data:
   postgres_data:
+  redis_data:
 
 networks:
   shopperflox-network:

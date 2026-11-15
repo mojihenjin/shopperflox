@@ -65,3 +65,12 @@ async def refresh(
             refresh_token=refresh_token,
         )
     )
+
+
+@router.post("/logout", response_model=BaseResponse[None])
+async def logout(
+    req: RefreshTokenRequest,
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    await auth_service.logout(refresh_token=req.refresh_token)
+    return ResponseGenerator.answer(body=None, status_code=200)
