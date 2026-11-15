@@ -77,7 +77,7 @@ async def test_login_by_login_success(uow, hasher, token_provider):
 
     assert user.id == registered_user.id
     assert access_token.startswith(f"access_{user.id}")
-    assert refresh_token == f"refresh_{user.id}"
+    assert refresh_token.startswith(f"refresh_{user.id}")
 
 
 @pytest.mark.anyio
@@ -173,3 +173,48 @@ async def test_verify_access(uow, hasher, token_provider):
     assert (
         await service.verify_access(user_id=user.id, required_permission="super:action")
     ).id == user.id
+
+
+@pytest.mark.anyio
+async def test_refresh_tokens_with_rotation_and_blacklist(
+    uow, hasher, token_provider, blacklist
+):
+    service = AuthService(
+        uow=uow,
+        hasher=hasher,
+        token_provider=token_provider,
+        blacklist=blacklist,
+    )
+    await service.register(login="refresh_user", password="password123")
+    _, _, refresh_token = await service.login(
+        identifier="refresh_user", password="password123"
+    )
+
+    # First refresh succeeds and rotates
+    _, _, new_refresh = await service.refresh_tokens(refresh_token=refresh_token)
+    assert new_refresh != refresh_token
+
+    # Re-using the old refresh token must be rejected because its jti is blacklisted
+    with pytest.raises(AuthenticationError, match="Token has been revoked"):
+        await service.refresh_tokens(refresh_token=refresh_token)
+
+
+@pytest.mark.anyio
+async def test_logout_revokes_token(uow, hasher, token_provider, blacklist):
+    service = AuthService(
+        uow=uow,
+        hasher=hasher,
+        token_provider=token_provider,
+        blacklist=blacklist,
+    )
+    await service.register(login="logout_user", password="password123")
+    _, _, refresh_token = await service.login(
+        identifier="logout_user", password="password123"
+    )
+
+    # Logout revokes refresh token
+    await service.logout(refresh_token=refresh_token)
+
+    # Attempting to refresh with logged out token fails
+    with pytest.raises(AuthenticationError, match="Token has been revoked"):
+        await service.refresh_tokens(refresh_token=refresh_token)

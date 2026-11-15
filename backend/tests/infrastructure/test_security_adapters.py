@@ -23,6 +23,7 @@ def test_argon2_password_hasher_implements_protocol():
     hasher: PasswordHasherProtocol = Argon2PasswordHasher()
     assert callable(hasher.hash)
     assert callable(hasher.verify)
+    assert callable(hasher.verify_dummy)
 
 
 def test_argon2_hash_and_verify():
@@ -35,6 +36,25 @@ def test_argon2_hash_and_verify():
 
     assert hasher.verify(password, hashed) is True
     assert hasher.verify("WrongPassword", hashed) is False
+
+
+def test_argon2_pepper_isolation():
+    hasher1 = Argon2PasswordHasher(pepper="pepper-one")
+    hasher2 = Argon2PasswordHasher(pepper="pepper-two")
+    password = "SuperSecretPassword123!"
+
+    hash1 = hasher1.hash(password)
+    hash2 = hasher2.hash(password)
+    assert hash1 != hash2
+
+    assert hasher1.verify(password, hash1) is True
+    assert hasher2.verify(password, hash1) is False
+
+
+@pytest.mark.anyio
+async def test_argon2_verify_dummy():
+    hasher = Argon2PasswordHasher()
+    await hasher.verify_dummy("any_password")
 
 
 def test_argon2_corrupted_hash_returns_false():
@@ -68,11 +88,13 @@ def test_jwt_eddsa_default_from_settings():
     assert payload["sub"] == str(user_id)
     assert payload["permissions"] == permissions
     assert payload["type"] == "access"
+    assert "jti" in payload
 
     refresh_token = provider.create_refresh_token(user_id)
     payload_refresh = provider.decode_token(refresh_token, expected_type="refresh")
     assert payload_refresh["sub"] == str(user_id)
     assert payload_refresh["type"] == "refresh"
+    assert "jti" in payload_refresh
 
 
 def test_jwt_eddsa_hex_keys():
@@ -202,3 +224,21 @@ def test_jwt_symmetric_hs256_backward_compatibility():
     payload = provider.decode_token(token, expected_type="access")
     assert payload["sub"] == str(user_id)
     assert payload["permissions"] == ["test"]
+
+
+def test_jwt_fail_fast_when_missing_keys(monkeypatch):
+    from src.core import settings
+
+    monkeypatch.setattr(settings, "jwt_private_key", "")
+    monkeypatch.setattr(settings, "jwt_public_key", "")
+    monkeypatch.setattr(settings, "jwt_secret_key", "")
+
+    with pytest.raises(
+        RuntimeError, match="JWT_PRIVATE_KEY is required but not configured"
+    ):
+        JwtTokenProvider(algorithm="EdDSA")
+
+    with pytest.raises(
+        RuntimeError, match="JWT secret key is required but not configured"
+    ):
+        JwtTokenProvider(algorithm="HS256")

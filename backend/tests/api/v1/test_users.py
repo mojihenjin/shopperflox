@@ -101,3 +101,64 @@ async def test_users_address_management_and_no_leak(client):
     # Subsequent access with old token must return 401
     deleted_me_resp = await client.get("/api/v1/users/me", headers=headers)
     assert deleted_me_resp.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_users_address_limit_and_pagination(client):
+    # Register & login
+    await client.post(
+        "/api/v1/auth/register",
+        json={
+            "login": "limit_user",
+            "password": "Password123!",
+            "email": "limit@example.com",
+        },
+    )
+    login_resp = await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": "limit_user", "password": "Password123!"},
+    )
+    access_token = login_resp.json()["body"]["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Add 20 addresses (the max limit)
+    for i in range(20):
+        resp = await client.post(
+            "/api/v1/users/me/addresses",
+            headers=headers,
+            json={
+                "city": f"City_{i}",
+                "street": f"Street_{i}",
+                "postal_code": f"1000{i:02d}",
+            },
+        )
+        assert resp.status_code == 201, f"Address {i} failed: {resp.text}"
+
+    # Attempting to add 21st address must fail with 400 (DomainValidationError)
+    overflow_resp = await client.post(
+        "/api/v1/users/me/addresses",
+        headers=headers,
+        json={
+            "city": "Overflow City",
+            "street": "Overflow Street",
+            "postal_code": "99999",
+        },
+    )
+    assert overflow_resp.status_code == 400
+    assert "User cannot have more than 20 addresses" in overflow_resp.text
+
+    # Test pagination: limit 5, offset 0 -> 5 items
+    paged_resp1 = await client.get(
+        "/api/v1/users/me/addresses?limit=5&offset=0",
+        headers=headers,
+    )
+    assert paged_resp1.status_code == 200
+    assert len(paged_resp1.json()["body"]) == 5
+
+    # Test pagination: limit 10, offset 15 -> remaining 5 items
+    paged_resp2 = await client.get(
+        "/api/v1/users/me/addresses?limit=10&offset=15",
+        headers=headers,
+    )
+    assert paged_resp2.status_code == 200
+    assert len(paged_resp2.json()["body"]) == 5

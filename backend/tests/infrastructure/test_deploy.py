@@ -18,6 +18,7 @@ def test_nginx_conf_structure():
     assert "worker_processes auto;" in content
     assert "server_tokens off;" in content
     assert "client_max_body_size 15M;" in content
+    assert "auth_limit" in content
     assert "include /etc/nginx/conf.d/*.conf;" in content
 
 
@@ -31,6 +32,11 @@ def test_nginx_shopperflox_conf_routes_and_security():
     # Upstream check
     assert "upstream backend_upstream" in content
     assert "server backend:8000;" in content
+
+    # Rate-limited auth location
+    assert "location ~ ^/api/v1/auth/(login|register)" in content
+    assert "limit_req zone=auth_limit" in content
+    assert "limit_req_status 429;" in content
 
     # API route
     assert "location /api" in content
@@ -64,10 +70,12 @@ def test_docker_compose_services():
     assert "nginx:" in content
     assert "backend:" in content
     assert "postgres:" in content
+    assert "redis:" in content
     assert "prometheus:" in content
     assert "grafana:" in content
     assert '"80:80"' in content
     assert '"127.0.0.1:5432:5432"' in content
+    assert '"127.0.0.1:6379:6379"' in content
     assert '"127.0.0.1:9090:9090"' in content
     assert '"127.0.0.1:3000:3000"' in content
     assert "--storage.tsdb.retention.time=15d" in content
@@ -75,3 +83,4 @@ def test_docker_compose_services():
     assert "env_file:" in content
     assert "POSTGRES_USER" in content
     assert "POSTGRES_PASSWORD" in content
+    assert "redis_data:" in content

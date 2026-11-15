@@ -4,6 +4,7 @@ from typing import Any, Self
 from uuid import UUID
 
 import pytest
+from uuid6 import uuid7
 
 from src.domain.exceptions import AuthenticationError
 from src.domain.interfaces import (
@@ -85,8 +86,11 @@ class InMemoryUserAddressRepository:
     async def get_by_id(self, address_id: UUID) -> UserAddressDomain | None:
         return self.store.get(address_id)
 
-    async def list_by_user_id(self, user_id: UUID) -> list[UserAddressDomain]:
-        return [a for a in self.store.values() if a.user_id == user_id]
+    async def list_by_user_id(
+        self, user_id: UUID, *, limit: int = 50, offset: int = 0
+    ) -> list[UserAddressDomain]:
+        all_addrs = [a for a in self.store.values() if a.user_id == user_id]
+        return all_addrs[offset : offset + limit]
 
     async def get_default_by_user_id(self, user_id: UUID) -> UserAddressDomain | None:
         for a in self.store.values():
@@ -120,6 +124,15 @@ class InMemoryUserBanRepository:
             if ban.user_id == user_id and ban.is_active(at=at):
                 return ban
         return None
+
+    async def list_active_by_user_id(
+        self, user_id: UUID, at: datetime | None = None
+    ) -> list[UserBanDomain]:
+        return [
+            b
+            for b in self.store.values()
+            if b.user_id == user_id and b.is_active(at=at)
+        ]
 
     async def list_by_user_id(self, user_id: UUID) -> list[UserBanDomain]:
         return [b for b in self.store.values() if b.user_id == user_id]
@@ -170,19 +183,50 @@ class FakePasswordHasher:
         self.verify_call_count += 1
         return hashed_password == f"hashed_{plain_password}"
 
+    async def verify_dummy(self, plain_password: str) -> None:
+        self.verify_call_count += 1
+
 
 class FakeTokenProvider:
     def create_access_token(self, user_id: UUID, permissions: list[str]) -> str:
         return f"access_{user_id}_{','.join(permissions)}"
 
     def create_refresh_token(self, user_id: UUID) -> str:
-        return f"refresh_{user_id}"
+        return f"refresh_{user_id}_jti_{uuid7()}"
 
-    def decode_token(self, token: str) -> dict[str, Any]:
+    def decode_token(
+        self, token: str, expected_type: str | None = "access"
+    ) -> dict[str, Any]:
+        parts = token.split("_")
+        if expected_type == "refresh":
+            if not token.startswith("refresh_"):
+                raise AuthenticationError("Invalid token type")
+            jti = parts[3] if len(parts) > 3 else f"jti_{parts[1]}"
+            return {
+                "sub": parts[1],
+                "type": "refresh",
+                "jti": jti,
+                "exp": 9999999999,
+            }
+
         if not token.startswith("access_"):
             raise AuthenticationError("Invalid token")
-        parts = token.split("_")
-        return {"sub": parts[1], "permissions": parts[2].split(",") if parts[2] else []}
+        return {
+            "sub": parts[1],
+            "permissions": parts[2].split(",") if parts[2] else [],
+            "type": "access",
+        }
+
+
+class FakeTokenBlacklist:
+    def __init__(self) -> None:
+        self.revoked_tokens: set[str] = set()
+
+    async def is_revoked(self, jti: str) -> bool:
+        return jti in self.revoked_tokens
+
+    async def revoke(self, jti: str, ttl_seconds: int) -> None:
+        self.revoked_tokens.add(jti)
 
 
 @pytest.fixture
@@ -193,6 +237,11 @@ def uow():
 @pytest.fixture
 def hasher():
     return FakePasswordHasher()
+
+
+@pytest.fixture
+def blacklist():
+    return FakeTokenBlacklist()
 
 
 @pytest.fixture

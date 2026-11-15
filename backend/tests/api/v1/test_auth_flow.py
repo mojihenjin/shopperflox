@@ -88,3 +88,23 @@ async def test_full_auth_flow(client):
         "/api/v1/auth/refresh", json={"refresh_token": new_access_token}
     )
     assert invalid_refresh_resp.status_code == 401
+
+    # 8. Attempt to REUSE the old refresh_token (SEC-01 blacklist check, expect 401)
+    reuse_resp = await client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": refresh_token}
+    )
+    assert reuse_resp.status_code == 401
+    assert "revoked" in reuse_resp.json()["errors"][0]["detail"].lower()
+
+    # 9. Logout using new_refresh_token
+    logout_resp = await client.post(
+        "/api/v1/auth/logout", json={"refresh_token": new_refresh_token}
+    )
+    assert logout_resp.status_code == 200
+
+    # 10. Attempt to use new_refresh_token after logout (expect 401)
+    post_logout_refresh = await client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": new_refresh_token}
+    )
+    assert post_logout_refresh.status_code == 401
+    assert "revoked" in post_logout_refresh.json()["errors"][0]["detail"].lower()
