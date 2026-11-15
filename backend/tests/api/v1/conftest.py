@@ -4,10 +4,17 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from main import app
-from src.api.dependencies import get_token_blacklist, get_user_uow
+from src.api.dependencies import (
+    get_catalog_uow,
+    get_token_blacklist,
+    get_user_uow,
+)
 from src.infrastructure.db.models import Base
 from src.infrastructure.db.session import create_sessionmaker
-from src.infrastructure.db.uow import SqlAlchemyUserUnitOfWork
+from src.infrastructure.db.uow import (
+    SqlAlchemyCatalogUnitOfWork,
+    SqlAlchemyUserUnitOfWork,
+)
 
 
 class InMemoryTokenBlacklist:
@@ -37,7 +44,11 @@ async def client():
     def _get_test_uow():
         return SqlAlchemyUserUnitOfWork(session_factory=factory)
 
+    def _get_test_catalog_uow():
+        return SqlAlchemyCatalogUnitOfWork(session_factory=factory)
+
     app.dependency_overrides[get_user_uow] = _get_test_uow
+    app.dependency_overrides[get_catalog_uow] = _get_test_catalog_uow
     app.dependency_overrides[get_token_blacklist] = lambda: blacklist
 
     async with AsyncClient(
@@ -46,5 +57,6 @@ async def client():
         yield ac
 
     app.dependency_overrides.pop(get_user_uow, None)
+    app.dependency_overrides.pop(get_catalog_uow, None)
     app.dependency_overrides.pop(get_token_blacklist, None)
     await engine.dispose()

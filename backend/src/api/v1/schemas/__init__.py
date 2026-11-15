@@ -4,6 +4,20 @@ from .auth import (
     RegisterRequest,
     TokenPairResponse,
 )
+from .catalog import (
+    CategoryCreateRequest,
+    CategoryResponse,
+    CategoryUpdateRequest,
+    ProductCreateRequest,
+    ProductDetailResponse,
+    ProductImageCreateRequest,
+    ProductImageResponse,
+    ProductResponse,
+    ProductUpdateRequest,
+    ProductVariantCreateRequest,
+    ProductVariantResponse,
+    ProductVariantUpdateRequest,
+)
 from .moderation import (
     BanUserRequest,
     SetPermissionsRequest,
@@ -20,8 +34,20 @@ from .users import (
 
 __all__ = [
     "BanUserRequest",
+    "CategoryCreateRequest",
+    "CategoryResponse",
+    "CategoryUpdateRequest",
     "CreateAddressRequest",
     "LoginRequest",
+    "ProductCreateRequest",
+    "ProductDetailResponse",
+    "ProductImageCreateRequest",
+    "ProductImageResponse",
+    "ProductResponse",
+    "ProductUpdateRequest",
+    "ProductVariantCreateRequest",
+    "ProductVariantResponse",
+    "ProductVariantUpdateRequest",
     "RefreshTokenRequest",
     "RegisterRequest",
     "SetPermissionsRequest",

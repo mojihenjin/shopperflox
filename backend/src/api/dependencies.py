@@ -3,16 +3,27 @@ from uuid import UUID
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from src.application.services import AuthService, UserModerationService, UserService
+from src.application.services import (
+    AuthService,
+    CatalogService,
+    FavoriteService,
+    UserModerationService,
+    UserService,
+)
 from src.domain.exceptions import AuthenticationError, PermissionDeniedError
 from src.domain.interfaces import (
+    CatalogUnitOfWorkProtocol,
     PasswordHasherProtocol,
     TokenBlacklistProtocol,
     TokenProviderProtocol,
     UserUnitOfWorkProtocol,
 )
 from src.domain.models import UserDomain
-from src.infrastructure.db import SqlAlchemyUserUnitOfWork, async_session_maker
+from src.infrastructure.db import (
+    SqlAlchemyCatalogUnitOfWork,
+    SqlAlchemyUserUnitOfWork,
+    async_session_maker,
+)
 from src.infrastructure.redis import RedisTokenBlacklist
 from src.infrastructure.security import Argon2PasswordHasher, JwtTokenProvider
 
@@ -72,6 +83,23 @@ def get_moderation_service(
     uow: UserUnitOfWorkProtocol = Depends(get_user_uow),
 ) -> UserModerationService:
     return UserModerationService(uow=uow)
+
+
+def get_catalog_uow(request: Request) -> CatalogUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyCatalogUnitOfWork(session_factory=factory)
+
+
+def get_catalog_service(
+    uow: CatalogUnitOfWorkProtocol = Depends(get_catalog_uow),
+) -> CatalogService:
+    return CatalogService(uow=uow)
+
+
+def get_favorite_service(
+    uow: CatalogUnitOfWorkProtocol = Depends(get_catalog_uow),
+) -> FavoriteService:
+    return FavoriteService(uow=uow)
 
 
 async def get_current_user(
