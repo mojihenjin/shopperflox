@@ -139,9 +139,32 @@ class Settings(BaseSettings):
     )
 
     @model_validator(mode="after")
-    def validate_enduro_not_in_production(self) -> Self:
-        if self.app_env == "production" and self.enduro_attack:
-            raise ValueError(
-                "ENDURO_ATTACK mode is strictly prohibited when APP_ENV is 'production'"
-            )
+    def validate_production_configuration(self) -> Self:
+        if self.app_env == "production":
+            if self.enduro_attack:
+                raise ValueError(
+                    "ENDURO_ATTACK mode is strictly prohibited when APP_ENV is 'production'"
+                )
+            if (
+                not self.webhook_secret
+                or self.webhook_secret == "dev_webhook_secret"
+                or len(self.webhook_secret) < 32
+            ):
+                raise ValueError(
+                    "WEBHOOK_SECRET must be at least 32 characters and cannot use default value in production"
+                )
+            if self.jwt_algorithm.startswith("HS"):
+                if (
+                    not self.jwt_secret_key
+                    or self.jwt_secret_key == "insecure-secret-key-change-me"
+                    or len(self.jwt_secret_key) < 32
+                ):
+                    raise ValueError(
+                        "JWT_SECRET_KEY must be at least 32 characters and cannot use default value in production"
+                    )
+            else:
+                if not self.jwt_private_key:
+                    raise ValueError(
+                        "JWT_PRIVATE_KEY must be configured in production when using asymmetric JWT algorithms"
+                    )
         return self
