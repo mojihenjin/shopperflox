@@ -84,6 +84,7 @@ def configurate_app(app: FastAPI, settings: Settings | None = None):
     from src.domain.exceptions import (
         AuthenticationError,
         DomainError,
+        DomainValidationError,
         EntityAlreadyExistsError,
         EntityNotFoundError,
         InvalidStateTransitionError,
@@ -126,6 +127,15 @@ def configurate_app(app: FastAPI, settings: Settings | None = None):
     ):
         return ResponseGenerator.json_error(
             status_code=409,
+            errors=[{"detail": exc.message}],
+        )
+
+    @app.exception_handler(DomainValidationError)
+    async def domain_validation_error_handler(
+        request: Request, exc: DomainValidationError
+    ):
+        return ResponseGenerator.json_error(
+            status_code=422,
             errors=[{"detail": exc.message}],
         )
 

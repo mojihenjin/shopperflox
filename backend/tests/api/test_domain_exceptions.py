@@ -20,11 +20,27 @@ def test_api_handles_domain_validation_error():
     client = TestClient(app)
     response = client.get("/test-domain-validation-error")
 
+    assert response.status_code == 422
+    data = response.json()
+    assert data["status_code"] == 422
+    assert data["body"] is None
+    assert data["errors"] == [{"detail": "Invalid entity field value"}]
+    assert "X-Process-Time" in response.headers
+
+
+def test_api_handles_generic_domain_error():
+    @app.get("/test-generic-domain-error", include_in_schema=False)
+    async def trigger_domain_error():
+        raise DomainError("General domain rule violated")
+
+    client = TestClient(app)
+    response = client.get("/test-generic-domain-error")
+
     assert response.status_code == 400
     data = response.json()
     assert data["status_code"] == 400
     assert data["body"] is None
-    assert data["errors"] == [{"detail": "Invalid entity field value"}]
+    assert data["errors"] == [{"detail": "General domain rule violated"}]
     assert "X-Process-Time" in response.headers
 
 
@@ -105,20 +121,4 @@ def test_api_handles_entity_already_exists_error():
     assert data["status_code"] == 409
     assert data["body"] is None
     assert data["errors"] == [{"detail": "Login 'alice' already registered"}]
-    assert "X-Process-Time" in response.headers
-
-
-def test_api_handles_generic_domain_error():
-    @app.get("/test-generic-domain-error", include_in_schema=False)
-    async def trigger_domain_error():
-        raise DomainError("Generic domain error")
-
-    client = TestClient(app)
-    response = client.get("/test-generic-domain-error")
-
-    assert response.status_code == 400
-    data = response.json()
-    assert data["status_code"] == 400
-    assert data["body"] is None
-    assert data["errors"] == [{"detail": "Generic domain error"}]
     assert "X-Process-Time" in response.headers

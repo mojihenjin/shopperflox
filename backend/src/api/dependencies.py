@@ -5,22 +5,33 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.application.services import (
     AuthService,
+    CartService,
     CatalogService,
     FavoriteService,
+    OrderService,
+    PaymentService,
+    ReviewService,
     UserModerationService,
     UserService,
 )
+from src.core import settings
 from src.domain.exceptions import AuthenticationError, PermissionDeniedError
 from src.domain.interfaces import (
+    CartUnitOfWorkProtocol,
     CatalogUnitOfWorkProtocol,
+    OrderUnitOfWorkProtocol,
     PasswordHasherProtocol,
+    ReviewUnitOfWorkProtocol,
     TokenBlacklistProtocol,
     TokenProviderProtocol,
     UserUnitOfWorkProtocol,
 )
 from src.domain.models import UserDomain
 from src.infrastructure.db import (
+    SqlAlchemyCartUnitOfWork,
     SqlAlchemyCatalogUnitOfWork,
+    SqlAlchemyOrderUnitOfWork,
+    SqlAlchemyReviewUnitOfWork,
     SqlAlchemyUserUnitOfWork,
     async_session_maker,
 )
@@ -100,6 +111,45 @@ def get_favorite_service(
     uow: CatalogUnitOfWorkProtocol = Depends(get_catalog_uow),
 ) -> FavoriteService:
     return FavoriteService(uow=uow)
+
+
+def get_cart_uow(request: Request) -> CartUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyCartUnitOfWork(session_factory=factory)
+
+
+def get_cart_service(
+    uow: CartUnitOfWorkProtocol = Depends(get_cart_uow),
+) -> CartService:
+    return CartService(uow=uow)
+
+
+def get_order_uow(request: Request) -> OrderUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyOrderUnitOfWork(session_factory=factory)
+
+
+def get_order_service(
+    uow: OrderUnitOfWorkProtocol = Depends(get_order_uow),
+) -> OrderService:
+    return OrderService(uow=uow)
+
+
+def get_payment_service(
+    uow: OrderUnitOfWorkProtocol = Depends(get_order_uow),
+) -> PaymentService:
+    return PaymentService(uow=uow, webhook_secret=settings.webhook_secret)
+
+
+def get_review_uow(request: Request) -> ReviewUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyReviewUnitOfWork(session_factory=factory)
+
+
+def get_review_service(
+    uow: ReviewUnitOfWorkProtocol = Depends(get_review_uow),
+) -> ReviewService:
+    return ReviewService(uow=uow)
 
 
 async def get_current_user(

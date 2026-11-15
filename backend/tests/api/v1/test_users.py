@@ -134,7 +134,7 @@ async def test_users_address_limit_and_pagination(client):
         )
         assert resp.status_code == 201, f"Address {i} failed: {resp.text}"
 
-    # Attempting to add 21st address must fail with 400 (DomainValidationError)
+    # Attempting to add 21st address must fail with 422 (DomainValidationError)
     overflow_resp = await client.post(
         "/api/v1/users/me/addresses",
         headers=headers,
@@ -144,7 +144,7 @@ async def test_users_address_limit_and_pagination(client):
             "postal_code": "99999",
         },
     )
-    assert overflow_resp.status_code == 400
+    assert overflow_resp.status_code == 422
     assert "User cannot have more than 20 addresses" in overflow_resp.text
 
     # Test pagination: limit 5, offset 0 -> 5 items

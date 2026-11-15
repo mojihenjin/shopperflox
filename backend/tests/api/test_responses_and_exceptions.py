@@ -16,9 +16,9 @@ def test_response_generator_length_calculation():
     resp_set = ResponseGenerator.answer(body={"a", "b"})
     assert resp_set.metadata["length"] == 2
 
-    # dict and str do NOT get length
+    # dict has length of keys
     resp_dict = ResponseGenerator.answer(body={"key": "value"})
-    assert resp_dict.metadata["length"] == 0
+    assert resp_dict.metadata["length"] == 1
 
     resp_str = ResponseGenerator.answer(body="string")
     assert resp_str.metadata["length"] == 0
