@@ -1,6 +1,11 @@
 from fastapi import APIRouter, Depends, Response, status
+from fastapi.security import HTTPAuthorizationCredentials
 
-from src.api.dependencies import get_auth_service, get_current_user
+from src.api.dependencies import (
+    bearer_scheme,
+    get_auth_service,
+    get_current_user,
+)
 from src.api.v1.schemas import (
     LoginRequest,
     RefreshTokenRequest,
@@ -138,7 +143,12 @@ async def refresh(
 @router.post("/logout", response_model=BaseResponse[None])
 async def logout(
     req: RefreshTokenRequest,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     auth_service: AuthService = Depends(get_auth_service),
 ):
-    await auth_service.logout(refresh_token=req.refresh_token)
+    access_token = credentials.credentials if credentials else None
+    await auth_service.logout(
+        refresh_token=req.refresh_token,
+        access_token=access_token,
+    )
     return ResponseGenerator.answer(body=None, status_code=200)

@@ -1,3 +1,4 @@
+import asyncio
 import hmac
 import secrets
 from uuid import UUID
@@ -148,7 +149,10 @@ class AuthService:
                 await self.hasher.verify_dummy(password)
                 raise AuthenticationError("Invalid credentials")
 
-            if not self.hasher.verify(password, user.password_hash):
+            is_valid = await asyncio.to_thread(
+                self.hasher.verify, password, user.password_hash
+            )
+            if not is_valid:
                 raise AuthenticationError("Invalid credentials")
 
             ban = await self.uow.bans.get_active_by_user_id(user.id)
@@ -188,7 +192,9 @@ class AuthService:
         new_refresh = self.token_provider.create_refresh_token(user.id)
         return user, new_access, new_refresh
 
-    async def logout(self, *, refresh_token: str) -> None:
+    async def logout(
+        self, *, refresh_token: str, access_token: str | None = None
+    ) -> None:
         payload = self.token_provider.decode_token(
             refresh_token, expected_type="refresh"
         )
@@ -197,6 +203,19 @@ class AuthService:
             exp = payload.get("exp", 0)
             ttl = max(int(exp - factory_now().timestamp()), 1)
             await self.blacklist.revoke(jti, ttl_seconds=ttl)
+
+        if access_token and self.blacklist:
+            try:
+                acc_payload = self.token_provider.decode_token(
+                    access_token, expected_type="access"
+                )
+                acc_jti = acc_payload.get("jti")
+                if acc_jti:
+                    acc_exp = acc_payload.get("exp", 0)
+                    acc_ttl = max(int(acc_exp - factory_now().timestamp()), 1)
+                    await self.blacklist.revoke(acc_jti, ttl_seconds=acc_ttl)
+            except Exception:
+                pass
 
     async def verify_access(
         self,

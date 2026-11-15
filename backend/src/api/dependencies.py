@@ -208,6 +208,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     auth_service: AuthService = Depends(get_auth_service),
     token_provider: TokenProviderProtocol = Depends(get_token_provider),
+    token_blacklist: TokenBlacklistProtocol = Depends(get_token_blacklist),
 ) -> UserDomain:
     if not credentials or not credentials.credentials:
         raise AuthenticationError("Missing bearer token")
@@ -215,6 +216,10 @@ async def get_current_user(
     payload = token_provider.decode_token(
         credentials.credentials, expected_type="access"
     )
+    jti = payload.get("jti")
+    if jti and await token_blacklist.is_revoked(jti):
+        raise AuthenticationError("Token has been revoked")
+
     user_id_raw = payload.get("sub")
     if not user_id_raw:
         raise AuthenticationError("Invalid token payload: missing sub")

@@ -112,6 +112,14 @@ class UserModerationService:
             ):
                 raise PermissionDeniedError("Permission 'users:permissions' required")
 
+            if "*" not in admin.global_permissions:
+                admin_perms = set(admin.global_permissions)
+                for perm in permissions:
+                    if perm == "*" or perm not in admin_perms:
+                        raise PermissionDeniedError(
+                            "Cannot grant permissions exceeding your own"
+                        )
+
             target = await self.uow.users.get_by_id(target_user_id)
             if target is None or target.is_deleted:
                 raise EntityNotFoundError("Target user not found")

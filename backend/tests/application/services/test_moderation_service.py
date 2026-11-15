@@ -34,6 +34,18 @@ async def moderator(uow) -> UserDomain:
 
 
 @pytest.fixture
+async def superadmin(uow) -> UserDomain:
+    admin = UserDomain(
+        id=uuid7(),
+        login="superadmin",
+        email="superadmin@example.com",
+        global_permissions=["*"],
+    )
+    await uow.users.add(admin)
+    return admin
+
+
+@pytest.fixture
 async def regular_user(uow) -> UserDomain:
     user = UserDomain(
         id=uuid7(),
@@ -138,11 +150,11 @@ async def test_unban_user_no_active_ban(moderation_service, moderator, regular_u
 
 
 async def test_set_permissions_success(
-    moderation_service, moderator, regular_user, uow
+    moderation_service, superadmin, regular_user, uow
 ):
     perms = ["users:read", "products:read", "users:read", "orders:manage"]
     updated_user = await moderation_service.set_permissions(
-        admin_id=moderator.id,
+        admin_id=superadmin.id,
         target_user_id=regular_user.id,
         permissions=perms,
     )
@@ -153,6 +165,38 @@ async def test_set_permissions_success(
         "orders:manage",
     ]
     assert uow.committed is True
+
+
+async def test_moderator_cannot_grant_wildcard_or_exceeding_permissions(
+    moderation_service, moderator, regular_user
+):
+    # Moderator with ["users:ban", "users:permissions"] cannot grant "*"
+    with pytest.raises(
+        PermissionDeniedError, match="Cannot grant permissions exceeding your own"
+    ):
+        await moderation_service.set_permissions(
+            admin_id=moderator.id,
+            target_user_id=regular_user.id,
+            permissions=["*"],
+        )
+
+    # Moderator cannot grant permissions they do not have
+    with pytest.raises(
+        PermissionDeniedError, match="Cannot grant permissions exceeding your own"
+    ):
+        await moderation_service.set_permissions(
+            admin_id=moderator.id,
+            target_user_id=regular_user.id,
+            permissions=["orders:manage"],
+        )
+
+    # Moderator CAN grant permissions they do have
+    updated = await moderation_service.set_permissions(
+        admin_id=moderator.id,
+        target_user_id=regular_user.id,
+        permissions=["users:ban"],
+    )
+    assert updated.global_permissions == ["users:ban"]
 
 
 async def test_set_permissions_permission_denied(

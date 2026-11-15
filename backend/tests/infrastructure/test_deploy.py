@@ -53,9 +53,9 @@ def test_nginx_shopperflox_conf_routes_and_security():
     assert "satisfy any;" in content
     assert "allow 127.0.0.1;" in content
     assert "allow ::1;" in content
-    assert "allow 10.0.0.0/8;" in content
     assert "allow 172.16.0.0/12;" in content
-    assert "allow 192.168.0.0/16;" in content
+    assert "allow 10.0.0.0/8;" not in content
+    assert "allow 192.168.0.0/16;" not in content
     assert "deny all;" in content
     assert "auth_basic" in content
 

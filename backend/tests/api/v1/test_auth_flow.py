@@ -115,9 +115,11 @@ async def test_full_auth_flow(client, test_task_queue):
     assert reuse_resp.status_code == 401
     assert "revoked" in reuse_resp.json()["errors"][0]["detail"].lower()
 
-    # 9. Logout using new_refresh_token
+    # 9. Logout using new_refresh_token and active access_token header
     logout_resp = await client.post(
-        "/api/v1/auth/logout", json={"refresh_token": new_refresh_token}
+        "/api/v1/auth/logout",
+        json={"refresh_token": new_refresh_token},
+        headers=new_headers,
     )
     assert logout_resp.status_code == 200
 
@@ -127,3 +129,8 @@ async def test_full_auth_flow(client, test_task_queue):
     )
     assert post_logout_refresh.status_code == 401
     assert "revoked" in post_logout_refresh.json()["errors"][0]["detail"].lower()
+
+    # 11. Attempt to use logged-out access_token immediately (expect 401 revoked)
+    post_logout_me = await client.get("/api/v1/users/me", headers=new_headers)
+    assert post_logout_me.status_code == 401
+    assert "revoked" in post_logout_me.json()["errors"][0]["detail"].lower()
