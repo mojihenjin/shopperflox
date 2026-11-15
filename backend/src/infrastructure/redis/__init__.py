@@ -1,3 +1,4 @@
 from .blacklist import RedisTokenBlacklist
+from .verification import RedisEmailVerificationStore
 
-__all__ = ["RedisTokenBlacklist"]
+__all__ = ["RedisEmailVerificationStore", "RedisTokenBlacklist"]
