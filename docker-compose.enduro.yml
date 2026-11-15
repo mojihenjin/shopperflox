@@ -4,4 +4,4 @@ services:
       - ENDURO_ATTACK=True
   nginx:
     volumes:
-      - ./deploy/nginx/conf.d/shopperflox.enduro.conf:/etc/nginx/conf.d/shopperflox.conf:ro
+      - ./deploy/nginx/enduro/shopperflox.enduro.conf:/etc/nginx/conf.d/shopperflox.conf:ro
