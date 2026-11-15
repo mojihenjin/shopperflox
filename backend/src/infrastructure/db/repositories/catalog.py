@@ -255,6 +255,20 @@ class SqlAlchemyProductVariantRepository:
         model = result.scalar_one_or_none()
         return self._to_domain(model) if model else None
 
+    async def get_by_ids_for_update(
+        self, variant_ids: list[UUID]
+    ) -> list[ProductVariantDomain]:
+        if not variant_ids:
+            return []
+        stmt = (
+            select(ProductVariantModel)
+            .where(ProductVariantModel.id.in_(variant_ids))
+            .order_by(ProductVariantModel.id.asc())
+            .with_for_update()
+        )
+        result = await self.session.execute(stmt)
+        return [self._to_domain(m) for m in result.scalars().all()]
+
     async def list_by_product_id(self, product_id: UUID) -> list[ProductVariantDomain]:
         stmt = (
             select(ProductVariantModel)
