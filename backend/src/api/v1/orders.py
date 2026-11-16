@@ -45,6 +45,7 @@ async def checkout(
         shipping_address=order.shipping_address,
         status=order.status,
         tracking_number=order.tracking_number,
+        post_code=order.post_code,
         created_at=order.created_at,
         items=[
             OrderItemResponse(
@@ -56,6 +57,7 @@ async def checkout(
                 color_snapshot=i.color_snapshot,
                 unit_price=i.unit_price,
                 quantity=i.quantity,
+                product_slug=i.product_slug,
             )
             for i in items
         ],
@@ -111,6 +113,7 @@ async def list_orders(
             shipping_address=o.shipping_address,
             status=o.status,
             tracking_number=o.tracking_number,
+            post_code=o.post_code,
             created_at=o.created_at,
         )
         for o in orders
@@ -138,6 +141,7 @@ async def get_order_detail(
         shipping_address=order.shipping_address,
         status=order.status,
         tracking_number=order.tracking_number,
+        post_code=order.post_code,
         created_at=order.created_at,
         items=[
             OrderItemResponse(
@@ -149,6 +153,7 @@ async def get_order_detail(
                 color_snapshot=i.color_snapshot,
                 unit_price=i.unit_price,
                 quantity=i.quantity,
+                product_slug=i.product_slug,
             )
             for i in items
         ],
@@ -186,6 +191,7 @@ async def cancel_order(
         shipping_address=order.shipping_address,
         status=order.status,
         tracking_number=order.tracking_number,
+        post_code=order.post_code,
         created_at=order.created_at,
     )
     return ResponseGenerator.answer(body=order_resp)
@@ -202,6 +208,7 @@ async def update_order_status(
         admin=current_user,
         order_id=order_id,
         new_status=req.status,
+        post_code=req.post_code,
     )
     order_resp = OrderResponse(
         id=order.id,
@@ -210,6 +217,7 @@ async def update_order_status(
         shipping_address=order.shipping_address,
         status=order.status,
         tracking_number=order.tracking_number,
+        post_code=order.post_code,
         created_at=order.created_at,
     )
     return ResponseGenerator.answer(body=order_resp)

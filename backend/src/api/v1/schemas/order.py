@@ -20,6 +20,7 @@ class OrderStatusUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     status: OrderStatus
+    post_code: str | None = Field(default=None, max_length=100)
 
 
 class OrderItemResponse(BaseModel):
@@ -33,6 +34,7 @@ class OrderItemResponse(BaseModel):
     color_snapshot: str
     unit_price: Decimal
     quantity: int
+    product_slug: str | None = None
 
 
 class OrderResponse(BaseModel):
@@ -44,6 +46,7 @@ class OrderResponse(BaseModel):
     shipping_address: dict[str, Any]
     status: OrderStatus
     tracking_number: str | None = None
+    post_code: str | None = None
     created_at: datetime
     items: list[OrderItemResponse] | None = None
     payment: PaymentResponse | None = None

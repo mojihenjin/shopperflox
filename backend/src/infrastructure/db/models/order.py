@@ -77,6 +77,7 @@ class OrderModel(Base):
         String(32), default="pending_payment", nullable=False
     )
     tracking_number: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    post_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_by: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )

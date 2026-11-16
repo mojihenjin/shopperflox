@@ -5,6 +5,7 @@ from .cart import router as cart_router
 from .categories import router as categories_router
 from .favorites import router as favorites_router
 from .moderation import router as moderation_router
+from .notifications import router as notifications_router
 from .orders import router as orders_router
 from .payments import router as payments_router
 from .products import router as products_router
@@ -16,6 +17,7 @@ v1_router = APIRouter(prefix="/api/v1")
 v1_router.include_router(auth_router)
 v1_router.include_router(users_router)
 v1_router.include_router(moderation_router)
+v1_router.include_router(notifications_router)
 v1_router.include_router(categories_router)
 v1_router.include_router(products_router)
 v1_router.include_router(favorites_router)
@@ -31,6 +33,7 @@ __all__ = [
     "categories_router",
     "favorites_router",
     "moderation_router",
+    "notifications_router",
     "orders_router",
     "payments_router",
     "products_router",

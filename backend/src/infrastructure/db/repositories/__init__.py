@@ -6,6 +6,7 @@ from .catalog import (
     SqlAlchemyProductRepository,
     SqlAlchemyProductVariantRepository,
 )
+from .notification import SqlAlchemyNotificationRepository
 from .order import (
     SqlAlchemyOrderRepository,
     SqlAlchemyPaymentRepository,
@@ -22,6 +23,7 @@ __all__ = [
     "SqlAlchemyCartRepository",
     "SqlAlchemyCategoryRepository",
     "SqlAlchemyFavoriteRepository",
+    "SqlAlchemyNotificationRepository",
     "SqlAlchemyOrderRepository",
     "SqlAlchemyPaymentRepository",
     "SqlAlchemyProductImageRepository",

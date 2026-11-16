@@ -8,6 +8,7 @@ from src.application.services import (
     CartService,
     CatalogService,
     FavoriteService,
+    NotificationService,
     OrderService,
     PaymentService,
     ReviewService,
@@ -21,6 +22,7 @@ from src.domain.interfaces import (
     CatalogUnitOfWorkProtocol,
     EmailVerificationStoreProtocol,
     FileStorageProtocol,
+    NotificationUnitOfWorkProtocol,
     OrderUnitOfWorkProtocol,
     PasswordHasherProtocol,
     PaymentGatewayProtocol,
@@ -34,6 +36,7 @@ from src.domain.models import UserDomain
 from src.infrastructure.db import (
     SqlAlchemyCartUnitOfWork,
     SqlAlchemyCatalogUnitOfWork,
+    SqlAlchemyNotificationUnitOfWork,
     SqlAlchemyOrderUnitOfWork,
     SqlAlchemyReviewUnitOfWork,
     SqlAlchemyUserUnitOfWork,
@@ -180,11 +183,28 @@ def get_order_uow(request: Request) -> OrderUnitOfWorkProtocol:
     return SqlAlchemyOrderUnitOfWork(session_factory=factory)
 
 
+def get_notification_uow(request: Request) -> NotificationUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyNotificationUnitOfWork(session_factory=factory)
+
+
+def get_notification_service(
+    uow: NotificationUnitOfWorkProtocol = Depends(get_notification_uow),
+    task_queue: TaskQueueProtocol = Depends(get_task_queue),
+) -> NotificationService:
+    return NotificationService(uow=uow, task_queue=task_queue)
+
+
 def get_order_service(
     uow: OrderUnitOfWorkProtocol = Depends(get_order_uow),
     payment_gateway: PaymentGatewayProtocol = Depends(get_payment_gateway),
+    notification_service: NotificationService = Depends(get_notification_service),
 ) -> OrderService:
-    return OrderService(uow=uow, payment_gateway=payment_gateway)
+    return OrderService(
+        uow=uow,
+        payment_gateway=payment_gateway,
+        notification_service=notification_service,
+    )
 
 
 def get_payment_service(

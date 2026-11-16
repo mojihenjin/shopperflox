@@ -3,6 +3,7 @@ from .cart import CartItemDetail, CartService
 from .catalog import CatalogService
 from .favorite import FavoriteService
 from .moderation import UserModerationService
+from .notification import NotificationService
 from .order import OrderService
 from .payment import PaymentService
 from .review import ReviewService
@@ -14,6 +15,7 @@ __all__ = [
     "CartService",
     "CatalogService",
     "FavoriteService",
+    "NotificationService",
     "OrderService",
     "PaymentService",
     "ReviewService",

@@ -6,6 +6,7 @@ from .catalog import (
     ProductModel,
     ProductVariantModel,
 )
+from .notification import NotificationModel
 from .order import (
     CartItemModel,
     CartModel,
@@ -27,6 +28,7 @@ __all__ = [
     "CartModel",
     "CategoryModel",
     "FavoriteModel",
+    "NotificationModel",
     "OrderItemModel",
     "OrderModel",
     "PaymentModel",

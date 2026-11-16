@@ -56,6 +56,7 @@ class OrderDomain(BaseDomain):
 
     status: OrderStatus = field(default=OrderStatus.PENDING_PAYMENT)
     tracking_number: str | None = field(default=None)
+    post_code: str | None = field(default=None)
 
     created_at: datetime = field(default_factory=factory_now)
     updated_at: datetime = field(default_factory=factory_now)
@@ -65,6 +66,8 @@ class OrderDomain(BaseDomain):
             raise DomainValidationError("Order total_amount must be non-negative")
 
     def transition_to(self, new_status: OrderStatus) -> None:
+        if self.status == new_status:
+            return
         allowed = ALLOWED_ORDER_TRANSITIONS.get(self.status, set())
         if new_status not in allowed:
             raise InvalidStateTransitionError(
@@ -87,6 +90,7 @@ class OrderItemDomain(BaseDomain):
     created_by: UUID
 
     variant_id: UUID | None = field(default=None)
+    product_slug: str | None = field(default=None)
     created_at: datetime = field(default_factory=factory_now)
 
     def __post_init__(self) -> None:

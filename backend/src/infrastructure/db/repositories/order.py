@@ -18,6 +18,7 @@ from src.infrastructure.db.models import (
     OrderItemModel,
     OrderModel,
     PaymentModel,
+    ProductModel,
     ProductVariantModel,
     ReviewModel,
 )
@@ -35,12 +36,15 @@ class SqlAlchemyOrderRepository:
             shipping_address=model.shipping_address,
             status=OrderStatus(model.status),
             tracking_number=model.tracking_number,
+            post_code=model.post_code,
             created_by=model.created_by,
             created_at=model.created_at,
             updated_at=model.updated_at,
         )
 
-    def _item_to_domain(self, model: OrderItemModel) -> OrderItemDomain:
+    def _item_to_domain(
+        self, model: OrderItemModel, product_slug: str | None = None
+    ) -> OrderItemDomain:
         return OrderItemDomain(
             id=model.id,
             order_id=model.order_id,
@@ -51,6 +55,7 @@ class SqlAlchemyOrderRepository:
             color_snapshot=model.color_snapshot,
             unit_price=model.unit_price,
             quantity=model.quantity,
+            product_slug=product_slug,
             created_by=model.created_by,
             created_at=model.created_at,
         )
@@ -67,12 +72,23 @@ class SqlAlchemyOrderRepository:
 
     async def list_items(self, order_id: UUID) -> list[OrderItemDomain]:
         stmt = (
-            select(OrderItemModel)
+            select(OrderItemModel, ProductModel.slug)
+            .outerjoin(
+                ProductVariantModel,
+                OrderItemModel.variant_id == ProductVariantModel.id,
+            )
+            .outerjoin(
+                ProductModel,
+                ProductVariantModel.product_id == ProductModel.id,
+            )
             .where(OrderItemModel.order_id == order_id)
             .order_by(OrderItemModel.created_at.asc())
         )
         res = await self.session.execute(stmt)
-        return [self._item_to_domain(m) for m in res.scalars().all()]
+        return [
+            self._item_to_domain(item_model, product_slug)
+            for item_model, product_slug in res.all()
+        ]
 
     async def list_by_user_id(
         self, user_id: UUID, limit: int = 20, offset: int = 0
@@ -147,6 +163,7 @@ class SqlAlchemyOrderRepository:
             shipping_address=order.shipping_address,
             status=str(order.status),
             tracking_number=order.tracking_number,
+            post_code=order.post_code,
             created_by=order.created_by,
             created_at=order.created_at,
             updated_at=order.updated_at,
@@ -178,6 +195,7 @@ class SqlAlchemyOrderRepository:
             raise EntityNotFoundError("Order not found")
         model.status = str(order.status)
         model.tracking_number = order.tracking_number
+        model.post_code = order.post_code
         model.updated_at = order.updated_at
         await self.session.flush()
 

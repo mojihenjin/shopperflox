@@ -21,15 +21,19 @@ from src.domain.models import (
     UserDomain,
 )
 
+from .notification import NotificationService
+
 
 class OrderService:
     def __init__(
         self,
         uow: OrderUnitOfWorkProtocol,
         payment_gateway: PaymentGatewayProtocol | None = None,
+        notification_service: NotificationService | None = None,
     ) -> None:
         self.uow = uow
         self.payment_gateway = payment_gateway
+        self.notification_service = notification_service
 
     async def _restore_order_stock(self, order: OrderDomain) -> None:
         items = await self.uow.orders.list_items(order.id)
@@ -107,6 +111,7 @@ class OrderService:
                     OrderItemDomain(
                         order_id=order_id,
                         variant_id=variant.id,
+                        product_slug=product.slug,
                         title_snapshot=product.title,
                         sku_snapshot=variant.sku,
                         size_snapshot=variant.size,
@@ -286,6 +291,7 @@ class OrderService:
         admin: UserDomain,
         order_id: UUID,
         new_status: OrderStatus,
+        post_code: str | None = None,
     ) -> OrderDomain:
         if (
             "orders:manage" not in admin.global_permissions
@@ -300,6 +306,9 @@ class OrderService:
 
             old_status = order.status
             order.transition_to(new_status)
+
+            if post_code is not None:
+                order.post_code = post_code
 
             if new_status == OrderStatus.CANCELLED and old_status not in {
                 OrderStatus.CANCELLED,
@@ -318,7 +327,32 @@ class OrderService:
                         payment.transition_to(PaymentStatus.REFUNDED)
                         await self.uow.payments.update(payment)
 
+            items_to_notify: list[OrderItemDomain] = []
+            should_notify = (
+                new_status == OrderStatus.SHIPPED and old_status != OrderStatus.SHIPPED
+            ) or (new_status == OrderStatus.SHIPPED and post_code is not None)
+            if should_notify and self.notification_service is not None:
+                items_to_notify = await self.uow.orders.list_items(order.id)
+
             await self.uow.orders.update(order)
             await self.uow.commit()
 
-            return order
+        if should_notify and self.notification_service is not None:
+            if items_to_notify:
+                items_summary = ", ".join(
+                    f"{item.title_snapshot} (x{item.quantity})"
+                    for item in items_to_notify
+                )
+            else:
+                items_summary = "Товары"
+
+            post_code_str = order.post_code or "Не указан"
+            await self.notification_service.notify_user(
+                user_id=order.user_id,
+                title=f"Заказ #{str(order.id)[:8]} передан в доставку",
+                body=f"В ОТПРАВКЕ: {items_summary}, {post_code_str}",
+                link="/orders",
+                send_email=True,
+            )
+
+        return order

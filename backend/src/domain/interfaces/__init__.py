@@ -18,6 +18,10 @@ from .integrations import (
     PaymentSessionResult,
     TaskQueueProtocol,
 )
+from .notification import (
+    NotificationRepositoryProtocol,
+    NotificationUnitOfWorkProtocol,
+)
 from .order import (
     OrderRepositoryProtocol,
     OrderUnitOfWorkProtocol,
@@ -48,6 +52,8 @@ __all__ = [
     "EmailVerificationStoreProtocol",
     "FavoriteRepositoryProtocol",
     "FileStorageProtocol",
+    "NotificationRepositoryProtocol",
+    "NotificationUnitOfWorkProtocol",
     "OrderRepositoryProtocol",
     "OrderUnitOfWorkProtocol",
     "PasswordHasherProtocol",

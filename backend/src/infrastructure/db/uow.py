@@ -7,6 +7,7 @@ from .repositories import (
     SqlAlchemyCartRepository,
     SqlAlchemyCategoryRepository,
     SqlAlchemyFavoriteRepository,
+    SqlAlchemyNotificationRepository,
     SqlAlchemyOrderRepository,
     SqlAlchemyPaymentRepository,
     SqlAlchemyProductImageRepository,
@@ -218,6 +219,46 @@ class SqlAlchemyReviewUnitOfWork:
         self.reviews = SqlAlchemyReviewRepository(self._session)
         self.orders = SqlAlchemyOrderRepository(self._session)
         self.products = SqlAlchemyProductRepository(self._session)
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        try:
+            if exc_type is not None:
+                await self.rollback()
+        finally:
+            if self._session is not None:
+                await self._session.close()
+                self._session = None
+
+    async def commit(self) -> None:
+        if self._session is not None:
+            await self._session.commit()
+
+    async def rollback(self) -> None:
+        if self._session is not None:
+            await self._session.rollback()
+
+
+class SqlAlchemyNotificationUnitOfWork:
+    def __init__(
+        self,
+        session_factory: async_sessionmaker[AsyncSession] | None = None,
+    ) -> None:
+        self._session_factory = session_factory or async_session_maker
+        self._session: AsyncSession | None = None
+
+        self.notifications: SqlAlchemyNotificationRepository
+        self.users: SqlAlchemyUserRepository
+
+    async def __aenter__(self) -> Self:
+        self._session = self._session_factory()
+        self.notifications = SqlAlchemyNotificationRepository(self._session)
+        self.users = SqlAlchemyUserRepository(self._session)
         return self
 
     async def __aexit__(

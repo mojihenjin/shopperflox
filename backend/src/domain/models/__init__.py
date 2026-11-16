@@ -3,6 +3,7 @@ from .base import BaseDomain
 from .cart import CartDomain, CartItemDomain
 from .category import CategoryDomain
 from .favorite import FavoriteDomain
+from .notification import NotificationDomain
 from .order import OrderDomain, OrderItemDomain, OrderStatus
 from .payment import PaymentDomain, PaymentStatus
 from .product import ProductDomain, ProductImageDomain, ProductVariantDomain
@@ -23,6 +24,7 @@ __all__ = [
     "CategoryDomain",
     "FavoriteDomain",
     "FitFeedback",
+    "NotificationDomain",
     "OrderDomain",
     "OrderItemDomain",
     "OrderStatus",
