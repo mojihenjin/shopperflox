@@ -1,6 +1,7 @@
 import { apiFetch } from './client';
 import { notificationsApi } from './notifications';
 import { moderationApi } from './moderation';
+import { brandsApi } from './brands';
 import type {
   CartItemRequest,
   CartResponse,
@@ -29,7 +30,7 @@ import type {
   VerifyCodeRequest,
 } from '../types/api';
 
-export { notificationsApi, moderationApi };
+export { notificationsApi, moderationApi, brandsApi };
 
 export const authApi = {
   login: (data: LoginRequest) =>

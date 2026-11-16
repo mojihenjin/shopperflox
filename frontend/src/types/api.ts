@@ -111,13 +111,16 @@ export interface ProductResponse {
   id: string;
   category_id: string;
   creator_id?: string | null;
+  brand_id?: string | null;
+  brand?: string | null;
+  brand_slug?: string | null;
+  brand_is_deleted?: boolean;
+  is_self_worked?: boolean;
   title: string;
   slug: string;
   base_price: string;
   price_usd?: string | null;
   price_eur?: string | null;
-  brand?: string | null;
-  is_self_worked?: boolean;
   material?: string | null;
   density?: string | null;
   composition?: string | null;
@@ -147,6 +150,7 @@ export interface VariantCreateItem {
 
 export interface ProductCreateRequest {
   category_id: string;
+  brand_id?: string | null;
   title: string;
   slug: string;
   brand?: string | null;
@@ -169,6 +173,7 @@ export interface ProductCreateRequest {
 
 export interface ProductUpdateRequest {
   category_id?: string | null;
+  brand_id?: string | null;
   title?: string | null;
   slug?: string | null;
   brand?: string | null;
@@ -335,3 +340,47 @@ export interface PendingCountResponse {
 export interface RejectProductRequest {
   reason?: string | null;
 }
+
+export interface BrandResponse {
+  id: string;
+  name: string;
+  slug: string;
+  his_url?: string | null;
+  logo_url?: string | null;
+  is_deleted?: boolean;
+  created_at: string;
+}
+
+export interface MyBrandResponse {
+  brand: BrandResponse;
+  role: 'representative' | 'moderator' | string;
+}
+
+export interface BrandCreateRequest {
+  name: string;
+  his_url?: string | null;
+}
+
+export interface BrandUpdateRequest {
+  name?: string | null;
+  his_url?: string | null;
+}
+
+export interface BrandMemberResponse {
+  brand_id: string;
+  user_id: string;
+  user_login?: string | null;
+  role: 'representative' | 'moderator' | string;
+  created_at: string;
+}
+
+export interface AddBrandMemberRequest {
+  login: string;
+  role: 'representative' | 'moderator';
+}
+
+export interface RemoveMemberResponse {
+  removed?: boolean;
+  brand_deleted?: boolean;
+}
+
