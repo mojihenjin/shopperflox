@@ -160,7 +160,12 @@ class AuthService:
                 raise PermissionDeniedError(f"User is banned: {ban.reason}")
 
             access_token = self.token_provider.create_access_token(
-                user.id, user.global_permissions
+                user.id,
+                user.global_permissions,
+                login=user.login,
+                global_permissions=user.global_permissions,
+                verified_profile=user.verified_profile,
+                verified_email=user.verified_email,
             )
             refresh_token = self.token_provider.create_refresh_token(user.id)
 
@@ -187,7 +192,12 @@ class AuthService:
             await self.blacklist.revoke(jti, ttl_seconds=ttl)
 
         new_access = self.token_provider.create_access_token(
-            user.id, user.global_permissions
+            user.id,
+            user.global_permissions,
+            login=user.login,
+            global_permissions=user.global_permissions,
+            verified_profile=user.verified_profile,
+            verified_email=user.verified_email,
         )
         new_refresh = self.token_provider.create_refresh_token(user.id)
         return user, new_access, new_refresh

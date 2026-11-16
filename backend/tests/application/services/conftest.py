@@ -215,8 +215,22 @@ class FakePasswordHasher:
 
 
 class FakeTokenProvider:
-    def create_access_token(self, user_id: UUID, permissions: list[str]) -> str:
-        return f"access_{user_id}_{','.join(permissions)}"
+    def create_access_token(
+        self,
+        user_id: UUID,
+        permissions: list[str] | None = None,
+        *,
+        login: str | None = None,
+        global_permissions: list[str] | None = None,
+        verified_profile: bool = False,
+        verified_email: bool = False,
+    ) -> str:
+        perms = (
+            global_permissions
+            if global_permissions is not None
+            else (permissions or [])
+        )
+        return f"access_{user_id}_{','.join(perms)}"
 
     def create_refresh_token(self, user_id: UUID) -> str:
         return f"refresh_{user_id}_jti_{uuid7()}"
