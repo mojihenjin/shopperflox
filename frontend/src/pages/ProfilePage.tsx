@@ -8,7 +8,7 @@ import type { ApiError } from '../api/client';
 export function ProfilePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { isAuthenticated, logout } = useAuthStore();
+  const { isAuthenticated, logout, refreshToken, setTokens } = useAuthStore();
 
   const { data: profileData, isLoading } = useQuery({
     queryKey: ['userProfile'],
@@ -103,6 +103,17 @@ export function ProfilePage() {
         verification_token: verificationToken,
         code: cleanCode,
       });
+
+      if (refreshToken) {
+        try {
+          const refreshRes = await authApi.refresh({ refresh_token: refreshToken });
+          if (refreshRes.data?.access_token && refreshRes.data?.refresh_token) {
+            setTokens(refreshRes.data.access_token, refreshRes.data.refresh_token);
+          }
+        } catch (refreshErr) {
+          console.error('Failed to refresh tokens after email verification:', refreshErr);
+        }
+      }
 
       await queryClient.invalidateQueries({ queryKey: ['userProfile'] });
       setEmailSuccessMsg('Электронная почта успешно подтверждена!');

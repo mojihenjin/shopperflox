@@ -16,6 +16,7 @@ import type {
   ProductResponse,
   RegisterRequest,
   RegisterResponse,
+  RefreshTokenRequest,
   ReviewResponse,
   SearchResultResponse,
   SendEmailCodeRequest,
@@ -58,6 +59,12 @@ export const authApi = {
   logout: () =>
     apiFetch<null>('/api/v1/auth/logout', {
       method: 'POST',
+    }),
+
+  refresh: (data: RefreshTokenRequest) =>
+    apiFetch<TokenPairResponse>('/api/v1/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify(data),
     }),
 
   getMe: () =>
