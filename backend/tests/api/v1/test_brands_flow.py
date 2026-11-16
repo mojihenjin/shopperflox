@@ -91,6 +91,40 @@ async def test_brand_creation_and_permission_boundaries(
     assert my_brands[0]["brand"]["id"] == brand_id
     assert my_brands[0]["role"] == "representative"
 
+    # Before approval, brand is not in active brands
+    list_res_before = await client.get("/api/v1/brands")
+    assert not any(b["id"] == brand_id for b in list_res_before.json()["body"])
+
+    # Unauthenticated GET /api/v1/brands/{slug} returns 404 for pending brand
+    get_res_unauth = await client.get("/api/v1/brands/synapse-clothing")
+    assert get_res_unauth.status_code == 404
+
+    # Member can see pending brand by slug
+    get_res_member = await client.get(
+        "/api/v1/brands/synapse-clothing", headers=creator_headers
+    )
+    assert get_res_member.status_code == 200
+
+    # Moderator approves brand
+    reg_mod = await client.post(
+        "/api/v1/auth/register",
+        json={"login": "brand_mod_approver", "password": "Password123!"},
+    )
+    mod_id = UUID(reg_mod.json()["body"]["user"]["id"])
+    async with user_uow:
+        m_user = await user_uow.users.get_by_id(mod_id)
+        assert m_user is not None
+        m_user.global_permissions = ["mod:approve_manager"]
+        await user_uow.users.update(m_user)
+        await user_uow.commit()
+
+    mod_headers = auth_headers(mod_id, permissions=["mod:approve_manager"])
+    appr_res = await client.post(
+        f"/api/v1/moderation/brands/{brand_id}/approve", headers=mod_headers
+    )
+    assert appr_res.status_code == 200
+    assert appr_res.json()["body"]["moderation_status"] == "approved"
+
     # GET /api/v1/brands lists the active brand
     list_res = await client.get("/api/v1/brands")
     assert list_res.status_code == 200
@@ -347,6 +381,11 @@ async def test_brand_delisting_and_cascade_behavior(client: AsyncClient, auth_he
         json={"name": "Echo Lab"},
     )
     brand_id = brand_res.json()["body"]["id"]
+
+    await client.post(
+        f"/api/v1/moderation/brands/{brand_id}/approve",
+        headers=admin_headers,
+    )
 
     prod_res = await client.post(
         "/api/v1/products",

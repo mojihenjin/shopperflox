@@ -347,6 +347,9 @@ class InMemoryProductRepository:
         min_price: Any = None,
         max_price: Any = None,
         search: str | None = None,
+        size: str | None = None,
+        color: str | None = None,
+        is_limited: bool | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[ProductDomain], int]:
@@ -365,6 +368,8 @@ class InMemoryProductRepository:
                 continue
             if max_price is not None and p.base_price > max_price:
                 continue
+            if is_limited is not None and p.is_limited != is_limited:
+                continue
             if search:
                 s = search.lower()
                 desc = p.description.lower() if p.description else ""
@@ -372,6 +377,16 @@ class InMemoryProductRepository:
                     continue
             matched.append(p)
         return matched[offset : offset + limit], len(matched)
+
+    async def increment_views(self, product_id: UUID) -> None:
+        p = self.store.get(product_id)
+        if p:
+            p.views_count += 1
+
+    async def increment_orders(self, product_id: UUID, quantity: int) -> None:
+        p = self.store.get(product_id)
+        if p:
+            p.orders_count += quantity
 
     async def add(self, product: ProductDomain) -> None:
         self.store[product.id] = product
@@ -436,6 +451,11 @@ class InMemoryProductVariantRepository:
 
     async def update(self, variant: ProductVariantDomain) -> None:
         self.store[variant.id] = variant
+
+    async def increment_orders(self, variant_id: UUID, quantity: int) -> None:
+        v = self.store.get(variant_id)
+        if v:
+            v.orders_count += quantity
 
     async def delete(self, variant_id: UUID) -> None:
         self.store.pop(variant_id, None)
@@ -515,9 +535,41 @@ class InMemoryBrandRepository:
         return None
 
     async def list_active(self, limit: int = 100, offset: int = 0) -> list[BrandDomain]:
-        matched = [b for b in self.brands.values() if not b.is_deleted]
+        matched = [
+            b
+            for b in self.brands.values()
+            if not b.is_deleted and b.moderation_status == "approved"
+        ]
         matched.sort(key=lambda x: x.name)
         return matched[offset : offset + limit]
+
+    async def list_pending(
+        self, limit: int = 100, offset: int = 0
+    ) -> list[BrandDomain]:
+        matched = [
+            b
+            for b in self.brands.values()
+            if not b.is_deleted and b.moderation_status == "pending"
+        ]
+        matched.sort(key=lambda x: x.created_at, reverse=True)
+        return matched[offset : offset + limit]
+
+    async def count_pending(self) -> int:
+        return sum(
+            1
+            for b in self.brands.values()
+            if not b.is_deleted and b.moderation_status == "pending"
+        )
+
+    async def increment_views(self, brand_id: UUID) -> None:
+        b = self.brands.get(brand_id)
+        if b:
+            b.views_count += 1
+
+    async def increment_orders(self, brand_id: UUID, quantity: int) -> None:
+        b = self.brands.get(brand_id)
+        if b:
+            b.orders_count += quantity
 
     async def list_by_user_id(
         self, user_id: UUID
@@ -818,10 +870,12 @@ class FakeCartUnitOfWork:
         self,
         variants_repo: InMemoryProductVariantRepository | None = None,
         products_repo: InMemoryProductRepository | None = None,
+        images_repo: InMemoryProductImageRepository | None = None,
     ) -> None:
         self.carts = InMemoryCartRepository()
         self.variants = variants_repo or InMemoryProductVariantRepository()
         self.products = products_repo or InMemoryProductRepository()
+        self.images = images_repo or InMemoryProductImageRepository()
         self.committed = False
         self.rolled_back = False
 
@@ -851,6 +905,7 @@ class FakeOrderUnitOfWork:
         variants_repo: InMemoryProductVariantRepository | None = None,
         products_repo: InMemoryProductRepository | None = None,
         addresses_repo: InMemoryUserAddressRepository | None = None,
+        brands_repo: InMemoryBrandRepository | None = None,
     ) -> None:
         self.orders = InMemoryOrderRepository()
         self.carts = carts_repo or InMemoryCartRepository()
@@ -858,6 +913,7 @@ class FakeOrderUnitOfWork:
         self.products = products_repo or InMemoryProductRepository()
         self.addresses = addresses_repo or InMemoryUserAddressRepository()
         self.payments = InMemoryPaymentRepository()
+        self.brands = brands_repo or InMemoryBrandRepository()
         self.committed = False
         self.rolled_back = False
 
