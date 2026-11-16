@@ -357,6 +357,29 @@ class InMemoryProductRepository:
     async def update(self, product: ProductDomain) -> None:
         self.store[product.id] = product
 
+    async def list_pending_products(
+        self,
+        *,
+        request_type: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[ProductDomain], int]:
+        matched = []
+        for p in sorted(self.store.values(), key=lambda x: x.created_at):
+            if p.deleted_at is not None or p.moderation_status != "pending":
+                continue
+            if request_type and p.request_type != request_type:
+                continue
+            matched.append(p)
+        return matched[offset : offset + limit], len(matched)
+
+    async def count_pending_products(self) -> int:
+        return sum(
+            1
+            for p in self.store.values()
+            if p.deleted_at is None and p.moderation_status == "pending"
+        )
+
 
 class InMemoryProductVariantRepository:
     def __init__(self) -> None:

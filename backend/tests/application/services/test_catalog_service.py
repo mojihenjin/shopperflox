@@ -17,7 +17,7 @@ def admin_user():
     return UserDomain(
         id=uuid7(),
         login="admin",
-        global_permissions=["catalog:manage"],
+        global_permissions=["catalog:manage", "mod:approve_manager"],
     )
 
 
@@ -134,6 +134,9 @@ async def test_product_crud_and_detail(catalog_uow, admin_user):
     # Verify img1 is no longer main
     stored_img1 = await catalog_uow.images.get_by_id(img1.id)
     assert stored_img1.is_main is False
+
+    # Approve product
+    await service.approve_product(actor=admin_user, product_id=prod.id)
 
     # Get product detail
     product_res, variants, images = await service.get_product_detail("smartphone-x")

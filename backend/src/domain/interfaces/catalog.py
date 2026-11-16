@@ -60,6 +60,16 @@ class ProductRepositoryProtocol(Protocol):
         self, query: str, limit: int = 10
     ) -> list[BrandSearchResult]: ...
 
+    async def list_pending_products(
+        self,
+        *,
+        request_type: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[ProductDomain], int]: ...
+
+    async def count_pending_products(self) -> int: ...
+
 
 class ProductVariantRepositoryProtocol(Protocol):
     async def get_by_id(self, variant_id: UUID) -> ProductVariantDomain | None: ...

@@ -10,6 +10,8 @@ from src.domain.models import (
     BrandSearchResult,
     CategoryDomain,
     FavoriteDomain,
+    ModerationRequestType,
+    ModerationStatus,
     ProductDomain,
     ProductImageDomain,
     ProductVariantDomain,
@@ -122,6 +124,13 @@ class SqlAlchemyProductRepository:
             is_published=model.is_published,
             is_hidden=model.is_hidden,
             is_limited=model.is_limited,
+            moderation_status=ModerationStatus(model.moderation_status)
+            if model.moderation_status
+            else ModerationStatus.PENDING,
+            request_type=ModerationRequestType(model.request_type)
+            if model.request_type
+            else ModerationRequestType.CREATE,
+            rejection_reason=model.rejection_reason,
             created_at=model.created_at,
             updated_at=model.updated_at,
             deleted_at=model.deleted_at,
@@ -165,6 +174,7 @@ class SqlAlchemyProductRepository:
             ProductModel.is_published.is_(True),
             ProductModel.deleted_at.is_(None),
             ProductModel.is_hidden == 0,
+            ProductModel.moderation_status == "approved",
         ]
         if category_id is not None:
             base_filters.append(ProductModel.category_id == category_id)
@@ -218,6 +228,13 @@ class SqlAlchemyProductRepository:
             is_published=product.is_published,
             is_hidden=product.is_hidden,
             is_limited=product.is_limited,
+            moderation_status=str(product.moderation_status.value)
+            if isinstance(product.moderation_status, ModerationStatus)
+            else str(product.moderation_status),
+            request_type=str(product.request_type.value)
+            if isinstance(product.request_type, ModerationRequestType)
+            else str(product.request_type),
+            rejection_reason=product.rejection_reason,
             created_by=product.created_by,
             created_at=product.created_at,
             updated_at=product.updated_at,
@@ -254,6 +271,17 @@ class SqlAlchemyProductRepository:
         model.is_published = product.is_published
         model.is_hidden = product.is_hidden
         model.is_limited = product.is_limited
+        model.moderation_status = (
+            str(product.moderation_status.value)
+            if isinstance(product.moderation_status, ModerationStatus)
+            else str(product.moderation_status)
+        )
+        model.request_type = (
+            str(product.request_type.value)
+            if isinstance(product.request_type, ModerationRequestType)
+            else str(product.request_type)
+        )
+        model.rejection_reason = product.rejection_reason
         model.updated_at = product.updated_at
         model.deleted_at = product.deleted_at
         try:
@@ -276,6 +304,7 @@ class SqlAlchemyProductRepository:
                 ProductModel.is_published.is_(True),
                 ProductModel.deleted_at.is_(None),
                 ProductModel.is_hidden == 0,
+                ProductModel.moderation_status == "approved",
                 or_(
                     ProductModel.title.ilike(pattern, escape="\\"),
                     ProductModel.description.ilike(pattern, escape="\\"),
@@ -304,6 +333,7 @@ class SqlAlchemyProductRepository:
                 ProductModel.is_published.is_(True),
                 ProductModel.deleted_at.is_(None),
                 ProductModel.is_hidden == 0,
+                ProductModel.moderation_status == "approved",
                 ProductModel.brand.isnot(None),
                 ProductModel.brand != "",
                 ProductModel.brand.ilike(pattern, escape="\\"),
@@ -315,6 +345,43 @@ class SqlAlchemyProductRepository:
         result = await self.session.execute(stmt)
         rows = result.all()
         return [BrandSearchResult(name=row[0], products_count=row[1]) for row in rows]
+
+    async def list_pending_products(
+        self,
+        *,
+        request_type: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[ProductDomain], int]:
+        filters = [
+            ProductModel.moderation_status == "pending",
+            ProductModel.deleted_at.is_(None),
+        ]
+        if request_type:
+            filters.append(ProductModel.request_type == request_type)
+
+        count_stmt = select(func.count(ProductModel.id)).where(*filters)
+        count_res = await self.session.execute(count_stmt)
+        total_count = count_res.scalar() or 0
+
+        data_stmt = (
+            select(ProductModel)
+            .where(*filters)
+            .order_by(ProductModel.created_at.asc())
+            .limit(limit)
+            .offset(offset)
+        )
+        data_res = await self.session.execute(data_stmt)
+        models = data_res.scalars().all()
+        return [self._to_domain(m) for m in models], total_count
+
+    async def count_pending_products(self) -> int:
+        stmt = select(func.count(ProductModel.id)).where(
+            ProductModel.moderation_status == "pending",
+            ProductModel.deleted_at.is_(None),
+        )
+        res = await self.session.execute(stmt)
+        return res.scalar() or 0
 
 
 class SqlAlchemyProductVariantRepository:
@@ -386,6 +453,7 @@ class SqlAlchemyProductVariantRepository:
                 ProductModel.is_published.is_(True),
                 ProductModel.deleted_at.is_(None),
                 ProductModel.is_hidden == 0,
+                ProductModel.moderation_status == "approved",
                 or_(
                     ProductVariantModel.sku.ilike(pattern, escape="\\"),
                     ProductVariantModel.color_name.ilike(pattern, escape="\\"),

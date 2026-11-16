@@ -38,7 +38,7 @@ async def test_creator_product_creation_and_permission_boundaries(client):
     uow = uow_factory()
     async with uow:
         admin = await uow.users.get_by_id(UUID(admin_id))
-        admin.global_permissions = ["catalog:manage"]
+        admin.global_permissions = ["catalog:manage", "mod:approve_manager"]
         await uow.users.update(admin)
 
         c1 = await uow.users.get_by_id(UUID(creator1_id))
@@ -243,6 +243,13 @@ async def test_creator_product_creation_and_permission_boundaries(client):
     )
     assert patch_admin.status_code == 200
     assert patch_admin.json()["body"]["note"] == "Verified by Admin team."
+
+    # Approve product via moderation
+    approve_res = await client.post(
+        f"/api/v1/moderation/products/{prod_id}/approve",
+        headers=admin_headers,
+    )
+    assert approve_res.status_code == 200
 
     # 8. Check product detail public endpoint
     detail_res = await client.get("/api/v1/products/cyberpunk-heavy-hoodie")

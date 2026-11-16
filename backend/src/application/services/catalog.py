@@ -15,6 +15,8 @@ from src.domain.interfaces import (
 )
 from src.domain.models import (
     CategoryDomain,
+    ModerationRequestType,
+    ModerationStatus,
     ProductDomain,
     ProductImageDomain,
     ProductVariantDomain,
@@ -23,15 +25,19 @@ from src.domain.models import (
 )
 from src.utils import factory_now
 
+from .notification import NotificationService
+
 
 class CatalogService:
     def __init__(
         self,
         uow: CatalogUnitOfWorkProtocol,
         storage: FileStorageProtocol | None = None,
+        notification_service: NotificationService | None = None,
     ) -> None:
         self.uow = uow
         self.storage = storage
+        self.notification_service = notification_service
 
     def _check_permission(self, actor: UserDomain) -> None:
         if not actor or (
@@ -39,6 +45,13 @@ class CatalogService:
             and "*" not in actor.global_permissions
         ):
             raise PermissionDeniedError("Permission 'catalog:manage' required")
+
+    def _check_moderator_permission(self, actor: UserDomain) -> None:
+        if not actor or not (
+            "*" in actor.global_permissions
+            or "mod:approve_manager" in actor.global_permissions
+        ):
+            raise PermissionDeniedError("Permission 'mod:approve_manager' required")
 
     def _check_creator_permission(self, actor: UserDomain) -> None:
         if not actor or not (
@@ -114,12 +127,24 @@ class CatalogService:
             ):
                 raise EntityNotFoundError("Product not found")
 
+            if product.moderation_status != ModerationStatus.APPROVED:
+                has_access = actor is not None and (
+                    actor.id == product.creator_id
+                    or actor.id == product.created_by
+                    or bool(
+                        {"*", "catalog:manage", "mod:update", "mod:approve_manager"}
+                        & set(actor.global_permissions)
+                    )
+                )
+                if not has_access:
+                    raise EntityNotFoundError("Product not found")
+
             if product.is_hidden == 2:
                 has_access = actor is not None and (
                     actor.id == product.creator_id
                     or actor.id == product.created_by
                     or bool(
-                        {"*", "catalog:manage", "mod:update"}
+                        {"*", "catalog:manage", "mod:update", "mod:approve_manager"}
                         & set(actor.global_permissions)
                     )
                 )
@@ -281,6 +306,9 @@ class CatalogService:
                 is_published=is_published,
                 is_hidden=is_hidden,
                 is_limited=is_limited,
+                moderation_status=ModerationStatus.PENDING,
+                request_type=ModerationRequestType.CREATE,
+                rejection_reason=None,
                 created_by=actor.id,
             )
             await self.uow.products.add(product)
@@ -347,32 +375,77 @@ class CatalogService:
 
             self._check_product_modify_permission(actor, product)
 
-            if category_id is not None:
+            is_substantial = False
+
+            if category_id is not None and category_id != product.category_id:
                 category = await self.uow.categories.get_by_id(category_id)
                 if category is None:
                     raise EntityNotFoundError("Category not found")
                 product.category_id = category_id
+                is_substantial = True
 
             if title is not None:
                 title_clean = title.strip()
                 if not title_clean:
                     raise DomainValidationError("Product title cannot be empty")
-                product.title = title_clean
+                if title_clean != product.title:
+                    product.title = title_clean
+                    is_substantial = True
 
             if slug is not None:
                 slug_clean = slug.strip()
                 if not slug_clean:
                     raise DomainValidationError("Product slug cannot be empty")
-                product.slug = slug_clean
+                if slug_clean != product.slug:
+                    product.slug = slug_clean
+                    is_substantial = True
 
-            if is_self_worked is not None:
+            if is_self_worked is not None and is_self_worked != product.is_self_worked:
                 product.is_self_worked = is_self_worked
+                is_substantial = True
 
             if brand is not ...:
-                product.brand = brand.strip() if brand else None
+                brand_clean = brand.strip() if brand else None
+                if brand_clean != product.brand:
+                    product.brand = brand_clean
+                    is_substantial = True
 
             if product.is_self_worked and not product.brand:
                 product.brand = "self-worked"
+
+            if material is not ...:
+                mat_clean = material.strip() if material else None
+                if mat_clean != product.material:
+                    product.material = mat_clean
+                    is_substantial = True
+
+            if density is not ...:
+                den_clean = density.strip() if density else None
+                if den_clean != product.density:
+                    product.density = den_clean
+                    is_substantial = True
+
+            if composition is not ...:
+                comp_clean = composition.strip() if composition else None
+                if comp_clean != product.composition:
+                    product.composition = comp_clean
+                    is_substantial = True
+
+            if print_method is not ...:
+                pm_clean = print_method.strip() if print_method else None
+                if pm_clean != product.print_method:
+                    product.print_method = pm_clean
+                    is_substantial = True
+
+            if note is not ...:
+                note_clean = note.strip() if note else None
+                if note_clean != product.note:
+                    product.note = note_clean
+                    is_substantial = True
+
+            if description is not None and description != product.description:
+                product.description = description
+                is_substantial = True
 
             if base_price is not None:
                 product.base_price = base_price
@@ -382,24 +455,6 @@ class CatalogService:
 
             if price_eur is not ...:
                 product.price_eur = price_eur
-
-            if material is not ...:
-                product.material = material.strip() if material else None
-
-            if density is not ...:
-                product.density = density.strip() if density else None
-
-            if composition is not ...:
-                product.composition = composition.strip() if composition else None
-
-            if print_method is not ...:
-                product.print_method = print_method.strip() if print_method else None
-
-            if note is not ...:
-                product.note = note.strip() if note else None
-
-            if description is not None:
-                product.description = description
 
             if attributes is not None:
                 product.attributes = attributes
@@ -414,6 +469,18 @@ class CatalogService:
 
             if is_limited is not None:
                 product.is_limited = is_limited
+
+            if is_substantial:
+                if product.moderation_status == ModerationStatus.APPROVED:
+                    product.moderation_status = ModerationStatus.PENDING
+                    product.request_type = ModerationRequestType.EDIT
+                    product.rejection_reason = None
+                elif product.moderation_status == ModerationStatus.REJECTED:
+                    product.moderation_status = ModerationStatus.PENDING
+                    product.rejection_reason = None
+            elif product.moderation_status == ModerationStatus.REJECTED:
+                product.moderation_status = ModerationStatus.PENDING
+                product.rejection_reason = None
 
             product.updated_at = factory_now()
             await self.uow.products.update(product)
@@ -574,6 +641,19 @@ class CatalogService:
                 created_by=actor.id,
             )
             await self.uow.images.add(image)
+
+            if product.moderation_status == ModerationStatus.APPROVED:
+                product.moderation_status = ModerationStatus.PENDING
+                product.request_type = ModerationRequestType.EDIT
+                product.rejection_reason = None
+                product.updated_at = factory_now()
+                await self.uow.products.update(product)
+            elif product.moderation_status == ModerationStatus.REJECTED:
+                product.moderation_status = ModerationStatus.PENDING
+                product.rejection_reason = None
+                product.updated_at = factory_now()
+                await self.uow.products.update(product)
+
             await self.uow.commit()
             return image
 
@@ -651,6 +731,19 @@ class CatalogService:
                 created_by=actor.id,
             )
             await self.uow.images.add(image)
+
+            if product.moderation_status == ModerationStatus.APPROVED:
+                product.moderation_status = ModerationStatus.PENDING
+                product.request_type = ModerationRequestType.EDIT
+                product.rejection_reason = None
+                product.updated_at = factory_now()
+                await self.uow.products.update(product)
+            elif product.moderation_status == ModerationStatus.REJECTED:
+                product.moderation_status = ModerationStatus.PENDING
+                product.rejection_reason = None
+                product.updated_at = factory_now()
+                await self.uow.products.update(product)
+
             await self.uow.commit()
             return image
 
@@ -670,3 +763,118 @@ class CatalogService:
                 brands=brands,
                 variants=variants,
             )
+
+    async def delete_image(
+        self, *, actor: UserDomain, product_id: UUID, image_id: UUID
+    ) -> None:
+        async with self.uow:
+            product = await self.uow.products.get_by_id(
+                product_id, include_unpublished=True
+            )
+            if product is None or product.deleted_at is not None:
+                raise EntityNotFoundError("Product not found")
+
+            self._check_product_modify_permission(actor, product)
+
+            image = await self.uow.images.get_by_id(image_id)
+            if image is None or image.product_id != product_id:
+                raise EntityNotFoundError("Image not found")
+
+            await self.uow.images.delete(image_id)
+
+            if product.moderation_status == ModerationStatus.APPROVED:
+                product.moderation_status = ModerationStatus.PENDING
+                product.request_type = ModerationRequestType.EDIT
+                product.rejection_reason = None
+                product.updated_at = factory_now()
+                await self.uow.products.update(product)
+            elif product.moderation_status == ModerationStatus.REJECTED:
+                product.moderation_status = ModerationStatus.PENDING
+                product.rejection_reason = None
+                product.updated_at = factory_now()
+                await self.uow.products.update(product)
+
+            await self.uow.commit()
+
+    async def list_pending_products(
+        self,
+        *,
+        actor: UserDomain,
+        request_type: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[ProductDomain], int]:
+        self._check_moderator_permission(actor)
+        async with self.uow:
+            return await self.uow.products.list_pending_products(
+                request_type=request_type, limit=limit, offset=offset
+            )
+
+    async def count_pending_products(self, *, actor: UserDomain) -> int:
+        self._check_moderator_permission(actor)
+        async with self.uow:
+            return await self.uow.products.count_pending_products()
+
+    async def approve_product(
+        self, *, actor: UserDomain, product_id: UUID
+    ) -> ProductDomain:
+        self._check_moderator_permission(actor)
+        async with self.uow:
+            product = await self.uow.products.get_by_id(
+                product_id, include_unpublished=True
+            )
+            if product is None or product.deleted_at is not None:
+                raise EntityNotFoundError("Product not found")
+
+            product.moderation_status = ModerationStatus.APPROVED
+            product.rejection_reason = None
+            product.updated_at = factory_now()
+            await self.uow.products.update(product)
+            await self.uow.commit()
+
+        target_user = product.creator_id or product.created_by
+        if target_user and self.notification_service is not None:
+            await self.notification_service.notify_user(
+                user_id=target_user,
+                title="Заявка одобрена",
+                body=f"Товар «{product.title}» прошёл проверку и опубликован.",
+                link=f"/products/{product.slug}",
+                send_email=False,
+            )
+
+        return product
+
+    async def reject_product(
+        self, *, actor: UserDomain, product_id: UUID, reason: str | None = None
+    ) -> ProductDomain:
+        self._check_moderator_permission(actor)
+        clean_reason = reason.strip() if reason and reason.strip() else None
+        async with self.uow:
+            product = await self.uow.products.get_by_id(
+                product_id, include_unpublished=True
+            )
+            if product is None or product.deleted_at is not None:
+                raise EntityNotFoundError("Product not found")
+
+            product.moderation_status = ModerationStatus.REJECTED
+            product.rejection_reason = clean_reason
+            product.updated_at = factory_now()
+            await self.uow.products.update(product)
+            await self.uow.commit()
+
+        target_user = product.creator_id or product.created_by
+        if target_user and self.notification_service is not None:
+            body_text = (
+                f"Отклонено: {clean_reason}"
+                if clean_reason
+                else "Отклонено: Причина не указана"
+            )
+            await self.notification_service.notify_user(
+                user_id=target_user,
+                title="Заявка отклонена",
+                body=body_text,
+                link=f"/creator/products/{product.slug}/edit",
+                send_email=True,
+            )
+
+        return product

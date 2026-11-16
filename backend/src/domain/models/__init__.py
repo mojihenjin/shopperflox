@@ -6,7 +6,13 @@ from .favorite import FavoriteDomain
 from .notification import NotificationDomain
 from .order import OrderDomain, OrderItemDomain, OrderStatus
 from .payment import PaymentDomain, PaymentStatus
-from .product import ProductDomain, ProductImageDomain, ProductVariantDomain
+from .product import (
+    ModerationRequestType,
+    ModerationStatus,
+    ProductDomain,
+    ProductImageDomain,
+    ProductVariantDomain,
+)
 from .review import FitFeedback, ReviewDomain
 from .search import BrandSearchResult, SearchResultDomain
 from .user import (
@@ -24,6 +30,8 @@ __all__ = [
     "CategoryDomain",
     "FavoriteDomain",
     "FitFeedback",
+    "ModerationRequestType",
+    "ModerationStatus",
     "NotificationDomain",
     "OrderDomain",
     "OrderItemDomain",

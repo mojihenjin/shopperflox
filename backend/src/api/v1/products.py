@@ -258,3 +258,22 @@ async def upload_product_image(
         body=ProductImageResponse.model_validate(image),
         status_code=status.HTTP_201_CREATED,
     )
+
+
+@router.delete(
+    "/products/{product_id}/images/{image_id}",
+    response_model=BaseResponse[None],
+    status_code=status.HTTP_200_OK,
+)
+async def delete_product_image(
+    product_id: UUID,
+    image_id: UUID,
+    current_user: UserDomain = Depends(require_catalog_or_creator_permission()),
+    catalog_service: CatalogService = Depends(get_catalog_service),
+):
+    await catalog_service.delete_image(
+        actor=current_user,
+        product_id=product_id,
+        image_id=image_id,
+    )
+    return ResponseGenerator.answer(body=None, status_code=status.HTTP_200_OK)

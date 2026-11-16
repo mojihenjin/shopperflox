@@ -22,7 +22,7 @@ async def test_search_3_in_1_endpoint(client):
     uow = uow_factory()
     async with uow:
         admin = await uow.users.get_by_id(UUID(admin_id))
-        admin.global_permissions = ["catalog:manage"]
+        admin.global_permissions = ["catalog:manage", "mod:approve_manager"]
         await uow.users.update(admin)
         await uow.commit()
 
@@ -115,6 +115,14 @@ async def test_search_3_in_1_endpoint(client):
             "stock_quantity": 8,
         },
     )
+
+    # Approve products via moderation
+    for pid in [p1_id, p2_id, p3_id]:
+        app_res = await client.post(
+            f"/api/v1/moderation/products/{pid}/approve",
+            headers=headers,
+        )
+        assert app_res.status_code == 200
 
     # 3. Search by brand name "Nike"
     res_brand = await client.get("/api/v1/search?q=Nike")

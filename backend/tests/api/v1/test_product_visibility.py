@@ -46,7 +46,7 @@ async def test_product_visibility_matrix(client: AsyncClient):
         await uow.users.update(creator)
 
         moderator = await uow.users.get_by_id(mod_id)
-        moderator.global_permissions = ["mod:update"]
+        moderator.global_permissions = ["mod:update", "mod:approve_manager"]
         await uow.users.update(moderator)
 
         await uow.commit()
@@ -128,6 +128,15 @@ async def test_product_visibility_matrix(client: AsyncClient):
     assert prod2_res.status_code == 201
     assert prod2_res.json()["body"]["is_hidden"] == 2
     assert prod2_res.json()["body"]["is_limited"] is True
+
+    # Approve all three products via moderation
+    for p_res in [prod0_res, prod1_res, prod2_res]:
+        pid = p_res.json()["body"]["id"]
+        app_res = await client.post(
+            f"/api/v1/moderation/products/{pid}/approve",
+            headers=mod_headers,
+        )
+        assert app_res.status_code == 200
 
     # ========================================================
     # Test 1: GET /api/v1/products (Catalog listing)

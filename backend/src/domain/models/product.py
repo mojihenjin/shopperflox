@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
@@ -10,6 +11,17 @@ from src.domain.exceptions import DomainValidationError
 from src.utils import factory_now
 
 from .base import BaseDomain
+
+
+class ModerationStatus(StrEnum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class ModerationRequestType(StrEnum):
+    CREATE = "CREATE"
+    EDIT = "EDIT"
 
 
 @dataclass(slots=True, kw_only=True)
@@ -38,6 +50,10 @@ class ProductDomain(BaseDomain):
     is_published: bool = field(default=False)
     is_hidden: int = field(default=0)
     is_limited: bool = field(default=False)
+
+    moderation_status: ModerationStatus = field(default=ModerationStatus.PENDING)
+    request_type: ModerationRequestType = field(default=ModerationRequestType.CREATE)
+    rejection_reason: str | None = field(default=None)
 
     created_at: datetime = field(default_factory=factory_now)
     updated_at: datetime = field(default_factory=factory_now)

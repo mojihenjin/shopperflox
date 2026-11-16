@@ -26,3 +26,13 @@ class UserBanResponse(BaseModel):
     created_at: datetime
     ended_at: datetime | None = None
     created_by: UUID
+
+
+class RejectProductRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    reason: str | None = Field(default=None, max_length=1000)
+
+
+class PendingCountResponse(BaseModel):
+    pending_count: int

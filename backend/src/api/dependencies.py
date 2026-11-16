@@ -149,6 +149,18 @@ def get_moderation_service(
     return UserModerationService(uow=uow)
 
 
+def get_notification_uow(request: Request) -> NotificationUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyNotificationUnitOfWork(session_factory=factory)
+
+
+def get_notification_service(
+    uow: NotificationUnitOfWorkProtocol = Depends(get_notification_uow),
+    task_queue: TaskQueueProtocol = Depends(get_task_queue),
+) -> NotificationService:
+    return NotificationService(uow=uow, task_queue=task_queue)
+
+
 def get_catalog_uow(request: Request) -> CatalogUnitOfWorkProtocol:
     factory = getattr(request.app.state, "async_session_factory", async_session_maker)
     return SqlAlchemyCatalogUnitOfWork(session_factory=factory)
@@ -157,8 +169,13 @@ def get_catalog_uow(request: Request) -> CatalogUnitOfWorkProtocol:
 def get_catalog_service(
     uow: CatalogUnitOfWorkProtocol = Depends(get_catalog_uow),
     storage: FileStorageProtocol = Depends(get_file_storage),
+    notification_service: NotificationService = Depends(get_notification_service),
 ) -> CatalogService:
-    return CatalogService(uow=uow, storage=storage)
+    return CatalogService(
+        uow=uow,
+        storage=storage,
+        notification_service=notification_service,
+    )
 
 
 def get_favorite_service(
@@ -181,18 +198,6 @@ def get_cart_service(
 def get_order_uow(request: Request) -> OrderUnitOfWorkProtocol:
     factory = getattr(request.app.state, "async_session_factory", async_session_maker)
     return SqlAlchemyOrderUnitOfWork(session_factory=factory)
-
-
-def get_notification_uow(request: Request) -> NotificationUnitOfWorkProtocol:
-    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
-    return SqlAlchemyNotificationUnitOfWork(session_factory=factory)
-
-
-def get_notification_service(
-    uow: NotificationUnitOfWorkProtocol = Depends(get_notification_uow),
-    task_queue: TaskQueueProtocol = Depends(get_task_queue),
-) -> NotificationService:
-    return NotificationService(uow=uow, task_queue=task_queue)
 
 
 def get_order_service(

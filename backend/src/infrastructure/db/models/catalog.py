@@ -76,6 +76,21 @@ class ProductModel(Base):
     is_limited: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false", nullable=False
     )
+    moderation_status: Mapped[str] = mapped_column(
+        String(20),
+        default="pending",
+        server_default="pending",
+        nullable=False,
+        index=True,
+    )
+    request_type: Mapped[str] = mapped_column(
+        String(20),
+        default="CREATE",
+        server_default="CREATE",
+        nullable=False,
+        index=True,
+    )
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )

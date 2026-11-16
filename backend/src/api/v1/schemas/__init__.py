@@ -31,6 +31,8 @@ from .catalog import (
 )
 from .moderation import (
     BanUserRequest,
+    PendingCountResponse,
+    RejectProductRequest,
     SetPermissionsRequest,
     UserBanResponse,
 )
@@ -87,6 +89,7 @@ __all__ = [
     "OrderStatusUpdateRequest",
     "PaymentResponse",
     "PaymentWebhookPayload",
+    "PendingCountResponse",
     "ProductCreateRequest",
     "ProductDetailResponse",
     "ProductImageCreateRequest",
@@ -100,6 +103,7 @@ __all__ = [
     "RefreshTokenRequest",
     "RegisterRequest",
     "RegisterResponse",
+    "RejectProductRequest",
     "ReviewResponse",
     "SearchResultResponse",
     "SendEmailCodeRequest",

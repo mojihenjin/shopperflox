@@ -31,7 +31,7 @@ async def test_full_catalog_and_favorites_flow(client):
     uow = uow_factory()
     async with uow:
         admin = await uow.users.get_by_id(UUID(admin_id))
-        admin.global_permissions = ["catalog:manage"]
+        admin.global_permissions = ["catalog:manage", "mod:approve_manager"]
         await uow.users.update(admin)
         await uow.commit()
 
@@ -127,6 +127,13 @@ async def test_full_catalog_and_favorites_flow(client):
     )
     assert create_img.status_code == 201
     assert create_img.json()["body"]["is_main"] is True
+
+    # Approve product via moderation
+    approve_res = await client.post(
+        f"/api/v1/moderation/products/{prod_id}/approve",
+        headers=admin_headers,
+    )
+    assert approve_res.status_code == 200
 
     # 8. Public list products with pagination & metadata
     list_prods = await client.get("/api/v1/products?limit=10&offset=0")

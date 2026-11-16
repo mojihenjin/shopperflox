@@ -123,6 +123,9 @@ class ProductResponse(BaseModel):
     is_published: bool = False
     is_hidden: int = 0
     is_limited: bool = False
+    moderation_status: str = "pending"
+    request_type: str = "CREATE"
+    rejection_reason: str | None = None
     created_at: datetime
     updated_at: datetime
 
