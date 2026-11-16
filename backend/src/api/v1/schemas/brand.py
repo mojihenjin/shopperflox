@@ -28,7 +28,24 @@ class BrandResponse(BaseModel):
     his_url: str | None = None
     logo_url: str | None = None
     is_deleted: bool = False
+    views_count: int = 0
+    orders_count: int = 0
+    moderation_status: str = "pending"
+    rejection_reason: str | None = None
+    is_verified: bool = False
     created_at: datetime
+
+
+class BrandRejectRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    reason: str | None = Field(default=None, max_length=1000)
+
+
+class BrandVerifyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    is_verified: bool
 
 
 class BrandMemberResponse(BaseModel):

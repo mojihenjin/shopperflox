@@ -2,13 +2,19 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 
-from src.api.dependencies import get_brand_service, get_current_user
+from src.api.dependencies import (
+    get_brand_service,
+    get_current_user,
+    get_optional_current_user,
+    require_permission,
+)
 from src.api.v1.schemas import (
     AddBrandMemberRequest,
     BrandCreateRequest,
     BrandMemberResponse,
     BrandResponse,
     BrandUpdateRequest,
+    BrandVerifyRequest,
     MyBrandResponse,
     RemoveMemberResponse,
 )
@@ -60,9 +66,28 @@ async def list_my_brands(
 )
 async def get_brand_by_slug(
     slug: str,
+    current_user: UserDomain | None = Depends(get_optional_current_user),
     brand_service: BrandService = Depends(get_brand_service),
 ):
-    brand = await brand_service.get_brand(slug=slug)
+    brand = await brand_service.get_brand(slug=slug, actor=current_user)
+    return ResponseGenerator.answer(body=BrandResponse.model_validate(brand))
+
+
+@router.patch(
+    "/{brand_id}/verify",
+    response_model=BaseResponse[BrandResponse],
+)
+async def verify_brand(
+    brand_id: UUID,
+    req: BrandVerifyRequest,
+    moderator: UserDomain = Depends(require_permission("mod:approve_manager")),
+    brand_service: BrandService = Depends(get_brand_service),
+):
+    brand = await brand_service.verify_brand(
+        actor=moderator,
+        brand_id=brand_id,
+        is_verified=req.is_verified,
+    )
     return ResponseGenerator.answer(body=BrandResponse.model_validate(brand))
 
 

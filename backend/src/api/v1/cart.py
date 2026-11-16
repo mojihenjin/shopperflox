@@ -31,6 +31,8 @@ async def get_my_cart(
             unit_price=d.unit_price,
             total_price=d.total_price,
             is_available=d.is_available,
+            product_slug=d.product_slug,
+            image_url=d.image_url,
         )
         for d in details
     ]

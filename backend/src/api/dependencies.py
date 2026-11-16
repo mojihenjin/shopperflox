@@ -172,8 +172,13 @@ def get_brand_uow(request: Request) -> BrandUnitOfWorkProtocol:
 def get_brand_service(
     uow: BrandUnitOfWorkProtocol = Depends(get_brand_uow),
     storage: FileStorageProtocol = Depends(get_file_storage),
+    notification_service: NotificationService = Depends(get_notification_service),
 ) -> BrandService:
-    return BrandService(uow=uow, storage=storage)
+    return BrandService(
+        uow=uow,
+        storage=storage,
+        notification_service=notification_service,
+    )
 
 
 def get_catalog_uow(request: Request) -> CatalogUnitOfWorkProtocol:

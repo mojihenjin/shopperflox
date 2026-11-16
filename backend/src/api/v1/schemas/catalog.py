@@ -100,41 +100,6 @@ class ProductUpdateRequest(BaseModel):
     is_limited: bool | None = None
 
 
-class ProductResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    category_id: UUID
-    creator_id: UUID | None = None
-    brand_id: UUID | None = None
-    title: str
-    slug: str
-    brand: str | None = None
-    brand_slug: str | None = None
-    brand_is_deleted: bool = False
-    is_self_worked: bool = False
-    base_price: Decimal
-    price_usd: Decimal | None = None
-    price_eur: Decimal | None = None
-
-    material: str | None = None
-    density: str | None = None
-    composition: str | None = None
-    print_method: str | None = None
-    note: str | None = None
-
-    description: str | None = None
-    attributes: dict[str, Any] = Field(default_factory=dict)
-    is_published: bool = False
-    is_hidden: int = 0
-    is_limited: bool = False
-    moderation_status: str = "pending"
-    request_type: str = "CREATE"
-    rejection_reason: str | None = None
-    created_at: datetime
-    updated_at: datetime
-
-
 class ProductVariantCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -171,6 +136,7 @@ class ProductVariantResponse(BaseModel):
     color_hex: str | None = None
     price_override: Decimal | None = None
     stock_quantity: int = 0
+    orders_count: int = 0
     created_at: datetime
     updated_at: datetime
 
@@ -200,9 +166,54 @@ class ProductImageResponse(BaseModel):
     created_at: datetime
 
 
+class ProductResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    category_id: UUID
+    creator_id: UUID | None = None
+    brand_id: UUID | None = None
+    title: str
+    slug: str
+    brand: str | None = None
+    brand_slug: str | None = None
+    brand_logo_url: str | None = None
+    brand_his_url: str | None = None
+    brand_is_verified: bool = False
+    brand_is_deleted: bool = False
+    is_self_worked: bool = False
+    base_price: Decimal
+    price_usd: Decimal | None = None
+    price_eur: Decimal | None = None
+
+    material: str | None = None
+    density: str | None = None
+    composition: str | None = None
+    print_method: str | None = None
+    note: str | None = None
+
+    description: str | None = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    is_published: bool = False
+    is_hidden: int = 0
+    is_limited: bool = False
+    views_count: int = 0
+    orders_count: int = 0
+    moderation_status: str = "pending"
+    request_type: str = "CREATE"
+    rejection_reason: str | None = None
+    variants: list[ProductVariantResponse] = Field(default_factory=list)
+    images: list[ProductImageResponse] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+
 class ProductDetailResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     product: ProductResponse
     variants: list[ProductVariantResponse] = Field(default_factory=list)
     images: list[ProductImageResponse] = Field(default_factory=list)
+
+
+ProductListResponse = ProductResponse

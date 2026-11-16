@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 
 from src.api.dependencies import (
     get_catalog_service,
+    get_current_user,
     get_optional_current_user,
     require_catalog_or_creator_permission,
 )
@@ -32,6 +33,9 @@ async def list_products(
     min_price: Decimal | None = Query(default=None, ge=0),
     max_price: Decimal | None = Query(default=None, ge=0),
     search: str | None = Query(default=None),
+    size: str | None = Query(default=None),
+    color: str | None = Query(default=None),
+    is_limited: bool | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     catalog_service: CatalogService = Depends(get_catalog_service),
@@ -41,6 +45,9 @@ async def list_products(
         min_price=min_price,
         max_price=max_price,
         search=search,
+        size=size,
+        color=color,
+        is_limited=is_limited,
         limit=limit,
         offset=offset,
     )
@@ -160,7 +167,7 @@ async def delete_product(
 async def create_product_variant(
     product_id: UUID,
     req: ProductVariantCreateRequest,
-    current_user: UserDomain = Depends(require_catalog_or_creator_permission()),
+    current_user: UserDomain = Depends(get_current_user),
     catalog_service: CatalogService = Depends(get_catalog_service),
 ):
     color = req.color or req.color_name
@@ -187,7 +194,7 @@ async def create_product_variant(
 async def update_product_variant(
     variant_id: UUID,
     req: ProductVariantUpdateRequest,
-    current_user: UserDomain = Depends(require_catalog_or_creator_permission()),
+    current_user: UserDomain = Depends(get_current_user),
     catalog_service: CatalogService = Depends(get_catalog_service),
 ):
     color = req.color or req.color_name
@@ -212,7 +219,7 @@ async def update_product_variant(
 async def add_product_image(
     product_id: UUID,
     req: ProductImageCreateRequest,
-    current_user: UserDomain = Depends(require_catalog_or_creator_permission()),
+    current_user: UserDomain = Depends(get_current_user),
     catalog_service: CatalogService = Depends(get_catalog_service),
 ):
     image = await catalog_service.add_image(
@@ -243,7 +250,7 @@ async def upload_product_image(
     alt_text: str | None = Form(default=None),
     sort_order: int = Form(default=0),
     is_main: bool = Form(default=False),
-    current_user: UserDomain = Depends(require_catalog_or_creator_permission()),
+    current_user: UserDomain = Depends(get_current_user),
     catalog_service: CatalogService = Depends(get_catalog_service),
 ):
     data = await file.read()
@@ -270,7 +277,7 @@ async def upload_product_image(
 async def delete_product_image(
     product_id: UUID,
     image_id: UUID,
-    current_user: UserDomain = Depends(require_catalog_or_creator_permission()),
+    current_user: UserDomain = Depends(get_current_user),
     catalog_service: CatalogService = Depends(get_catalog_service),
 ):
     await catalog_service.delete_image(

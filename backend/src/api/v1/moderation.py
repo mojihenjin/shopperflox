@@ -4,12 +4,15 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 
 from src.api.dependencies import (
+    get_brand_service,
     get_catalog_service,
     get_moderation_service,
     require_permission,
 )
 from src.api.v1.schemas import (
     BanUserRequest,
+    BrandRejectRequest,
+    BrandResponse,
     PendingCountResponse,
     ProductResponse,
     RejectProductRequest,
@@ -17,7 +20,11 @@ from src.api.v1.schemas import (
     UserBanResponse,
     UserResponse,
 )
-from src.application.services import CatalogService, UserModerationService
+from src.application.services import (
+    BrandService,
+    CatalogService,
+    UserModerationService,
+)
 from src.core import BaseResponse, ResponseGenerator
 from src.domain.models import UserDomain
 
@@ -144,3 +151,70 @@ async def reject_product(
         reason=req.reason,
     )
     return ResponseGenerator.answer(body=ProductResponse.model_validate(product))
+
+
+@router.get(
+    "/brands",
+    response_model=BaseResponse[list[BrandResponse]],
+)
+async def list_pending_brands(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    moderator: UserDomain = Depends(require_permission("mod:approve_manager")),
+    brand_service: BrandService = Depends(get_brand_service),
+):
+    brands, total = await brand_service.list_pending_brands(
+        actor=moderator,
+        limit=limit,
+        offset=offset,
+    )
+    return ResponseGenerator.answer(
+        body=[BrandResponse.model_validate(b) for b in brands],
+        metadata={"total": total, "limit": limit, "offset": offset},
+    )
+
+
+@router.get(
+    "/brands/pending-count",
+    response_model=BaseResponse[PendingCountResponse],
+)
+async def count_pending_brands(
+    moderator: UserDomain = Depends(require_permission("mod:approve_manager")),
+    brand_service: BrandService = Depends(get_brand_service),
+):
+    count = await brand_service.count_pending_brands(actor=moderator)
+    return ResponseGenerator.answer(body=PendingCountResponse(pending_count=count))
+
+
+@router.post(
+    "/brands/{brand_id}/approve",
+    response_model=BaseResponse[BrandResponse],
+)
+async def approve_brand(
+    brand_id: UUID,
+    moderator: UserDomain = Depends(require_permission("mod:approve_manager")),
+    brand_service: BrandService = Depends(get_brand_service),
+):
+    brand = await brand_service.approve_brand(
+        actor=moderator,
+        brand_id=brand_id,
+    )
+    return ResponseGenerator.answer(body=BrandResponse.model_validate(brand))
+
+
+@router.post(
+    "/brands/{brand_id}/reject",
+    response_model=BaseResponse[BrandResponse],
+)
+async def reject_brand(
+    brand_id: UUID,
+    req: BrandRejectRequest,
+    moderator: UserDomain = Depends(require_permission("mod:approve_manager")),
+    brand_service: BrandService = Depends(get_brand_service),
+):
+    brand = await brand_service.reject_brand(
+        actor=moderator,
+        brand_id=brand_id,
+        reason=req.reason,
+    )
+    return ResponseGenerator.answer(body=BrandResponse.model_validate(brand))

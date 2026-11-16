@@ -394,6 +394,11 @@
         ],
         "summary": "Get Brand By Slug",
         "operationId": "get_brand_by_slug_api_v1_brands__slug__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "slug",
@@ -405,6 +410,64 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_BrandResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brands/{brand_id}/verify": {
+      "patch": {
+        "tags": [
+          "Brands"
+        ],
+        "summary": "Verify Brand",
+        "operationId": "verify_brand_api_v1_brands__brand_id__verify_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brand_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Brand Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandVerifyRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1424,6 +1487,199 @@
         }
       }
     },
+    "/api/v1/moderation/brands": {
+      "get": {
+        "tags": [
+          "Moderation"
+        ],
+        "summary": "List Pending Brands",
+        "operationId": "list_pending_brands_api_v1_moderation_brands_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_list_BrandResponse__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/moderation/brands/pending-count": {
+      "get": {
+        "tags": [
+          "Moderation"
+        ],
+        "summary": "Count Pending Brands",
+        "operationId": "count_pending_brands_api_v1_moderation_brands_pending_count_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_PendingCountResponse_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/moderation/brands/{brand_id}/approve": {
+      "post": {
+        "tags": [
+          "Moderation"
+        ],
+        "summary": "Approve Brand",
+        "operationId": "approve_brand_api_v1_moderation_brands__brand_id__approve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brand_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Brand Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_BrandResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/moderation/brands/{brand_id}/reject": {
+      "post": {
+        "tags": [
+          "Moderation"
+        ],
+        "summary": "Reject Brand",
+        "operationId": "reject_brand_api_v1_moderation_brands__brand_id__reject_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brand_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Brand Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandRejectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_BrandResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "tags": [
@@ -1729,6 +1985,54 @@
                 }
               ],
               "title": "Search"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Size"
+            }
+          },
+          {
+            "name": "color",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Color"
+            }
+          },
+          {
+            "name": "is_limited",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Limited"
             }
           },
           {
@@ -4603,6 +4907,25 @@
         ],
         "title": "BrandMemberResponse"
       },
+      "BrandRejectRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "BrandRejectRequest"
+      },
       "BrandResponse": {
         "properties": {
           "id": {
@@ -4643,6 +4966,37 @@
           "is_deleted": {
             "type": "boolean",
             "title": "Is Deleted",
+            "default": false
+          },
+          "views_count": {
+            "type": "integer",
+            "title": "Views Count",
+            "default": 0
+          },
+          "orders_count": {
+            "type": "integer",
+            "title": "Orders Count",
+            "default": 0
+          },
+          "moderation_status": {
+            "type": "string",
+            "title": "Moderation Status",
+            "default": "pending"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "is_verified": {
+            "type": "boolean",
+            "title": "Is Verified",
             "default": false
           },
           "created_at": {
@@ -4709,6 +5063,20 @@
         "additionalProperties": false,
         "type": "object",
         "title": "BrandUpdateRequest"
+      },
+      "BrandVerifyRequest": {
+        "properties": {
+          "is_verified": {
+            "type": "boolean",
+            "title": "Is Verified"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "is_verified"
+        ],
+        "title": "BrandVerifyRequest"
       },
       "CartItemRequest": {
         "properties": {
@@ -4807,6 +5175,22 @@
           "is_available": {
             "type": "boolean",
             "title": "Is Available"
+          },
+          "product_slug": {
+            "type": "string",
+            "title": "Product Slug",
+            "default": ""
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
           }
         },
         "type": "object",
@@ -5898,6 +6282,33 @@
             ],
             "title": "Brand Slug"
           },
+          "brand_logo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Logo Url"
+          },
+          "brand_his_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand His Url"
+          },
+          "brand_is_verified": {
+            "type": "boolean",
+            "title": "Brand Is Verified",
+            "default": false
+          },
           "brand_is_deleted": {
             "type": "boolean",
             "title": "Brand Is Deleted",
@@ -6020,6 +6431,16 @@
             "title": "Is Limited",
             "default": false
           },
+          "views_count": {
+            "type": "integer",
+            "title": "Views Count",
+            "default": 0
+          },
+          "orders_count": {
+            "type": "integer",
+            "title": "Orders Count",
+            "default": 0
+          },
           "moderation_status": {
             "type": "string",
             "title": "Moderation Status",
@@ -6040,6 +6461,20 @@
               }
             ],
             "title": "Rejection Reason"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/ProductVariantResponse"
+            },
+            "type": "array",
+            "title": "Variants"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/ProductImageResponse"
+            },
+            "type": "array",
+            "title": "Images"
           },
           "created_at": {
             "type": "string",
@@ -6312,9 +6747,15 @@
       "ProductVariantCreateRequest": {
         "properties": {
           "sku": {
-            "type": "string",
-            "maxLength": 64,
-            "minLength": 1,
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Sku"
           },
           "size": {
@@ -6389,9 +6830,6 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "sku"
-        ],
         "title": "ProductVariantCreateRequest"
       },
       "ProductVariantResponse": {
@@ -6470,6 +6908,11 @@
             "title": "Stock Quantity",
             "default": 0
           },
+          "orders_count": {
+            "type": "integer",
+            "title": "Orders Count",
+            "default": 0
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -6497,8 +6940,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 64,
-                "minLength": 1
+                "maxLength": 64
               },
               {
                 "type": "null"
