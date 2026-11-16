@@ -1,10 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { authApi } from '../api/endpoints';
+import { authApi, usersApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
+import type { ApiError } from '../api/client';
 
 export function ProfilePage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { isAuthenticated, logout } = useAuthStore();
 
   const { data: profileData, isLoading } = useQuery({
@@ -12,6 +15,39 @@ export function ProfilePage() {
     queryFn: () => authApi.getMe(),
     enabled: isAuthenticated,
   });
+
+  // Email change 2-step flow state
+  const [isEmailFormOpen, setIsEmailFormOpen] = useState(false);
+  const [emailStep, setEmailStep] = useState<'input' | 'verify'>('input');
+  const [newEmailInput, setNewEmailInput] = useState('');
+  const [codeInput, setCodeInput] = useState('');
+  const [verificationToken, setVerificationToken] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailSuccessMsg, setEmailSuccessMsg] = useState<string | null>(null);
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
+
+  // Personal data editing state
+  const [isEditingPersonal, setIsEditingPersonal] = useState(false);
+  const [firstnameInput, setFirstnameInput] = useState('');
+  const [lastnameInput, setLastnameInput] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [personalError, setPersonalError] = useState<string | null>(null);
+  const [personalSuccessMsg, setPersonalSuccessMsg] = useState<string | null>(null);
+
+  const user = profileData?.data?.user;
+  const personal = profileData?.data?.personal;
+  const permissions = user?.global_permissions || [];
+  const isCreator =
+    permissions.includes('*') ||
+    permissions.some((p) => p.startsWith('creator:'));
+
+  useEffect(() => {
+    if (personal) {
+      setFirstnameInput(personal.firstname || '');
+      setLastnameInput(personal.lastname || '');
+      setPhoneInput(personal.phone_number || '');
+    }
+  }, [personal]);
 
   const handleLogout = async () => {
     try {
@@ -24,6 +60,89 @@ export function ProfilePage() {
     }
   };
 
+  // Step 1: Send verification code to new email
+  const handleSendEmailCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailError(null);
+    setEmailSuccessMsg(null);
+    setIsEmailLoading(true);
+
+    try {
+      const res = await authApi.sendEmailCode({ email: newEmailInput.trim() });
+      if (res.data?.verification_token) {
+        setVerificationToken(res.data.verification_token);
+        setEmailStep('verify');
+        setEmailSuccessMsg('Код подтверждения отправлен на указанную почту');
+      } else {
+        throw new Error('Не удалось получить токен верификации');
+      }
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setEmailError(apiErr.message || 'Ошибка отправки кода. Проверьте адрес почты.');
+    } finally {
+      setIsEmailLoading(false);
+    }
+  };
+
+  // Step 2: Verify code
+  const handleVerifyEmailCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailError(null);
+    setEmailSuccessMsg(null);
+    setIsEmailLoading(true);
+
+    const cleanCode = codeInput.replace(/-/g, '').trim();
+    if (cleanCode.length !== 6) {
+      setEmailError('Код должен состоять из 6 цифр');
+      setIsEmailLoading(false);
+      return;
+    }
+
+    try {
+      await authApi.verifyCode({
+        verification_token: verificationToken,
+        code: cleanCode,
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ['userProfile'] });
+      setEmailSuccessMsg('Электронная почта успешно подтверждена!');
+      setTimeout(() => {
+        setIsEmailFormOpen(false);
+        setEmailStep('input');
+        setNewEmailInput('');
+        setCodeInput('');
+        setVerificationToken('');
+        setEmailSuccessMsg(null);
+      }, 1500);
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setEmailError(apiErr.message || 'Неверный или просроченный код подтверждения.');
+    } finally {
+      setIsEmailLoading(false);
+    }
+  };
+
+  // Update personal mutation
+  const updatePersonalMutation = useMutation({
+    mutationFn: async () => {
+      setPersonalError(null);
+      setPersonalSuccessMsg(null);
+      return usersApi.updatePersonal({
+        firstname: firstnameInput.trim() || null,
+        lastname: lastnameInput.trim() || null,
+        phone_number: phoneInput.trim() || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userProfile'] });
+      setPersonalSuccessMsg('Персональные данные успешно сохранены');
+      setIsEditingPersonal(false);
+    },
+    onError: (err: ApiError) => {
+      setPersonalError(err.message || 'Ошибка обновления персональных данных');
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="w-full bg-[#F2E9DB] min-h-[60vh] flex items-center justify-center py-20 px-4">
@@ -33,13 +152,6 @@ export function ProfilePage() {
       </div>
     );
   }
-
-  const user = profileData?.data?.user;
-  const personal = profileData?.data?.personal;
-  const permissions = user?.global_permissions || [];
-  const isCreator =
-    permissions.includes('*') ||
-    permissions.some((p) => p.startsWith('creator:'));
 
   return (
     <div className="w-full bg-[#F2E9DB] min-h-[80vh] py-12 md:py-20 px-4 md:px-8">
@@ -62,6 +174,7 @@ export function ProfilePage() {
         {/* Profile Details Card */}
         <div className="bg-[#FFFFFF] border border-sf-dark p-6 sm:p-10 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-sf-dark/15">
+            {/* Login */}
             <div>
               <div className="text-[10px] font-sans uppercase tracking-widest text-sf-muted">
                 ЛОГИН АККАУНТА
@@ -71,29 +184,152 @@ export function ProfilePage() {
               </div>
             </div>
 
+            {/* Email with Change / Bind button and 2-step inline form */}
             <div>
               <div className="text-[10px] font-sans uppercase tracking-widest text-sf-muted">
                 ЭЛЕКТРОННАЯ ПОЧТА
               </div>
-              <div className="text-sm font-sans text-sf-dark mt-1">
-                {user?.email || 'Не указана'}
+              <div className="flex items-center justify-between gap-2 mt-1">
+                <div className="text-sm font-sans text-sf-dark truncate">
+                  {user?.email || 'Не указана'}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEmailFormOpen(!isEmailFormOpen);
+                    setEmailStep('input');
+                    setEmailError(null);
+                    setEmailSuccessMsg(null);
+                  }}
+                  className="text-[11px] font-sans uppercase tracking-wider text-sf-dark underline underline-offset-4 hover:opacity-70 whitespace-nowrap"
+                >
+                  {isEmailFormOpen ? 'ЗАКРЫТЬ ×' : (user?.email ? 'ИЗМЕНИТЬ' : 'ПРИВЯЗАТЬ')}
+                </button>
               </div>
+
+              {/* 2-Step Email Verification Form */}
+              {isEmailFormOpen && (
+                <div className="mt-3 p-4 bg-[#F2E9DB]/60 border border-sf-dark/20 space-y-3">
+                  {emailError && (
+                    <div className="text-[11px] text-red-700 bg-red-100/60 p-2 border border-red-700/20 font-sans">
+                      {emailError}
+                    </div>
+                  )}
+                  {emailSuccessMsg && (
+                    <div className="text-[11px] text-emerald-800 bg-emerald-100/60 p-2 border border-emerald-800/20 font-sans">
+                      {emailSuccessMsg}
+                    </div>
+                  )}
+
+                  {emailStep === 'input' ? (
+                    <form onSubmit={handleSendEmailCode} className="space-y-3">
+                      <div className="text-[10px] font-sans uppercase tracking-wider text-sf-muted">
+                        Шаг 1 из 2: Введите новый email
+                      </div>
+                      <input
+                        type="email"
+                        required
+                        placeholder="NAME@DOMAIN.COM"
+                        value={newEmailInput}
+                        onChange={(e) => setNewEmailInput(e.target.value)}
+                        className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-1.5 text-xs font-sans outline-none uppercase"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isEmailLoading}
+                        className="bg-sf-dark text-sf-cream hover:bg-sf-black px-4 py-2 text-xs font-sans uppercase tracking-wider disabled:opacity-50 transition-colors"
+                      >
+                        {isEmailLoading ? 'ОТПРАВКА...' : 'ОТПРАВИТЬ КОД ↗'}
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleVerifyEmailCode} className="space-y-3">
+                      <div className="text-[10px] font-sans uppercase tracking-wider text-sf-muted">
+                        Шаг 2 из 2: Введите 6-значный код из письма
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        maxLength={7}
+                        placeholder="123-456"
+                        value={codeInput}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/[^\d]/g, '').slice(0, 6);
+                          if (raw.length > 3) {
+                            setCodeInput(`${raw.slice(0, 3)}-${raw.slice(3)}`);
+                          } else {
+                            setCodeInput(raw);
+                          }
+                        }}
+                        className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-1.5 text-xs font-mono tracking-widest outline-none text-center"
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="submit"
+                          disabled={isEmailLoading}
+                          className="bg-sf-dark text-sf-cream hover:bg-sf-black px-4 py-2 text-xs font-sans uppercase tracking-wider disabled:opacity-50 transition-colors"
+                        >
+                          {isEmailLoading ? 'ПРОВЕРКА...' : 'ПОДТВЕРДИТЬ КОД ↗'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEmailStep('input');
+                            setEmailError(null);
+                          }}
+                          className="text-xs font-sans uppercase tracking-wider text-sf-muted hover:text-sf-dark px-2 py-1"
+                        >
+                          НАЗАД
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
             </div>
 
+            {/* Verification Status with Round Burgundy Badge */}
             <div>
               <div className="text-[10px] font-sans uppercase tracking-widest text-sf-muted">
                 СТАТУС ВЕРИФИКАЦИИ
               </div>
-              <div className="text-xs font-sans uppercase tracking-wider text-sf-dark mt-1 flex items-center gap-2">
-                <span>ПРОФИЛЬ: {user?.verified_profile ? '✓ ПОДТВЕРЖДЁН' : 'НЕ ВЕРИФИЦИРОВАН'}</span>
+              <div className="text-xs font-sans uppercase tracking-wider text-sf-dark mt-2 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sf-muted">ПРОФИЛЬ:</span>
+                  {user?.verified_profile ? (
+                    <span className="inline-flex items-center gap-1.5 font-semibold text-sf-dark">
+                      <span className="w-4 h-4 rounded-full bg-[#3F2021] text-[#F2E9DB] inline-flex items-center justify-center text-[10px] font-bold select-none leading-none">
+                        ✓
+                      </span>
+                      <span>ПОДТВЕРЖДЁН</span>
+                    </span>
+                  ) : (
+                    <span className="text-sf-muted">НЕ ВЕРИФИЦИРОВАН</span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sf-muted">ПОЧТА:</span>
+                  {user?.verified_email ? (
+                    <span className="inline-flex items-center gap-1.5 font-semibold text-sf-dark">
+                      <span className="w-4 h-4 rounded-full bg-[#3F2021] text-[#F2E9DB] inline-flex items-center justify-center text-[10px] font-bold select-none leading-none">
+                        ✓
+                      </span>
+                      <span>ПОДТВЕРЖДЕНА</span>
+                    </span>
+                  ) : (
+                    <span className="text-sf-muted">НЕ ПОДТВЕРЖДЕНА</span>
+                  )}
+                </div>
               </div>
             </div>
 
+            {/* Permissions / Roles */}
             <div>
               <div className="text-[10px] font-sans uppercase tracking-widest text-sf-muted">
                 ПРИВИЛЕГИИ И РОЛИ
               </div>
-              <div className="flex flex-wrap gap-1.5 mt-1.5">
+              <div className="flex flex-wrap gap-1.5 mt-2">
                 {permissions.length > 0 ? (
                   permissions.map((p) => (
                     <span
@@ -110,34 +346,128 @@ export function ProfilePage() {
             </div>
           </div>
 
-          {/* Personal Info if present */}
-          {personal && (
-            <div className="space-y-3 pb-6 border-b border-sf-dark/15">
+          {/* Personal Info Section */}
+          <div className="space-y-4 pb-6 border-b border-sf-dark/15">
+            <div className="flex items-center justify-between">
               <div className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
                 ( ПЕРСОНАЛЬНЫЕ ДАННЫЕ )
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans uppercase">
-                {personal.firstname && (
-                  <div>
-                    <span className="text-sf-muted">ИМЯ: </span>
-                    <span className="font-semibold text-sf-dark">{personal.firstname}</span>
-                  </div>
-                )}
-                {personal.lastname && (
-                  <div>
-                    <span className="text-sf-muted">ФАМИЛИЯ: </span>
-                    <span className="font-semibold text-sf-dark">{personal.lastname}</span>
-                  </div>
-                )}
-                {personal.phone_number && (
-                  <div>
-                    <span className="text-sf-muted">ТЕЛЕФОН: </span>
-                    <span className="font-semibold text-sf-dark">{personal.phone_number}</span>
-                  </div>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditingPersonal(!isEditingPersonal);
+                  setPersonalError(null);
+                  setPersonalSuccessMsg(null);
+                }}
+                className="text-[11px] font-sans uppercase tracking-wider text-sf-dark underline underline-offset-4 hover:opacity-70"
+              >
+                {isEditingPersonal ? 'ОТМЕНА' : 'РЕДАКТИРОВАТЬ'}
+              </button>
             </div>
-          )}
+
+            {personalError && (
+              <div className="text-xs text-red-700 bg-red-100/60 p-2.5 border border-red-700/20 font-sans">
+                {personalError}
+              </div>
+            )}
+            {personalSuccessMsg && (
+              <div className="text-xs text-emerald-800 bg-emerald-100/60 p-2.5 border border-emerald-800/20 font-sans">
+                {personalSuccessMsg}
+              </div>
+            )}
+
+            {isEditingPersonal ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  updatePersonalMutation.mutate();
+                }}
+                className="space-y-4 bg-[#F2E9DB]/40 p-4 border border-sf-dark/15"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1">
+                      ИМЯ
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={100}
+                      placeholder="Иван"
+                      value={firstnameInput}
+                      onChange={(e) => setFirstnameInput(e.target.value)}
+                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1">
+                      ФАМИЛИЯ
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={100}
+                      placeholder="Иванов"
+                      value={lastnameInput}
+                      onChange={(e) => setLastnameInput(e.target.value)}
+                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1">
+                      НОМЕР ТЕЛЕФОНА
+                    </label>
+                    <input
+                      type="tel"
+                      maxLength={30}
+                      placeholder="+7 999 000-00-00"
+                      value={phoneInput}
+                      onChange={(e) => setPhoneInput(e.target.value)}
+                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="submit"
+                    disabled={updatePersonalMutation.isPending}
+                    className="bg-sf-dark text-sf-cream hover:bg-sf-black px-5 py-2 text-xs font-sans uppercase tracking-wider disabled:opacity-50 transition-colors"
+                  >
+                    {updatePersonalMutation.isPending ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ ↗'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingPersonal(false)}
+                    className="text-xs font-sans uppercase tracking-wider text-sf-muted hover:text-sf-dark px-2"
+                  >
+                    ОТМЕНА
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans uppercase">
+                <div>
+                  <span className="text-sf-muted">ИМЯ: </span>
+                  <span className="font-semibold text-sf-dark">
+                    {personal?.firstname || 'Не указано'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sf-muted">ФАМИЛИЯ: </span>
+                  <span className="font-semibold text-sf-dark">
+                    {personal?.lastname || 'Не указана'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sf-muted">ТЕЛЕФОН: </span>
+                  <span className="font-semibold text-sf-dark">
+                    {personal?.phone_number || 'Не указан'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Quick links & Creator entry */}
           <div className="space-y-4">
@@ -145,6 +475,12 @@ export function ProfilePage() {
               ( БЫСТРЫЙ ДОСТУП )
             </div>
             <div className="flex flex-wrap gap-3">
+              <Link
+                to="/catalog"
+                className="bg-sf-dark text-sf-cream hover:bg-sf-black px-4 py-2.5 text-xs font-sans uppercase tracking-wider font-semibold transition-colors"
+              >
+                ВЕСЬ КАТАЛОГ ↗
+              </Link>
               {isCreator && (
                 <Link
                   to="/creator/products/new"

@@ -68,6 +68,21 @@ export interface VerifyCodeRequest {
   code: string;
 }
 
+export interface SendEmailCodeRequest {
+  email: string;
+}
+
+export interface VerificationInitResponse {
+  requires_verification: boolean;
+  verification_token: string;
+}
+
+export interface UpdatePersonalRequest {
+  firstname?: string | null;
+  lastname?: string | null;
+  phone_number?: string | null;
+}
+
 export interface LoginRequest {
   identifier: string;
   password: string;

@@ -11,9 +11,13 @@ import type {
   RegisterResponse,
   ReviewResponse,
   SearchResultResponse,
+  SendEmailCodeRequest,
   TokenPairResponse,
+  UpdatePersonalRequest,
+  UserPersonalResponse,
   UserProfileResponse,
   UserResponse,
+  VerificationInitResponse,
   VerifyCodeRequest,
 } from '../types/api';
 
@@ -36,6 +40,12 @@ export const authApi = {
       body: JSON.stringify(data),
     }),
 
+  sendEmailCode: (data: SendEmailCodeRequest) =>
+    apiFetch<VerificationInitResponse>('/api/v1/auth/email/send-code', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   logout: () =>
     apiFetch<null>('/api/v1/auth/logout', {
       method: 'POST',
@@ -44,6 +54,14 @@ export const authApi = {
   getMe: () =>
     apiFetch<UserProfileResponse>('/api/v1/users/me', {
       method: 'GET',
+    }),
+};
+
+export const usersApi = {
+  updatePersonal: (data: UpdatePersonalRequest) =>
+    apiFetch<UserPersonalResponse>('/api/v1/users/me/personal', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     }),
 };
 
