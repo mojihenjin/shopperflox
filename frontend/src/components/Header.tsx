@@ -18,8 +18,37 @@ export function Header() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isOverHero, setIsOverHero] = useState(false);
   const debouncedQuery = useDebounce(searchQuery.trim(), 300);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (location.pathname !== '/') {
+      setIsOverHero(false);
+      return;
+    }
+
+    const checkHeroOverlap = () => {
+      const heroEl = document.getElementById('hero-section');
+      if (!heroEl) {
+        setIsOverHero(false);
+        return;
+      }
+      const heroRect = heroEl.getBoundingClientRect();
+      const headerHeight = headerRef.current?.offsetHeight || 80;
+      setIsOverHero(heroRect.bottom > headerHeight);
+    };
+
+    checkHeroOverlap();
+    window.addEventListener('scroll', checkHeroOverlap, { passive: true });
+    window.addEventListener('resize', checkHeroOverlap);
+
+    return () => {
+      window.removeEventListener('scroll', checkHeroOverlap);
+      window.removeEventListener('resize', checkHeroOverlap);
+    };
+  }, [location.pathname]);
 
   // Categories query
   const { data: categoriesData } = useQuery({
@@ -130,9 +159,22 @@ export function Header() {
   const hasSearchResults = brands.length > 0 || products.length > 0 || variants.length > 0;
 
   return (
-    <header className="sticky top-0 z-50 bg-[#F2E9DB] border-b border-sf-dark/15 text-sf-dark">
+    <header
+      ref={headerRef}
+      className={`sticky top-0 z-50 transition-colors duration-200 ${
+        isOverHero
+          ? 'bg-[#3F2021] border-b border-[#F2E9DB]/20 text-[#F2E9DB]'
+          : 'bg-[#F2E9DB] border-b border-sf-dark/15 text-sf-dark'
+      }`}
+    >
       {/* Top Banner / Philosophy slogan */}
-      <div className="bg-sf-dark text-sf-cream text-[11px] font-sans tracking-widest uppercase py-1.5 px-4 text-center border-b border-sf-cream/20">
+      <div
+        className={`transition-colors duration-200 text-[11px] font-sans tracking-widest uppercase py-1.5 px-4 text-center border-b ${
+          isOverHero
+            ? 'bg-[#2B1516] text-[#F2E9DB]/90 border-[#F2E9DB]/20'
+            : 'bg-sf-dark text-sf-cream border-sf-cream/20'
+        }`}
+      >
         <span>SHOPPERFLOX — ОДЕЖДА И АКСЕССУАРЫ &nbsp;|&nbsp; ПОДДЕРЖКА: support@shopper.flox</span>
       </div>
 
@@ -142,7 +184,9 @@ export function Header() {
           {/* Logo */}
           <Link
             to="/"
-            className="font-serif text-2xl md:text-3xl font-normal tracking-wider text-sf-dark hover:opacity-80 transition-opacity whitespace-nowrap"
+            className={`font-serif text-2xl md:text-3xl font-normal tracking-wider hover:opacity-80 transition-colors duration-200 whitespace-nowrap ${
+              isOverHero ? 'text-[#F2E9DB]' : 'text-sf-dark'
+            }`}
           >
             SHOPPERFLOX
           </Link>
@@ -159,7 +203,11 @@ export function Header() {
                 }}
                 onFocus={() => setIsSearchOpen(true)}
                 placeholder="ПОИСК: БРЕНД, МОДЕЛЬ, АРТИКУЛ..."
-                className="w-full bg-[#F2E9DB] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-[12px] md:text-[13px] tracking-wider uppercase font-sans placeholder:text-sf-muted/70 text-sf-black outline-none transition-colors"
+                className={`w-full px-3 py-2 text-[12px] md:text-[13px] tracking-wider uppercase font-sans outline-none transition-colors duration-200 ${
+                  isOverHero
+                    ? 'bg-[#3F2021] border border-[#F2E9DB]/30 text-[#F2E9DB] placeholder:text-[#F2E9DB]/50 focus:border-[#F2E9DB]'
+                    : 'bg-[#F2E9DB] border border-sf-dark/30 focus:border-sf-dark placeholder:text-sf-muted/70 text-sf-black'
+                }`}
               />
               {searchQuery ? (
                 <button
@@ -168,7 +216,9 @@ export function Header() {
                     setSearchQuery('');
                     setIsSearchOpen(false);
                   }}
-                  className="absolute right-8 text-sf-muted hover:text-sf-black px-1 text-sm font-sans"
+                  className={`absolute right-8 px-1 text-sm font-sans transition-colors duration-200 ${
+                    isOverHero ? 'text-[#F2E9DB]/60 hover:text-[#F2E9DB]' : 'text-sf-muted hover:text-sf-black'
+                  }`}
                   title="Очистить"
                 >
                   ×
@@ -176,7 +226,9 @@ export function Header() {
               ) : null}
               <button
                 type="submit"
-                className="absolute right-2 text-sf-dark hover:opacity-70 text-xs font-semibold px-1"
+                className={`absolute right-2 text-xs font-semibold px-1 transition-colors duration-200 ${
+                  isOverHero ? 'text-[#F2E9DB] hover:opacity-70' : 'text-sf-dark hover:opacity-70'
+                }`}
                 title="Искать"
               >
                 ↗
@@ -290,28 +342,36 @@ export function Header() {
           <nav className="flex items-center gap-4 md:gap-6 text-[12px] md:text-[13px] font-sans uppercase tracking-wider">
             <Link
               to="/catalog"
-              className="hover:opacity-70 transition-opacity whitespace-nowrap font-medium"
+              className={`hover:opacity-70 transition-colors duration-200 whitespace-nowrap font-medium ${
+                isOverHero ? 'text-[#F2E9DB]' : 'text-sf-dark'
+              }`}
             >
               КАТАЛОГ
             </Link>
 
             <Link
               to="/favorites"
-              className="hover:opacity-70 transition-opacity whitespace-nowrap"
+              className={`hover:opacity-70 transition-colors duration-200 whitespace-nowrap ${
+                isOverHero ? 'text-[#F2E9DB]' : 'text-sf-dark'
+              }`}
             >
               FAVORITES
             </Link>
 
             <Link
               to="/orders"
-              className="hover:opacity-70 transition-opacity whitespace-nowrap hidden sm:inline-block"
+              className={`hover:opacity-70 transition-colors duration-200 whitespace-nowrap hidden sm:inline-block ${
+                isOverHero ? 'text-[#F2E9DB]' : 'text-sf-dark'
+              }`}
             >
               ORDERS
             </Link>
 
             <Link
               to="/cart"
-              className="hover:opacity-70 transition-opacity font-semibold whitespace-nowrap"
+              className={`hover:opacity-70 transition-colors duration-200 font-semibold whitespace-nowrap ${
+                isOverHero ? 'text-[#F2E9DB]' : 'text-sf-dark'
+              }`}
             >
               CART ({cartItemsCount})
             </Link>
@@ -321,7 +381,11 @@ export function Header() {
                 {isCreator && (
                   <Link
                     to="/creator/products/new"
-                    className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-sans uppercase tracking-wider font-semibold border border-[#3F2021] transition-colors whitespace-nowrap"
+                    className={`px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-sans uppercase tracking-wider font-semibold transition-colors duration-200 whitespace-nowrap ${
+                      isOverHero
+                        ? 'bg-[#F2E9DB] text-[#3F2021] hover:bg-[#F2E9DB]/90 border border-[#F2E9DB]'
+                        : 'bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] border border-[#3F2021]'
+                    }`}
                   >
                     + СОЗДАТЬ ТОВАР
                   </Link>
@@ -329,7 +393,9 @@ export function Header() {
 
                 <Link
                   to="/profile"
-                  className="font-mono text-xs font-bold text-sf-dark hover:opacity-75 transition-opacity whitespace-nowrap"
+                  className={`font-mono text-xs font-bold transition-colors duration-200 hover:opacity-75 whitespace-nowrap ${
+                    isOverHero ? 'text-[#F2E9DB]' : 'text-sf-dark'
+                  }`}
                   title="Личный кабинет"
                 >
                   @{currentUser?.login || user?.login || 'профиль'}
@@ -338,7 +404,11 @@ export function Header() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="border border-sf-dark px-2.5 py-1 hover:bg-sf-dark hover:text-sf-cream transition-colors text-[11px] whitespace-nowrap"
+                  className={`px-2.5 py-1 transition-colors duration-200 text-[11px] whitespace-nowrap ${
+                    isOverHero
+                      ? 'border border-[#F2E9DB] text-[#F2E9DB] hover:bg-[#F2E9DB] hover:text-[#3F2021]'
+                      : 'border border-sf-dark text-sf-dark hover:bg-sf-dark hover:text-sf-cream'
+                  }`}
                 >
                   ВЫХОД
                 </button>
@@ -347,7 +417,11 @@ export function Header() {
               <Link
                 to={loginUrl}
                 state={{ from: location }}
-                className="border border-sf-dark px-3 py-1 hover:bg-sf-dark hover:text-sf-cream transition-colors text-[11px] whitespace-nowrap font-medium"
+                className={`px-3 py-1 transition-colors duration-200 text-[11px] whitespace-nowrap font-medium ${
+                  isOverHero
+                    ? 'border border-[#F2E9DB] text-[#F2E9DB] hover:bg-[#F2E9DB] hover:text-[#3F2021]'
+                    : 'border border-sf-dark text-sf-dark hover:bg-sf-dark hover:text-sf-cream'
+                }`}
               >
                 ВОЙТИ
               </Link>
@@ -357,7 +431,13 @@ export function Header() {
 
         {/* Categories Bar */}
         {rootCategories.length > 0 && (
-          <div className="flex items-center gap-6 py-2.5 overflow-x-auto border-t border-sf-dark/10 scrollbar-none text-[12px] font-serif uppercase tracking-wider text-sf-dark">
+          <div
+            className={`flex items-center gap-6 py-2.5 overflow-x-auto scrollbar-none text-[12px] font-serif uppercase tracking-wider transition-colors duration-200 ${
+              isOverHero
+                ? 'border-t border-[#F2E9DB]/20 text-[#F2E9DB]'
+                : 'border-t border-sf-dark/10 text-sf-dark'
+            }`}
+          >
             <Link
               to="/catalog"
               className="hover:opacity-60 transition-opacity whitespace-nowrap"

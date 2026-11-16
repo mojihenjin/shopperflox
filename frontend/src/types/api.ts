@@ -110,10 +110,19 @@ export interface CategoryResponse {
 export interface ProductResponse {
   id: string;
   category_id: string;
+  creator_id?: string | null;
   title: string;
   slug: string;
   base_price: string;
+  price_usd?: string | null;
+  price_eur?: string | null;
   brand?: string | null;
+  is_self_worked?: boolean;
+  material?: string | null;
+  density?: string | null;
+  composition?: string | null;
+  print_method?: string | null;
+  note?: string | null;
   description?: string | null;
   attributes?: Record<string, unknown> | null;
   is_published?: boolean;
@@ -121,12 +130,43 @@ export interface ProductResponse {
   updated_at: string;
 }
 
+export interface VariantCreateItem {
+  color?: string | null;
+  color_name?: string | null;
+  size?: string | null;
+  stock_quantity?: number;
+  sku?: string | null;
+  price_override?: number | string | null;
+  color_hex?: string | null;
+}
+
+export interface ProductCreateRequest {
+  category_id: string;
+  title: string;
+  slug: string;
+  brand?: string | null;
+  is_self_worked?: boolean;
+  base_price: number | string;
+  price_usd?: number | string | null;
+  price_eur?: number | string | null;
+  material?: string | null;
+  density?: string | null;
+  composition?: string | null;
+  print_method?: string | null;
+  note?: string | null;
+  description?: string | null;
+  attributes?: Record<string, unknown>;
+  is_published?: boolean;
+  variants?: VariantCreateItem[];
+}
+
 export interface ProductVariantResponse {
   id: string;
   product_id: string;
   sku: string;
-  size: string;
-  color_name: string;
+  size?: string | null;
+  color_name?: string | null;
+  color?: string | null;
   color_hex?: string | null;
   price_override?: string | null;
   stock_quantity?: number;
@@ -138,6 +178,7 @@ export interface ProductImageResponse {
   id: string;
   product_id: string;
   url: string;
+  color?: string | null;
   alt_text?: string | null;
   is_main?: boolean;
   sort_order?: number;

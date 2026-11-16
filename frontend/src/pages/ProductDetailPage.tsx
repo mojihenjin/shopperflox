@@ -19,6 +19,7 @@ export function ProductDetailPage() {
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariantResponse | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<'RUB' | 'USD' | 'EUR'>('RUB');
   const [quantity, setQuantity] = useState(1);
   const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
 
@@ -172,9 +173,41 @@ export function ProductDetailPage() {
     );
   }
 
-  const activeImage = images[selectedImageIndex]?.url || null;
+  // Selected color resolution & Gallery filtering
+  const selectedColor = selectedVariant?.color_name || selectedVariant?.color || null;
+
+  const filteredImages = useMemo(() => {
+    if (!selectedColor) return images;
+    const matching = images.filter(
+      (img) => img.color && img.color.trim().toLowerCase() === selectedColor.trim().toLowerCase()
+    );
+    return matching.length > 0 ? matching : images;
+  }, [images, selectedColor]);
+
+  // Reset image index when color changes
+  useEffect(() => {
+    setSelectedImageIndex(0);
+  }, [selectedColor]);
+
+  const activeImage = filteredImages[selectedImageIndex]?.url || null;
   const currentPrice = selectedVariant?.price_override || product.base_price;
   const inStock = selectedVariant ? (selectedVariant.stock_quantity ?? 0) > 0 : true;
+
+  const hasMultiCurrency = Boolean(product.price_usd || product.price_eur);
+  let displayedPriceText = formatPrice(currentPrice);
+  if (selectedCurrency === 'USD' && product.price_usd) {
+    displayedPriceText = `$ ${Number(product.price_usd).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  } else if (selectedCurrency === 'EUR' && product.price_eur) {
+    displayedPriceText = `€ ${Number(product.price_eur).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  }
+
+  const hasSpecs = Boolean(
+    product.material ||
+    product.density ||
+    product.composition ||
+    product.print_method ||
+    product.note
+  );
 
   const handleReviewSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,9 +248,9 @@ export function ProductDetailPage() {
           {/* LEFT: 2:3 Portrait Gallery (7 cols on desktop) */}
           <div className="lg:col-span-7 flex flex-col md:flex-row gap-4">
             {/* Thumbnails */}
-            {images.length > 1 && (
+            {filteredImages.length > 1 && (
               <div className="flex md:flex-col gap-2 order-2 md:order-1 overflow-x-auto md:overflow-y-auto max-h-[640px] scrollbar-none">
-                {images.map((img, idx) => (
+                {filteredImages.map((img, idx) => (
                   <button
                     key={img.id}
                     type="button"
@@ -239,7 +272,12 @@ export function ProductDetailPage() {
             )}
 
             {/* Main Stage Image (2:3 aspect ratio) */}
-            <div className="flex-1 order-1 md:order-2">
+            <div className="flex-1 order-1 md:order-2 space-y-2">
+              {selectedColor && filteredImages.length < images.length && (
+                <div className="text-[11px] font-sans uppercase tracking-wider text-sf-muted">
+                  ( ЦВЕТ: {selectedColor} — {filteredImages.length} ИЗ {images.length} ФОТО )
+                </div>
+              )}
               <div className="relative aspect-[2/3] w-full bg-[#E5DBCB] border border-sf-dark/20 overflow-hidden">
                 <img
                   src={formatImageUrl(activeImage, product.title)}
@@ -253,29 +291,82 @@ export function ProductDetailPage() {
           {/* RIGHT: Product Details & Variant Picker (5 cols) */}
           <div className="lg:col-span-5 flex flex-col justify-between space-y-8">
             <div className="space-y-6">
-              {product.brand && (
-                <div className="text-[12px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
-                  [ {product.brand} ]
-                </div>
-              )}
+              {/* Brand and self-worked badge */}
+              <div className="flex flex-wrap items-center gap-2">
+                {product.brand && (
+                  <div className="text-[12px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
+                    [ {product.brand} ]
+                  </div>
+                )}
+                {product.is_self_worked && (
+                  <span className="bg-[#3F2021] text-[#F2E9DB] px-2.5 py-0.5 text-[10px] font-sans uppercase tracking-widest font-semibold">
+                    SELF-WORKED
+                  </span>
+                )}
+              </div>
 
               <h1 className="font-serif text-3xl sm:text-4xl uppercase tracking-wider text-sf-dark leading-snug">
                 {product.title}
               </h1>
 
-              <div className="flex items-baseline gap-4">
-                <span className="font-sans text-2xl font-bold text-sf-black">
-                  {formatPrice(currentPrice)}
-                </span>
-                {selectedVariant?.price_override && (
-                  <span className="text-xs font-sans uppercase tracking-wider text-sf-muted line-through">
-                    {formatPrice(product.base_price)}
+              {/* Price Row with Currency Switcher */}
+              <div className="flex flex-wrap items-baseline justify-between gap-4 border-b border-sf-dark/15 pb-4">
+                <div className="flex items-baseline gap-4">
+                  <span className="font-sans text-2xl font-bold text-sf-black">
+                    {displayedPriceText}
                   </span>
+                  {selectedVariant?.price_override && selectedCurrency === 'RUB' && (
+                    <span className="text-xs font-sans uppercase tracking-wider text-sf-muted line-through">
+                      {formatPrice(product.base_price)}
+                    </span>
+                  )}
+                </div>
+
+                {hasMultiCurrency && (
+                  <div className="flex items-center gap-1 border border-sf-dark/25 p-0.5 bg-[#FFFFFF]">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCurrency('RUB')}
+                      className={`px-2 py-0.5 text-[11px] font-sans font-semibold transition-colors ${
+                        selectedCurrency === 'RUB'
+                          ? 'bg-[#3F2021] text-[#F2E9DB]'
+                          : 'text-[#3F2021]/70 hover:text-[#3F2021]'
+                      }`}
+                    >
+                      ₽ RUB
+                    </button>
+                    {product.price_usd && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCurrency('USD')}
+                        className={`px-2 py-0.5 text-[11px] font-sans font-semibold transition-colors ${
+                          selectedCurrency === 'USD'
+                            ? 'bg-[#3F2021] text-[#F2E9DB]'
+                            : 'text-[#3F2021]/70 hover:text-[#3F2021]'
+                        }`}
+                      >
+                        $ USD
+                      </button>
+                    )}
+                    {product.price_eur && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCurrency('EUR')}
+                        className={`px-2 py-0.5 text-[11px] font-sans font-semibold transition-colors ${
+                          selectedCurrency === 'EUR'
+                            ? 'bg-[#3F2021] text-[#F2E9DB]'
+                            : 'text-[#3F2021]/70 hover:text-[#3F2021]'
+                        }`}
+                      >
+                        € EUR
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
               {/* SKU & Availability Badge */}
-              <div className="flex items-center gap-3 text-xs font-sans uppercase tracking-wider border-y border-sf-dark/15 py-3">
+              <div className="flex items-center gap-3 text-xs font-sans uppercase tracking-wider border-b border-sf-dark/15 pb-4">
                 <span className="text-sf-muted">АРТИКУЛ / SKU:</span>
                 <span className="font-mono font-semibold text-sf-dark">
                   {selectedVariant?.sku || 'НЕ ВЫБРАН'}
@@ -295,6 +386,47 @@ export function ProductDetailPage() {
               {product.description && (
                 <div className="text-xs font-sans uppercase tracking-wider text-sf-dark/80 leading-relaxed">
                   {product.description}
+                </div>
+              )}
+
+              {/* Characteristics Table */}
+              {hasSpecs && (
+                <div className="border border-sf-dark/20 bg-sf-cream/40 p-5 space-y-3">
+                  <div className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-dark">
+                    ( ХАРАКТЕРИСТИКИ ИЗДЕЛИЯ )
+                  </div>
+                  <div className="divide-y divide-sf-dark/15 text-xs font-sans">
+                    {product.material && (
+                      <div className="flex justify-between py-2 gap-4">
+                        <span className="text-sf-muted uppercase tracking-wider">МАТЕРИАЛ:</span>
+                        <span className="font-semibold text-sf-dark uppercase text-right">{product.material}</span>
+                      </div>
+                    )}
+                    {product.density && (
+                      <div className="flex justify-between py-2 gap-4">
+                        <span className="text-sf-muted uppercase tracking-wider">ПЛОТНОСТЬ:</span>
+                        <span className="font-semibold text-sf-dark uppercase text-right">{product.density}</span>
+                      </div>
+                    )}
+                    {product.composition && (
+                      <div className="flex justify-between py-2 gap-4">
+                        <span className="text-sf-muted uppercase tracking-wider">СОСТАВ:</span>
+                        <span className="font-semibold text-sf-dark uppercase text-right">{product.composition}</span>
+                      </div>
+                    )}
+                    {product.print_method && (
+                      <div className="flex justify-between py-2 gap-4">
+                        <span className="text-sf-muted uppercase tracking-wider">НАНЕСЕНИЕ:</span>
+                        <span className="font-semibold text-sf-dark uppercase text-right">{product.print_method}</span>
+                      </div>
+                    )}
+                    {product.note && (
+                      <div className="py-2 space-y-1">
+                        <span className="text-sf-muted uppercase tracking-wider block">ПРИМЕЧАНИЕ:</span>
+                        <p className="text-sf-dark uppercase leading-relaxed text-[11px]">{product.note}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

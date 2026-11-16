@@ -5,7 +5,9 @@ import type {
   CategoryResponse,
   CreateReviewRequest,
   LoginRequest,
+  ProductCreateRequest,
   ProductDetailResponse,
+  ProductImageResponse,
   ProductResponse,
   RegisterRequest,
   RegisterResponse,
@@ -105,6 +107,18 @@ export const productsApi = {
     apiFetch<ReviewResponse>(`/api/v1/products/${productId}/reviews`, {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+
+  create: (data: ProductCreateRequest) =>
+    apiFetch<ProductResponse>('/api/v1/products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  uploadImage: (productId: string, formData: FormData) =>
+    apiFetch<ProductImageResponse>(`/api/v1/products/${productId}/images/upload`, {
+      method: 'POST',
+      body: formData,
     }),
 };
 
