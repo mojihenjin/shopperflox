@@ -7,11 +7,16 @@ export function formatPrice(price: string | number | null | undefined): string {
 
 export function formatImageUrl(url?: string | null, fallbackText = 'SHOPPERFLOX'): string {
   if (!url) {
-    const svg = `<svg width="600" height="900" viewBox="0 0 600 900" fill="#E8DEC9">
+    const safeText = (fallbackText || 'SHOPPERFLOX')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" fill="#E8DEC9">
       <rect width="600" height="900" fill="#E8DEC9"/>
       <rect x="20" y="20" width="560" height="860" fill="none" stroke="#3F2021" stroke-width="1" stroke-opacity="0.3"/>
-      <text x="300" y="440" font-family="'Times New Roman', serif" font-size="34" fill="#3F2021" text-anchor="middle" letter-spacing="3">${fallbackText}</text>
-      <text x="300" y="480" font-family="sans-serif" font-size="12" fill="#5F5F5F" text-anchor="middle" letter-spacing="2">LOOKBOOK EDITORIAL</text>
+      <text x="300" y="440" font-family="&quot;Times New Roman&quot;, serif" font-size="32" fill="#3F2021" text-anchor="middle" letter-spacing="3">${safeText}</text>
+      <text x="300" y="480" font-family="sans-serif" font-size="12" fill="#5F5F5F" text-anchor="middle" letter-spacing="2">SHOPPERFLOX</text>
     </svg>`;
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   }
