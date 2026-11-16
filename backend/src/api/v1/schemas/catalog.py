@@ -138,7 +138,7 @@ class ProductResponse(BaseModel):
 class ProductVariantCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    sku: str = Field(min_length=1, max_length=64)
+    sku: str | None = Field(default=None, max_length=64)
     size: str | None = Field(default=None, max_length=64)
     color_name: str | None = Field(default=None, max_length=64)
     color: str | None = Field(default=None, max_length=64)
@@ -150,7 +150,7 @@ class ProductVariantCreateRequest(BaseModel):
 class ProductVariantUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    sku: str | None = Field(default=None, min_length=1, max_length=64)
+    sku: str | None = Field(default=None, max_length=64)
     size: str | None = Field(default=None, max_length=64)
     color_name: str | None = Field(default=None, max_length=64)
     color: str | None = Field(default=None, max_length=64)
