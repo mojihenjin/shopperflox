@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { productsApi, cartApi, favoritesApi } from '../api/endpoints';
+import { productsApi, cartApi, favoritesApi, brandsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { formatImageUrl, formatPrice, formatDate } from '../utils/format';
 import type { FitFeedback, ProductVariantResponse } from '../types/api';
@@ -51,6 +51,15 @@ export function ProductDetailPage() {
 
   // 2. Current User Profile (for role and permissions check)
   const currentUser = authUser;
+
+  // 2b. My Brands Query
+  const { data: myBrandsData } = useQuery({
+    queryKey: ['myBrands'],
+    queryFn: () => brandsApi.my(),
+    enabled: isAuthenticated,
+  });
+
+  const myBrands = useMemo(() => myBrandsData?.data || [], [myBrandsData?.data]);
 
   // 3. Product Reviews
   const { data: reviewsData } = useQuery({
@@ -141,11 +150,19 @@ export function ProductDetailPage() {
       (globalPermissions.some((p) => p.toLowerCase() === `brand:${product.brand!.toLowerCase()}`) ||
        globalPermissions.includes('brand:*'))
     );
-    const canUpdate = isCreator || isSuperAdmin || hasBrandAccess || globalPermissions.includes('mod:update');
-    const canDelete = isCreator || isSuperAdmin || hasBrandAccess || globalPermissions.includes('mod:delete');
+    const isBrandMember = myBrands.some(
+      (b) =>
+        !b.brand.is_deleted &&
+        (b.role === 'representative' || b.role === 'moderator') &&
+        ((product.brand_id && b.brand.id === product.brand_id) ||
+         (product.brand_slug && b.brand.slug.toLowerCase() === product.brand_slug.toLowerCase()) ||
+         (product.brand && b.brand.name.toLowerCase() === product.brand.toLowerCase()))
+    );
+    const canUpdate = isCreator || isSuperAdmin || hasBrandAccess || isBrandMember || globalPermissions.includes('mod:update');
+    const canDelete = isCreator || isSuperAdmin || hasBrandAccess || isBrandMember || globalPermissions.includes('mod:delete');
 
-    return { isCreator, isSuperAdmin, hasBrandAccess, canUpdate, canDelete };
-  }, [currentUser, product]);
+    return { isCreator, isSuperAdmin, hasBrandAccess, isBrandMember, canUpdate, canDelete };
+  }, [currentUser, product, myBrands]);
 
   // --- EFFECT HOOKS (Strictly top-level) ---
   // 1. Auto-select initial color when product data loads
@@ -416,7 +433,13 @@ export function ProductDetailPage() {
           <span>/</span>
           {product.brand && (
             <>
-              <span>{product.brand}</span>
+              {product.brand_slug ? (
+                <Link to={`/brands/${product.brand_slug}`} className="hover:text-[#3F2021] underline underline-offset-2">
+                  {product.brand}
+                </Link>
+              ) : (
+                <span>{product.brand}</span>
+              )}
               <span>/</span>
             </>
           )}
@@ -564,7 +587,13 @@ export function ProductDetailPage() {
                   </span>
                 )}
                 <span className="text-xs font-sans font-semibold uppercase tracking-widest text-[#3F2021]/70">
-                  [ {product.brand || 'НЕ УКАЗАНО'} ]
+                  [ {product.brand_slug ? (
+                    <Link to={`/brands/${product.brand_slug}`} className="hover:text-[#3F2021] underline underline-offset-2">
+                      {product.brand || 'НЕ УКАЗАНО'}
+                    </Link>
+                  ) : (
+                    product.brand || 'НЕ УКАЗАНО'
+                  )} ]
                 </span>
               </div>
 
@@ -574,6 +603,12 @@ export function ProductDetailPage() {
               </h1>
 
               {/* Mandatory Field 3: Price in RUB, USD, EUR */}
+              {product.brand_is_deleted && (
+                <div className="p-3.5 bg-[#3F2021] text-[#F2E9DB] border border-[#3F2021] text-xs font-sans uppercase tracking-widest text-center font-semibold rounded-none">
+                  ( ВНИМАНИЕ ) ЗАКАЗ НЕВОЗМОЖЕН, БРЕНД СНЯЛСЯ С ПРОДАЖИ
+                </div>
+              )}
+
               <div className="space-y-2 border-b border-[#3F2021]/15 pb-4">
                 <div className="font-serif text-3xl font-bold text-[#3F2021]">
                   {rubPriceText}
@@ -843,6 +878,12 @@ export function ProductDetailPage() {
 
               {/* Customer Actions: Quantity, In-stock, Add to Cart, Favorites */}
               <div className="space-y-3 pt-2">
+                {product.brand_is_deleted && (
+                  <div className="p-3 bg-[#3F2021] text-[#F2E9DB] border border-[#3F2021] text-xs font-sans uppercase tracking-widest text-center font-semibold rounded-none">
+                    ЗАКАЗ НЕВОЗМОЖЕН, БРЕНД СНЯЛСЯ С ПРОДАЖИ
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-sans uppercase tracking-wider text-[#3F2021]">
@@ -852,8 +893,8 @@ export function ProductDetailPage() {
                       <button
                         type="button"
                         onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                        disabled={quantity <= 1 || isOutOfStock}
-                        className="px-3 py-1 text-sm font-sans hover:bg-[#3F2021] hover:text-[#F2E9DB] transition-colors disabled:opacity-30 rounded-none"
+                        disabled={Boolean(product.brand_is_deleted) || quantity <= 1 || isOutOfStock}
+                        className="px-3 py-1 text-sm font-sans hover:bg-[#3F2021] hover:text-[#F2E9DB] transition-colors disabled:opacity-30 rounded-none disabled:cursor-not-allowed"
                       >
                         −
                       </button>
@@ -863,8 +904,8 @@ export function ProductDetailPage() {
                       <button
                         type="button"
                         onClick={() => setQuantity((q) => q + 1)}
-                        disabled={isOutOfStock}
-                        className="px-3 py-1 text-sm font-sans hover:bg-[#3F2021] hover:text-[#F2E9DB] transition-colors disabled:opacity-30 rounded-none"
+                        disabled={Boolean(product.brand_is_deleted) || isOutOfStock}
+                        className="px-3 py-1 text-sm font-sans hover:bg-[#3F2021] hover:text-[#F2E9DB] transition-colors disabled:opacity-30 rounded-none disabled:cursor-not-allowed"
                       >
                         +
                       </button>
@@ -872,7 +913,11 @@ export function ProductDetailPage() {
                   </div>
 
                   <div>
-                    {isOutOfStock ? (
+                    {product.brand_is_deleted ? (
+                      <span className="text-xs font-sans uppercase tracking-wider font-semibold text-[#FF8562]">
+                        БРЕНД СНЯТ С ПРОДАЖИ
+                      </span>
+                    ) : isOutOfStock ? (
                       <span className="text-xs font-sans uppercase tracking-wider font-semibold text-[#FF8562]">
                         {product.is_limited
                           ? 'ЛИМИТИРОВАННЫЙ ТИРАЖ · РАСПРОДАНО'
@@ -889,11 +934,13 @@ export function ProductDetailPage() {
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <button
                     type="button"
-                    disabled={isOutOfStock || addToCartMutation.isPending}
+                    disabled={Boolean(product.brand_is_deleted) || isOutOfStock || addToCartMutation.isPending}
                     onClick={() => addToCartMutation.mutate()}
-                    className="flex-1 bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] py-4 px-6 text-xs font-sans font-semibold uppercase tracking-[0.08em] transition-colors disabled:opacity-40 rounded-none"
+                    className="flex-1 bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] py-4 px-6 text-xs font-sans font-semibold uppercase tracking-[0.08em] transition-colors disabled:opacity-40 rounded-none disabled:cursor-not-allowed"
                   >
-                    {addToCartMutation.isPending
+                    {product.brand_is_deleted
+                      ? 'ЗАКАЗ НЕВОЗМОЖЕН'
+                      : addToCartMutation.isPending
                       ? 'ДОБАВЛЕНИЕ...'
                       : isOutOfStock
                       ? product.is_limited

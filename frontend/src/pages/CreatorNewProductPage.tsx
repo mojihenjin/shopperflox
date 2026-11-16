@@ -1,7 +1,7 @@
-import { useState, useId } from 'react';
+import { useState, useId, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { categoriesApi, productsApi } from '../api/endpoints';
+import { categoriesApi, productsApi, brandsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import type { VariantCreateItem } from '../types/api';
 
@@ -58,12 +58,60 @@ export function CreatorNewProductPage() {
 
   const categories = categoriesData?.data || [];
 
+  // My Brands Query
+  const { data: myBrandsData } = useQuery({
+    queryKey: ['myBrands'],
+    queryFn: () => brandsApi.my(),
+    enabled: isAuthenticated,
+  });
+
+  const activeMyBrands = useMemo(() => {
+    return (myBrandsData?.data || []).filter(
+      (b) => !b.brand.is_deleted && (b.role === 'representative' || b.role === 'moderator')
+    );
+  }, [myBrandsData]);
+
+  const hasGlobalCreatorProducts = useMemo(() => {
+    const perms = user?.global_permissions || [];
+    return perms.includes('*') || perms.includes('creator:products') || perms.some((p) => p.startsWith('creator:'));
+  }, [user?.global_permissions]);
+
   // Form State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [isSelfWorked, setIsSelfWorked] = useState(false);
   const [brand, setBrand] = useState('');
+  const [brandChoice, setBrandChoice] = useState<string>('');
+
+  useEffect(() => {
+    if (!brandChoice) {
+      if (activeMyBrands.length > 0) {
+        setBrandChoice(`brand:${activeMyBrands[0].brand.id}`);
+        setBrand(activeMyBrands[0].brand.name);
+        setIsSelfWorked(false);
+      } else if (hasGlobalCreatorProducts) {
+        setBrandChoice('self-worked');
+        setBrand('self-worked');
+        setIsSelfWorked(true);
+      }
+    }
+  }, [activeMyBrands, hasGlobalCreatorProducts, brandChoice]);
+
+  const handleBrandChoiceChange = (choice: string) => {
+    setBrandChoice(choice);
+    if (choice === 'self-worked') {
+      setIsSelfWorked(true);
+      setBrand('self-worked');
+    } else if (choice.startsWith('brand:')) {
+      const bId = choice.replace('brand:', '');
+      const found = activeMyBrands.find((b) => b.brand.id === bId);
+      if (found) {
+        setIsSelfWorked(false);
+        setBrand(found.brand.name);
+      }
+    }
+  };
 
   // Prices
   const [basePrice, setBasePrice] = useState('');
@@ -104,10 +152,7 @@ export function CreatorNewProductPage() {
     return <Navigate to="/login?redirect=%2Fcreator%2Fproducts%2Fnew" replace />;
   }
 
-  const permissions = user?.global_permissions || [];
-  const isAuthorized =
-    permissions.includes('*') ||
-    permissions.some((p) => p.startsWith('creator:'));
+  const isAuthorized = hasGlobalCreatorProducts || activeMyBrands.length > 0;
 
   if (!isAuthorized) {
     return (
@@ -117,14 +162,14 @@ export function CreatorNewProductPage() {
             ( 403 / ДОСТУП ОГРАНИЧЕН )
           </div>
           <h1 className="font-serif text-3xl uppercase tracking-wider text-[#3F2021]">
-            ТРЕБУЮТСЯ ПРАВА СОЗДАТЕЛЯ
+            ТРЕБУЮТСЯ ПРАВА СОЗДАТЕЛЯ ИЛИ ЧЛЕНСТВО В БРЕНДЕ
           </h1>
           <p className="text-xs font-sans uppercase tracking-wider text-[#3F2021]/70 leading-relaxed">
             Ваш аккаунт{' '}
             <span className="font-mono font-bold text-[#3F2021]">
               @{user?.login || 'anonymous'}
             </span>{' '}
-            не обладает правами <code className="bg-[#F2E9DB] px-1.5 py-0.5">creator:*</code> или администратора.
+            не обладает правами создателя и не состоит в команде ни одного активного бренда.
           </p>
           <div className="pt-4 flex justify-center gap-4">
             <Link
@@ -138,14 +183,6 @@ export function CreatorNewProductPage() {
       </div>
     );
   }
-
-  // Self-worked toggle handler
-  const handleToggleSelfWorked = (checked: boolean) => {
-    setIsSelfWorked(checked);
-    if (checked && !brand) {
-      setBrand('self-worked');
-    }
-  };
 
   // Color Block Management
   const handleAddColorBlock = () => {
@@ -355,12 +392,17 @@ export function CreatorNewProductPage() {
     try {
       const productSlug = generateSlug(cleanTitle);
 
+      const selectedBrandId = brandChoice.startsWith('brand:')
+        ? brandChoice.replace('brand:', '')
+        : null;
+
       const resolvedBrand = isSelfWorked
         ? brand.trim() || 'self-worked'
         : brand.trim() || null;
 
       const createdRes = await productsApi.create({
         category_id: categoryId,
+        brand_id: selectedBrandId,
         title: cleanTitle,
         slug: productSlug,
         brand: resolvedBrand,
@@ -539,32 +581,44 @@ export function CreatorNewProductPage() {
                 />
               </div>
 
-              {/* Бренд & self-worked */}
+              {/* Выбор автора / бренда */}
               <div className="pt-2 border-t border-[#3F2021]/15 space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={isSelfWorked}
-                    onChange={(e) => handleToggleSelfWorked(e.target.checked)}
-                    className="w-4 h-4 accent-[#3F2021] rounded-none cursor-pointer"
-                  />
-                  <span className="text-xs font-sans uppercase tracking-wider text-[#3F2021] font-semibold">
-                    SELF-WORKED (АВТОРСКАЯ РАБОТА / КАСТОМ)
-                  </span>
-                </label>
-
-                <div className="space-y-1">
-                  <label className="block text-[11px] font-sans uppercase tracking-wider text-[#3F2021]/70">
-                    БРЕНД ИЛИ ИМЯ АВТОРА
+                <div>
+                  <label className="block text-xs font-sans uppercase tracking-wider text-[#3F2021] font-semibold mb-1">
+                    АВТОР / БРЕНД ИЗДЕЛИЯ *
                   </label>
-                  <input
-                    type="text"
-                    placeholder={isSelfWorked ? 'self-worked' : 'ShopperFlox или ваш бренд'}
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                    className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3.5 py-2 text-xs font-sans uppercase tracking-wider text-[#000000] outline-none"
-                  />
+                  <select
+                    value={brandChoice}
+                    onChange={(e) => handleBrandChoiceChange(e.target.value)}
+                    className="w-full bg-[#FFFFFF] border border-[#3F2021]/40 focus:border-[#3F2021] px-3.5 py-2 text-xs font-sans uppercase tracking-wider text-[#000000] outline-none rounded-none"
+                  >
+                    {activeMyBrands.map((b) => (
+                      <option key={b.brand.id} value={`brand:${b.brand.id}`}>
+                        {b.brand.name} ({b.role === 'representative' ? 'ПРЕДСТАВИТЕЛЬ' : 'МОДЕРАТОР'})
+                      </option>
+                    ))}
+                    {hasGlobalCreatorProducts && (
+                      <option value="self-worked">
+                        self-worked (личный выпуск автора)
+                      </option>
+                    )}
+                  </select>
                 </div>
+
+                {isSelfWorked && (
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-sans uppercase tracking-wider text-[#3F2021]/70">
+                      ИМЯ АВТОРА / ПОДПИСЬ (ОПЦИОНАЛЬНО)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="self-worked"
+                      value={brand}
+                      onChange={(e) => setBrand(e.target.value)}
+                      className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3.5 py-2 text-xs font-sans uppercase tracking-wider text-[#000000] outline-none rounded-none"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

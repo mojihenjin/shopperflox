@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { productsApi, categoriesApi } from '../api/endpoints';
+import { productsApi, categoriesApi, brandsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import type { ProductUpdateRequest } from '../types/api';
 import type { ApiError } from '../api/client';
@@ -21,6 +21,7 @@ export function CreatorEditProductPage() {
   const [categoryId, setCategoryId] = useState('');
   const [brand, setBrand] = useState('');
   const [isSelfWorked, setIsSelfWorked] = useState(false);
+  const [brandChoice, setBrandChoice] = useState<string>('');
   const [basePrice, setBasePrice] = useState('');
   const [priceUsd, setPriceUsd] = useState('');
   const [priceEur, setPriceEur] = useState('');
@@ -50,6 +51,23 @@ export function CreatorEditProductPage() {
   // Current user
   const currentUser = authUser;
 
+  // My Brands Query
+  const { data: myBrandsData } = useQuery({
+    queryKey: ['myBrands'],
+    queryFn: () => brandsApi.my(),
+  });
+
+  const activeMyBrands = useMemo(() => {
+    return (myBrandsData?.data || []).filter(
+      (b) => !b.brand.is_deleted && (b.role === 'representative' || b.role === 'moderator')
+    );
+  }, [myBrandsData]);
+
+  const hasGlobalCreatorProducts = useMemo(() => {
+    const perms = currentUser?.global_permissions || [];
+    return perms.includes('*') || perms.includes('creator:products') || perms.some((p) => p.startsWith('creator:'));
+  }, [currentUser?.global_permissions]);
+
   // Fetch categories
   const { data: categoriesData } = useQuery({
     queryKey: ['categories'],
@@ -66,6 +84,14 @@ export function CreatorEditProductPage() {
       setCategoryId(product.category_id || '');
       setBrand(product.brand || '');
       setIsSelfWorked(Boolean(product.is_self_worked));
+      const initialChoice = product.brand_id
+        ? `brand:${product.brand_id}`
+        : product.is_self_worked
+        ? 'self-worked'
+        : product.brand
+        ? `custom:${product.brand}`
+        : 'self-worked';
+      setBrandChoice(initialChoice);
       setBasePrice(product.base_price ? String(product.base_price) : '');
       setPriceUsd(product.price_usd ? String(product.price_usd) : '');
       setPriceEur(product.price_eur ? String(product.price_eur) : '');
@@ -94,9 +120,29 @@ export function CreatorEditProductPage() {
       (globalPermissions.some((p) => p.toLowerCase() === `brand:${product.brand!.toLowerCase()}`) ||
        globalPermissions.includes('brand:*'))
     );
-    const canUpdate = isCreator || isSuperAdmin || hasBrandAccess || globalPermissions.includes('mod:update');
+    const isBrandMember = activeMyBrands.some(
+      (b) =>
+        (product.brand_id && b.brand.id === product.brand_id) ||
+        (product.brand && b.brand.name.toLowerCase() === product.brand.toLowerCase())
+    );
+    const canUpdate = isCreator || isSuperAdmin || hasBrandAccess || isBrandMember || globalPermissions.includes('mod:update');
     return { canUpdate };
-  }, [currentUser, product]);
+  }, [currentUser, product, activeMyBrands]);
+
+  const handleBrandChoiceChange = (choice: string) => {
+    setBrandChoice(choice);
+    if (choice === 'self-worked') {
+      setIsSelfWorked(true);
+      setBrand('self-worked');
+    } else if (choice.startsWith('brand:')) {
+      const bId = choice.replace('brand:', '');
+      const found = activeMyBrands.find((b) => b.brand.id === bId);
+      if (found) {
+        setIsSelfWorked(false);
+        setBrand(found.brand.name);
+      }
+    }
+  };
 
   // Update Mutation
   const updateMutation = useMutation({
@@ -136,11 +182,20 @@ export function CreatorEditProductPage() {
       return;
     }
 
+    const selectedBrandId = brandChoice.startsWith('brand:')
+      ? brandChoice.replace('brand:', '')
+      : null;
+
+    const resolvedBrand = isSelfWorked
+      ? brand.trim() || 'self-worked'
+      : brand.trim() || null;
+
     const payload: ProductUpdateRequest = {
       title: title.trim(),
       slug: productSlug.trim(),
       category_id: categoryId || undefined,
-      brand: brand.trim() || null,
+      brand_id: selectedBrandId,
+      brand: resolvedBrand,
       is_self_worked: isSelfWorked,
       base_price: basePrice.trim(),
       price_usd: priceUsd.trim() ? priceUsd.trim() : null,
@@ -303,35 +358,48 @@ export function CreatorEditProductPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4 pt-2 border-t border-[#3F2021]/15">
                 <div>
                   <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1.5">
-                    БРЕНД / АВТОР
+                    АВТОР / БРЕНД ИЗДЕЛИЯ *
                   </label>
-                  <input
-                    type="text"
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                    placeholder="НЕ УКАЗАНО"
+                  <select
+                    value={brandChoice}
+                    onChange={(e) => handleBrandChoiceChange(e.target.value)}
                     className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
-                  />
+                  >
+                    {activeMyBrands.map((b) => (
+                      <option key={b.brand.id} value={`brand:${b.brand.id}`}>
+                        {b.brand.name} ({b.role === 'representative' ? 'ПРЕДСТАВИТЕЛЬ' : 'МОДЕРАТОР'})
+                      </option>
+                    ))}
+                    {hasGlobalCreatorProducts && (
+                      <option value="self-worked">
+                        self-worked (личный выпуск автора)
+                      </option>
+                    )}
+                    {brandChoice.startsWith('custom:') && (
+                      <option value={brandChoice}>
+                        {product?.brand || 'Текущий бренд'}
+                      </option>
+                    )}
+                  </select>
                 </div>
 
-                <div className="flex items-center gap-3 pt-6">
-                  <input
-                    type="checkbox"
-                    id="self_worked_cb"
-                    checked={isSelfWorked}
-                    onChange={(e) => setIsSelfWorked(e.target.checked)}
-                    className="w-4 h-4 accent-[#3F2021] rounded-none cursor-pointer"
-                  />
-                  <label
-                    htmlFor="self_worked_cb"
-                    className="text-xs font-sans font-semibold uppercase tracking-wider text-[#3F2021] cursor-pointer"
-                  >
-                    ( SELF-WORKED ) АВТОРСКИЙ КАСТОМ / РУЧНАЯ РАБОТА
-                  </label>
-                </div>
+                {isSelfWorked && (
+                  <div>
+                    <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1.5">
+                      ИМЯ АВТОРА / ПОДПИСЬ (ОПЦИОНАЛЬНО)
+                    </label>
+                    <input
+                      type="text"
+                      value={brand}
+                      onChange={(e) => setBrand(e.target.value)}
+                      placeholder="self-worked"
+                      className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                    />
+                  </div>
+                )}
               </div>
 
               <div>
