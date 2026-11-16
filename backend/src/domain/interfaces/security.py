@@ -11,7 +11,16 @@ class PasswordHasherProtocol(Protocol):
 
 
 class TokenProviderProtocol(Protocol):
-    def create_access_token(self, user_id: UUID, permissions: list[str]) -> str: ...
+    def create_access_token(
+        self,
+        user_id: UUID,
+        permissions: list[str] | None = None,
+        *,
+        login: str | None = None,
+        global_permissions: list[str] | None = None,
+        verified_profile: bool = False,
+        verified_email: bool = False,
+    ) -> str: ...
 
     def create_refresh_token(self, user_id: UUID) -> str: ...
 
