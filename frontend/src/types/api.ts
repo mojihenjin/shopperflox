@@ -193,6 +193,26 @@ export interface ProductUpdateRequest {
   is_limited?: boolean | null;
 }
 
+export interface ProductVariantCreateRequest {
+  sku: string;
+  size?: string | null;
+  color_name?: string | null;
+  color?: string | null;
+  color_hex?: string | null;
+  price_override?: number | string | null;
+  stock_quantity?: number;
+}
+
+export interface ProductVariantUpdateRequest {
+  sku?: string | null;
+  size?: string | null;
+  color_name?: string | null;
+  color?: string | null;
+  color_hex?: string | null;
+  price_override?: number | string | null;
+  stock_quantity?: number | null;
+}
+
 export interface ProductVariantResponse {
   id: string;
   product_id: string;

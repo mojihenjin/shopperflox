@@ -12,6 +12,9 @@ import type {
   OrderStatus,
   ProductCreateRequest,
   ProductUpdateRequest,
+  ProductVariantCreateRequest,
+  ProductVariantUpdateRequest,
+  ProductVariantResponse,
   ProductDetailResponse,
   ProductImageResponse,
   ProductResponse,
@@ -145,6 +148,18 @@ export const productsApi = {
     apiFetch<ProductImageResponse>(`/api/v1/products/${productId}/images/upload`, {
       method: 'POST',
       body: formData,
+    }),
+
+  createVariant: (productId: string, data: ProductVariantCreateRequest) =>
+    apiFetch<ProductVariantResponse>(`/api/v1/products/${productId}/variants`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateVariant: (variantId: string, data: ProductVariantUpdateRequest) =>
+    apiFetch<ProductVariantResponse>(`/api/v1/variants/${variantId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     }),
 };
 

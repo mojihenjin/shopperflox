@@ -3,8 +3,135 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi, categoriesApi, brandsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
-import type { ProductUpdateRequest } from '../types/api';
+import type { ProductUpdateRequest, ProductVariantResponse } from '../types/api';
 import type { ApiError } from '../api/client';
+
+const PRESET_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'ONE SIZE'];
+
+interface VariantReplenishCardProps {
+  variant: ProductVariantResponse;
+  onUpdateStock: (variantId: string, newStock: number) => Promise<void>;
+  isUpdating: boolean;
+}
+
+function VariantReplenishCard({ variant, onUpdateStock, isUpdating }: VariantReplenishCardProps) {
+  const [stock, setStock] = useState<number>(variant.stock_quantity ?? 0);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    setStock(variant.stock_quantity ?? 0);
+  }, [variant.stock_quantity]);
+
+  const handleQuickAdd = (delta: number) => {
+    setStock((prev) => Math.max(0, prev + delta));
+  };
+
+  const handleSave = async () => {
+    try {
+      await onUpdateStock(variant.id, stock);
+      setStatusMsg(`✓ ОСТАТОК ОБНОВЛЕН: ${stock} ШТ`);
+      setTimeout(() => setStatusMsg(null), 3500);
+    } catch {
+      setStatusMsg('× ОШИБКА ОБНОВЛЕНИЯ');
+      setTimeout(() => setStatusMsg(null), 3500);
+    }
+  };
+
+  const isChanged = stock !== (variant.stock_quantity ?? 0);
+
+  return (
+    <div className="bg-[#FFFFFF] border border-[#3F2021]/30 p-4 rounded-none space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#3F2021]/15 pb-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-mono text-xs font-bold text-[#3F2021]">
+            {variant.sku}
+          </span>
+          <span className="text-[11px] font-sans uppercase text-[#3F2021]/70">
+            {variant.color_name || variant.color || 'ЦВЕТ НЕ УКАЗАН'}
+            {variant.size ? ` / РАЗМЕР: ${variant.size}` : ''}
+          </span>
+          {variant.price_override && (
+            <span className="text-[10px] font-mono text-[#3F2021]/60">
+              [{Number(variant.price_override).toLocaleString('ru-RU')} ₽]
+            </span>
+          )}
+        </div>
+        <div>
+          {(variant.stock_quantity ?? 0) > 0 ? (
+            <span className="text-[10px] font-mono uppercase bg-[#3F2021]/10 text-[#3F2021] px-2 py-0.5 font-semibold">
+              В НАЛИЧИИ: {variant.stock_quantity} ШТ
+            </span>
+          ) : (
+            <span className="text-[10px] font-mono uppercase bg-[#FF8562]/20 text-[#3F2021] border border-[#FF8562] px-2 py-0.5 font-bold">
+              РАСПРОДАНО (0 ШТ)
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        <div className="flex items-center gap-1 flex-wrap">
+          <span className="text-[10px] font-sans uppercase font-semibold text-[#3F2021]/60 mr-1">
+            ПОПОЛНИТЬ:
+          </span>
+          {[1, 5, 10, 25, 50, 100].map((delta) => (
+            <button
+              key={delta}
+              type="button"
+              onClick={() => handleQuickAdd(delta)}
+              className="px-2 py-1 border border-[#3F2021]/30 hover:border-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] text-[10px] font-mono transition-colors rounded-none cursor-pointer"
+            >
+              +{delta}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setStock(0)}
+            className="px-2 py-1 border border-[#FF8562]/40 hover:border-[#FF8562] hover:bg-[#FF8562] hover:text-[#FFFFFF] text-[10px] font-mono transition-colors rounded-none cursor-pointer text-[#3F2021]"
+            title="Обнулить остаток"
+          >
+            ОБНУЛИТЬ
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center border border-[#3F2021]/30 bg-[#F2E9DB]/20">
+            <span className="px-2 text-[10px] font-sans font-semibold uppercase text-[#3F2021]/70">
+              ИТОГО:
+            </span>
+            <input
+              type="number"
+              min="0"
+              value={stock}
+              onChange={(e) => setStock(Math.max(0, parseInt(e.target.value) || 0))}
+              className="w-20 p-1.5 text-xs font-mono font-bold text-[#3F2021] bg-transparent outline-none rounded-none text-right"
+            />
+            <span className="pr-2 text-[10px] font-mono text-[#3F2021]/60">ШТ</span>
+          </div>
+
+          <button
+            type="button"
+            disabled={isUpdating || !isChanged}
+            onClick={handleSave}
+            className={`px-3 py-1.5 text-xs font-sans uppercase tracking-wider font-semibold border transition-colors rounded-none cursor-pointer ${
+              isChanged
+                ? 'bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] border-[#3F2021]'
+                : 'bg-[#F2E9DB]/50 text-[#3F2021]/40 border-[#3F2021]/20 cursor-not-allowed'
+            }`}
+          >
+            {isUpdating ? '...' : 'СОХРАНИТЬ ✓'}
+          </button>
+        </div>
+      </div>
+
+      {statusMsg && (
+        <div className="text-[11px] font-mono font-bold uppercase text-emerald-800 bg-emerald-100/70 p-1.5 border border-emerald-800/20 text-center">
+          {statusMsg}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function CreatorEditProductPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -143,6 +270,93 @@ export function CreatorEditProductPage() {
       }
     }
   };
+
+  // Variants from product detail
+  const variants = productData?.data?.variants || [];
+  const totalStock = variants.reduce((sum, v) => sum + (v.stock_quantity ?? 0), 0);
+
+  // Variant Replenishment State
+  const [updatingVariantId, setUpdatingVariantId] = useState<string | null>(null);
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [variantNotice, setVariantNotice] = useState<string | null>(null);
+
+  // Update single variant stock
+  const handleUpdateVariantStock = async (variantId: string, newStock: number) => {
+    setUpdatingVariantId(variantId);
+    try {
+      await productsApi.updateVariant(variantId, { stock_quantity: newStock });
+      queryClient.invalidateQueries({ queryKey: ['product', slug] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    } finally {
+      setUpdatingVariantId(null);
+    }
+  };
+
+  // Bulk replenish all variants by delta
+  const handleBulkReplenish = async (delta: number) => {
+    if (!variants.length) return;
+    setIsBulkUpdating(true);
+    setVariantNotice(null);
+    try {
+      for (const v of variants) {
+        const nextQty = Math.max(0, (v.stock_quantity ?? 0) + delta);
+        await productsApi.updateVariant(v.id, { stock_quantity: nextQty });
+      }
+      queryClient.invalidateQueries({ queryKey: ['product', slug] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setVariantNotice(`✓ Все вариации успешно пополнены на +${delta} шт!`);
+      setTimeout(() => setVariantNotice(null), 4000);
+    } catch {
+      setVariantNotice('× Ошибка массового пополнения остатков');
+      setTimeout(() => setVariantNotice(null), 4000);
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  // Add new variant state
+  const [isAddVariantOpen, setIsAddVariantOpen] = useState(false);
+  const [newSku, setNewSku] = useState('');
+  const [newSize, setNewSize] = useState('M');
+  const [newColorName, setNewColorName] = useState('');
+  const [newPriceOverride, setNewPriceOverride] = useState('');
+  const [newStockQuantity, setNewStockQuantity] = useState('10');
+  const [addVariantError, setAddVariantError] = useState<string | null>(null);
+  const [addVariantSuccess, setAddVariantSuccess] = useState<string | null>(null);
+
+  const createVariantMutation = useMutation({
+    mutationFn: async () => {
+      setAddVariantError(null);
+      setAddVariantSuccess(null);
+      if (!product?.id) throw new Error('Товар не найден');
+      if (!newSku.trim()) throw new Error('Укажите артикул (SKU)');
+
+      return productsApi.createVariant(product.id, {
+        sku: newSku.trim(),
+        size: newSize.trim() || null,
+        color_name: newColorName.trim() || null,
+        color: newColorName.trim() || null,
+        price_override: newPriceOverride.trim() ? newPriceOverride.trim() : null,
+        stock_quantity: parseInt(newStockQuantity, 10) || 0,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product', slug] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setAddVariantSuccess('Вариация успешно добавлена!');
+      setNewSku('');
+      setNewColorName('');
+      setNewPriceOverride('');
+      setNewStockQuantity('10');
+      setTimeout(() => {
+        setAddVariantSuccess(null);
+        setIsAddVariantOpen(false);
+      }, 2000);
+    },
+    onError: (err: ApiError) => {
+      setAddVariantError(err.message || 'Ошибка создания вариации');
+    },
+  });
 
   // Update Mutation
   const updateMutation = useMutation({
@@ -625,6 +839,203 @@ export function CreatorEditProductPage() {
                   </p>
                 </div>
               </label>
+            </div>
+          </div>
+
+          {/* Section: 5. НАЛИЧИЕ И ПОПОЛНЕНИЕ ТОВАРА / SKU */}
+          <div className="border border-[#3F2021]/30 p-6 bg-[#F2E9DB] space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#3F2021]/15 pb-2">
+              <div>
+                <div className="text-xs font-sans font-semibold uppercase tracking-widest text-[#3F2021]">
+                  ( 5. СКЛАДСКИЕ ОСТАТКИ И ПОПОЛНЕНИЕ / SKU )
+                </div>
+                <div className="text-[11px] font-sans uppercase tracking-wider text-[#3F2021]/70 mt-0.5">
+                  Управление наличием по размерам и цветам. Изменение остатков сохраняется моментально.
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-bold bg-[#3F2021] text-[#F2E9DB] px-2.5 py-1">
+                  ВСЕГО: {totalStock} ШТ
+                </span>
+                <span className="text-[11px] font-mono text-[#3F2021]/70">
+                  ({variants.length} ВАР.)
+                </span>
+              </div>
+            </div>
+
+            {variantNotice && (
+              <div className="p-3 bg-[#3F2021] text-[#F2E9DB] text-xs font-sans uppercase tracking-wider text-center font-semibold rounded-none">
+                {variantNotice}
+              </div>
+            )}
+
+            {/* Bulk Replenish Bar */}
+            {variants.length > 0 && (
+              <div className="bg-[#FFFFFF] border border-[#3F2021]/20 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-none">
+                <div className="text-xs font-sans uppercase font-semibold text-[#3F2021]">
+                  ПОПОЛНИТЬ ВСЕ РАЗМЕРЫ НА:
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {[5, 10, 25, 50, 100].map((delta) => (
+                    <button
+                      key={delta}
+                      type="button"
+                      disabled={isBulkUpdating}
+                      onClick={() => handleBulkReplenish(delta)}
+                      className="px-3 py-1.5 bg-[#F2E9DB]/60 hover:bg-[#3F2021] hover:text-[#F2E9DB] border border-[#3F2021]/40 text-xs font-mono font-semibold transition-colors rounded-none disabled:opacity-50 cursor-pointer"
+                    >
+                      +{delta} ШТ
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Variants List */}
+            {variants.length === 0 ? (
+              <div className="bg-[#FFFFFF] border border-[#3F2021]/30 p-8 text-center space-y-3">
+                <div className="text-xs font-sans uppercase tracking-wider text-[#3F2021]/70">
+                  У товара пока нет созданных вариаций / размеров
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAddVariantOpen(true)}
+                  className="bg-[#3F2021] text-[#F2E9DB] px-4 py-2 text-xs font-sans uppercase tracking-wider font-semibold rounded-none"
+                >
+                  + ДОБАВИТЬ ПЕРВУЮ ВАРИАЦИЮ
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {variants.map((v) => (
+                  <VariantReplenishCard
+                    key={v.id}
+                    variant={v}
+                    onUpdateStock={handleUpdateVariantStock}
+                    isUpdating={updatingVariantId === v.id}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Add Variant Toggle / Form */}
+            <div className="pt-2 border-t border-[#3F2021]/15">
+              {!isAddVariantOpen ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddVariantOpen(true);
+                    setNewSku(`${product?.slug || 'item'}-${variants.length + 1}`);
+                  }}
+                  className="border border-[#3F2021] text-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] px-4 py-2.5 text-xs font-sans uppercase tracking-wider font-semibold transition-colors rounded-none cursor-pointer"
+                >
+                  + ДОБАВИТЬ НОВУЮ ВАРИАЦИЮ / РАЗМЕР
+                </button>
+              ) : (
+                <div className="bg-[#FFFFFF] border border-[#3F2021] p-5 space-y-4 rounded-none">
+                  <div className="flex items-center justify-between border-b border-[#3F2021]/15 pb-2">
+                    <span className="text-xs font-sans font-semibold uppercase tracking-wider text-[#3F2021]">
+                      ( НОВАЯ ВАРИАЦИЯ )
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddVariantOpen(false)}
+                      className="text-xs text-[#3F2021]/60 hover:text-[#3F2021] px-1 font-mono cursor-pointer"
+                    >
+                      × ЗАКРЫТЬ
+                    </button>
+                  </div>
+
+                  {addVariantError && (
+                    <div className="p-3 text-xs text-red-700 bg-red-100/60 border border-red-700/20 font-sans">
+                      {addVariantError}
+                    </div>
+                  )}
+                  {addVariantSuccess && (
+                    <div className="p-3 text-xs text-emerald-800 bg-emerald-100/60 border border-emerald-800/20 font-sans">
+                      {addVariantSuccess}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1">
+                        АРТИКУЛ (SKU) *
+                      </label>
+                      <input
+                        type="text"
+                        value={newSku}
+                        onChange={(e) => setNewSku(e.target.value)}
+                        placeholder="ITEM-BLACK-M"
+                        className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2 text-xs font-mono uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1">
+                        РАЗМЕР (SIZE)
+                      </label>
+                      <div className="flex gap-1">
+                        <select
+                          value={newSize}
+                          onChange={(e) => setNewSize(e.target.value)}
+                          className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                        >
+                          {PRESET_SIZES.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1">
+                        ЦВЕТ (COLOR NAME)
+                      </label>
+                      <input
+                        type="text"
+                        value={newColorName}
+                        onChange={(e) => setNewColorName(e.target.value)}
+                        placeholder="ЧЕРНЫЙ / BLACK"
+                        className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1">
+                        НАЧАЛЬНЫЙ ОСТАТОК (ШТ)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={newStockQuantity}
+                        onChange={(e) => setNewStockQuantity(e.target.value)}
+                        className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2 text-xs font-mono font-bold tracking-wider text-[#3F2021] outline-none rounded-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      disabled={createVariantMutation.isPending}
+                      onClick={() => createVariantMutation.mutate()}
+                      className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-5 py-2.5 text-xs font-sans uppercase tracking-wider font-semibold transition-colors rounded-none disabled:opacity-50 cursor-pointer"
+                    >
+                      {createVariantMutation.isPending ? 'ДОБАВЛЕНИЕ...' : '+ ДОБАВИТЬ ВАРИАЦИЮ'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddVariantOpen(false)}
+                      className="border border-[#3F2021] text-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] px-4 py-2.5 text-xs font-sans uppercase tracking-wider transition-colors rounded-none cursor-pointer"
+                    >
+                      ОТМЕНА
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
