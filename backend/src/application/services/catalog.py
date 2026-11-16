@@ -156,9 +156,14 @@ class CatalogService:
         if not actor:
             raise PermissionDeniedError("Authentication required")
         perms = set(actor.global_permissions)
-        if bool({"*", "catalog:manage", "mod:update", "mod:delete"} & perms):
+        if bool(
+            {"*", "catalog:manage", "mod:update", "mod:delete", "mod:approve_manager"}
+            & perms
+        ):
             return
         if product.creator_id is not None and product.creator_id == actor.id:
+            return
+        if product.created_by == actor.id:
             return
         if product.brand_id is not None and getattr(self.uow, "brands", None):
             member = await self.uow.brands.get_member(product.brand_id, actor.id)
@@ -186,6 +191,9 @@ class CatalogService:
         min_price: Decimal | None = None,
         max_price: Decimal | None = None,
         search: str | None = None,
+        size: str | None = None,
+        color: str | None = None,
+        is_limited: bool | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[ProductDomain], int]:
@@ -195,6 +203,9 @@ class CatalogService:
                 min_price=min_price,
                 max_price=max_price,
                 search=search,
+                size=size,
+                color=color,
+                is_limited=is_limited,
                 limit=limit,
                 offset=offset,
             )
@@ -236,6 +247,12 @@ class CatalogService:
                 )
                 if not has_access:
                     raise EntityNotFoundError("Product not found")
+
+            await self.uow.products.increment_views(product.id)
+            product.views_count += 1
+            if product.brand_id is not None and getattr(self.uow, "brands", None):
+                await self.uow.brands.increment_views(product.brand_id)
+            await self.uow.commit()
 
             variants = await self.uow.variants.list_by_product_id(product.id)
             images = await self.uow.images.list_by_product_id(product.id)

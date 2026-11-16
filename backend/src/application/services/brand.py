@@ -13,8 +13,11 @@ from src.domain.models import (
     BrandDomain,
     BrandMemberDomain,
     BrandMemberRole,
+    ModerationStatus,
     UserDomain,
 )
+
+from .notification import NotificationService
 
 
 class BrandService:
@@ -22,9 +25,11 @@ class BrandService:
         self,
         uow: BrandUnitOfWorkProtocol,
         storage: FileStorageProtocol | None = None,
+        notification_service: NotificationService | None = None,
     ) -> None:
         self.uow = uow
         self.storage = storage
+        self.notification_service = notification_service
 
     @staticmethod
     def _slugify(text: str) -> str:
@@ -42,6 +47,13 @@ class BrandService:
             )
         ):
             raise PermissionDeniedError("Permission 'creator:brand' required")
+
+    def _check_moderator_permission(self, actor: UserDomain) -> None:
+        if not actor or not (
+            "*" in actor.global_permissions
+            or "mod:approve_manager" in actor.global_permissions
+        ):
+            raise PermissionDeniedError("Permission 'mod:approve_manager' required")
 
     async def _require_representative(
         self, actor: UserDomain, brand_id: UUID
@@ -121,6 +133,10 @@ class BrandService:
                 slug=slug,
                 his_url=clean_his_url,
                 is_deleted=False,
+                moderation_status=ModerationStatus.PENDING,
+                is_verified=False,
+                views_count=0,
+                orders_count=0,
             )
             await self.uow.brands.add(brand)
 
@@ -136,12 +152,129 @@ class BrandService:
 
         return brand
 
-    async def get_brand(self, slug: str) -> BrandDomain:
+    async def get_brand(
+        self, slug: str, *, actor: UserDomain | None = None
+    ) -> BrandDomain:
         clean_slug = slug.strip()
         async with self.uow:
             brand = await self.uow.brands.get_by_slug(clean_slug)
-            if brand is None:
+            if brand is None or brand.is_deleted:
                 raise EntityNotFoundError("Brand not found")
+
+            if brand.moderation_status != ModerationStatus.APPROVED:
+                has_access = False
+                if actor is not None:
+                    if (
+                        "*" in actor.global_permissions
+                        or "mod:approve_manager" in actor.global_permissions
+                    ):
+                        has_access = True
+                    else:
+                        member = await self.uow.brands.get_member(brand.id, actor.id)
+                        if member is not None:
+                            has_access = True
+                if not has_access:
+                    raise EntityNotFoundError("Brand not found")
+
+            await self.uow.brands.increment_views(brand.id)
+            brand.views_count += 1
+            await self.uow.commit()
+            return brand
+
+    async def list_pending_brands(
+        self,
+        *,
+        actor: UserDomain,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[BrandDomain], int]:
+        self._check_moderator_permission(actor)
+        async with self.uow:
+            brands = await self.uow.brands.list_pending(limit=limit, offset=offset)
+            total = await self.uow.brands.count_pending()
+            return brands, total
+
+    async def count_pending_brands(self, *, actor: UserDomain) -> int:
+        self._check_moderator_permission(actor)
+        async with self.uow:
+            return await self.uow.brands.count_pending()
+
+    async def approve_brand(self, *, actor: UserDomain, brand_id: UUID) -> BrandDomain:
+        self._check_moderator_permission(actor)
+        async with self.uow:
+            brand = await self.uow.brands.get_by_id(brand_id)
+            if brand is None or brand.is_deleted:
+                raise EntityNotFoundError("Brand not found")
+
+            brand.moderation_status = ModerationStatus.APPROVED
+            brand.rejection_reason = None
+            await self.uow.brands.update(brand)
+            members = await self.uow.brands.list_members(brand.id)
+            await self.uow.commit()
+
+        reps = [
+            m for m in members if m.role == BrandMemberRole.REPRESENTATIVE
+        ] or members
+        if self.notification_service is not None:
+            for rep in reps:
+                await self.notification_service.notify_user(
+                    user_id=rep.user_id,
+                    title="Заявка одобрена",
+                    body=f"Бренд «{brand.name}» прошёл проверку и опубликован.",
+                    link=f"/brands/{brand.slug}",
+                    send_email=False,
+                )
+
+        return brand
+
+    async def reject_brand(
+        self, *, actor: UserDomain, brand_id: UUID, reason: str | None = None
+    ) -> BrandDomain:
+        self._check_moderator_permission(actor)
+        clean_reason = reason.strip() if reason and reason.strip() else None
+        async with self.uow:
+            brand = await self.uow.brands.get_by_id(brand_id)
+            if brand is None or brand.is_deleted:
+                raise EntityNotFoundError("Brand not found")
+
+            brand.moderation_status = ModerationStatus.REJECTED
+            brand.rejection_reason = clean_reason
+            await self.uow.brands.update(brand)
+            members = await self.uow.brands.list_members(brand.id)
+            await self.uow.commit()
+
+        reps = [
+            m for m in members if m.role == BrandMemberRole.REPRESENTATIVE
+        ] or members
+        body_text = (
+            f"Отклонено: {clean_reason}"
+            if clean_reason
+            else "Отклонено: Причина не указана"
+        )
+        if self.notification_service is not None:
+            for rep in reps:
+                await self.notification_service.notify_user(
+                    user_id=rep.user_id,
+                    title="Заявка отклонена",
+                    body=body_text,
+                    link=f"/brands/{brand.slug}",
+                    send_email=True,
+                )
+
+        return brand
+
+    async def verify_brand(
+        self, *, actor: UserDomain, brand_id: UUID, is_verified: bool
+    ) -> BrandDomain:
+        self._check_moderator_permission(actor)
+        async with self.uow:
+            brand = await self.uow.brands.get_by_id(brand_id)
+            if brand is None or brand.is_deleted:
+                raise EntityNotFoundError("Brand not found")
+
+            brand.is_verified = is_verified
+            await self.uow.brands.update(brand)
+            await self.uow.commit()
             return brand
 
     async def list_active_brands(

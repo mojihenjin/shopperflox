@@ -20,6 +20,8 @@ class CartItemDetail:
     unit_price: Decimal
     total_price: Decimal
     is_available: bool
+    product_slug: str = ""
+    image_url: str | None = None
 
 
 class CartService:
@@ -58,6 +60,22 @@ class CartService:
                 if is_available:
                     total_cart_amount += item_total
 
+                product_slug = product.slug if product else ""
+                image_url = None
+                if product and getattr(self.uow, "images", None):
+                    images = await self.uow.images.list_by_product_id(product.id)
+                    variant_color = (
+                        (variant.color_name or variant.color) if variant else None
+                    )
+                    if variant_color:
+                        norm_color = variant_color.strip().lower()
+                        for img in images:
+                            if img.color and img.color.strip().lower() == norm_color:
+                                image_url = img.url
+                                break
+                    if not image_url and images:
+                        image_url = images[0].url
+
                 details.append(
                     CartItemDetail(
                         item=item,
@@ -66,6 +84,8 @@ class CartService:
                         unit_price=unit_price,
                         total_price=item_total,
                         is_available=is_available,
+                        product_slug=product_slug,
+                        image_url=image_url,
                     )
                 )
 

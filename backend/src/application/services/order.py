@@ -109,6 +109,13 @@ class OrderService:
                 variant.stock_quantity -= cart_item.quantity
                 await self.uow.variants.update(variant)
 
+                await self.uow.variants.increment_orders(variant.id, cart_item.quantity)
+                await self.uow.products.increment_orders(product.id, cart_item.quantity)
+                if product.brand_id is not None and getattr(self.uow, "brands", None):
+                    await self.uow.brands.increment_orders(
+                        product.brand_id, cart_item.quantity
+                    )
+
                 unit_price = product.resolve_price(variant)
                 total_amount += unit_price * cart_item.quantity
 
