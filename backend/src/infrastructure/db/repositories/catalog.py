@@ -107,6 +107,9 @@ class SqlAlchemyProductRepository:
     ) -> ProductDomain:
         brand_name = model.brand
         brand_slug = None
+        brand_logo_url = None
+        brand_his_url = None
+        brand_is_verified = False
         brand_is_deleted = False
         rel = brand_model
         if rel is None and "brand_rel" in model.__dict__:
@@ -115,6 +118,9 @@ class SqlAlchemyProductRepository:
         if rel is not None:
             brand_name = rel.name
             brand_slug = rel.slug
+            brand_logo_url = rel.logo_url
+            brand_his_url = rel.his_url
+            brand_is_verified = rel.is_verified
             brand_is_deleted = rel.is_deleted
 
         return ProductDomain(
@@ -126,6 +132,9 @@ class SqlAlchemyProductRepository:
             slug=model.slug,
             brand=brand_name,
             brand_slug=brand_slug,
+            brand_logo_url=brand_logo_url,
+            brand_his_url=brand_his_url,
+            brand_is_verified=brand_is_verified,
             brand_is_deleted=brand_is_deleted,
             is_self_worked=model.is_self_worked,
             base_price=model.base_price,
@@ -142,6 +151,8 @@ class SqlAlchemyProductRepository:
             is_published=model.is_published,
             is_hidden=model.is_hidden,
             is_limited=model.is_limited,
+            views_count=model.views_count,
+            orders_count=model.orders_count,
             moderation_status=ModerationStatus(model.moderation_status)
             if model.moderation_status
             else ModerationStatus.PENDING,
@@ -195,6 +206,9 @@ class SqlAlchemyProductRepository:
         min_price: Decimal | None = None,
         max_price: Decimal | None = None,
         search: str | None = None,
+        size: str | None = None,
+        color: str | None = None,
+        is_limited: bool | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[ProductDomain], int]:
@@ -211,12 +225,35 @@ class SqlAlchemyProductRepository:
             base_filters.append(ProductModel.base_price >= min_price)
         if max_price is not None:
             base_filters.append(ProductModel.base_price <= max_price)
+        if is_limited is not None:
+            base_filters.append(ProductModel.is_limited.is_(is_limited))
         if search:
             search_pattern = f"%{search.strip()}%"
             base_filters.append(
                 or_(
                     ProductModel.title.ilike(search_pattern),
                     ProductModel.description.ilike(search_pattern),
+                )
+            )
+        if size:
+            size_clean = size.strip()
+            size_subq = select(ProductVariantModel.product_id).where(
+                ProductVariantModel.stock_quantity > 0,
+                func.lower(ProductVariantModel.size) == func.lower(size_clean),
+            )
+            base_filters.append(ProductModel.id.in_(size_subq))
+        if color:
+            color_pattern = f"%{color.strip()}%"
+            var_color_subq = select(ProductVariantModel.product_id).where(
+                ProductVariantModel.color_name.ilike(color_pattern)
+            )
+            img_color_subq = select(ProductImageModel.product_id).where(
+                ProductImageModel.color.ilike(color_pattern)
+            )
+            base_filters.append(
+                or_(
+                    ProductModel.id.in_(var_color_subq),
+                    ProductModel.id.in_(img_color_subq),
                 )
             )
 
@@ -238,7 +275,85 @@ class SqlAlchemyProductRepository:
         )
         data_res = await self.session.execute(data_stmt)
         rows = data_res.all()
-        return [self._to_domain(m, b) for m, b in rows], total_count
+        products = [self._to_domain(m, b) for m, b in rows]
+
+        if products:
+            p_ids = [p.id for p in products]
+            v_stmt = (
+                select(ProductVariantModel)
+                .where(ProductVariantModel.product_id.in_(p_ids))
+                .order_by(ProductVariantModel.created_at.asc())
+            )
+            v_res = await self.session.execute(v_stmt)
+            variants_map: dict[UUID, list[ProductVariantDomain]] = {
+                pid: [] for pid in p_ids
+            }
+            for vm in v_res.scalars().all():
+                v_domain = ProductVariantDomain(
+                    id=vm.id,
+                    product_id=vm.product_id,
+                    sku=vm.sku,
+                    size=vm.size,
+                    color_name=vm.color_name,
+                    color=vm.color_name,
+                    color_hex=vm.color_hex,
+                    price_override=vm.price_override,
+                    stock_quantity=vm.stock_quantity,
+                    orders_count=vm.orders_count,
+                    created_by=vm.created_by,
+                    created_at=vm.created_at,
+                    updated_at=vm.updated_at,
+                )
+                variants_map[vm.product_id].append(v_domain)
+
+            i_stmt = (
+                select(ProductImageModel)
+                .where(ProductImageModel.product_id.in_(p_ids))
+                .order_by(
+                    ProductImageModel.sort_order.asc(),
+                    ProductImageModel.created_at.asc(),
+                )
+            )
+            i_res = await self.session.execute(i_stmt)
+            images_map: dict[UUID, list[ProductImageDomain]] = {
+                pid: [] for pid in p_ids
+            }
+            for im in i_res.scalars().all():
+                i_domain = ProductImageDomain(
+                    id=im.id,
+                    product_id=im.product_id,
+                    url=im.url,
+                    created_by=im.created_by,
+                    variant_id=im.variant_id,
+                    color=im.color,
+                    alt_text=im.alt_text,
+                    sort_order=im.sort_order,
+                    is_main=im.is_main,
+                    created_at=im.created_at,
+                )
+                images_map[im.product_id].append(i_domain)
+
+            for p in products:
+                p.variants = variants_map.get(p.id, [])
+                p.images = images_map.get(p.id, [])
+
+        return products, total_count
+
+    async def increment_views(self, product_id: UUID) -> None:
+        stmt = (
+            update(ProductModel)
+            .where(ProductModel.id == product_id)
+            .values(views_count=ProductModel.views_count + 1)
+        )
+        await self.session.execute(stmt)
+
+    async def increment_orders(self, product_id: UUID, quantity: int) -> None:
+        stmt = (
+            update(ProductModel)
+            .where(ProductModel.id == product_id)
+            .values(orders_count=ProductModel.orders_count + quantity)
+        )
+        await self.session.execute(stmt)
 
     async def add(self, product: ProductDomain) -> None:
         model = ProductModel(
@@ -263,6 +378,8 @@ class SqlAlchemyProductRepository:
             is_published=product.is_published,
             is_hidden=product.is_hidden,
             is_limited=product.is_limited,
+            views_count=product.views_count,
+            orders_count=product.orders_count,
             moderation_status=str(product.moderation_status.value)
             if isinstance(product.moderation_status, ModerationStatus)
             else str(product.moderation_status),
@@ -307,6 +424,8 @@ class SqlAlchemyProductRepository:
         model.is_published = product.is_published
         model.is_hidden = product.is_hidden
         model.is_limited = product.is_limited
+        model.views_count = product.views_count
+        model.orders_count = product.orders_count
         model.moderation_status = (
             str(product.moderation_status.value)
             if isinstance(product.moderation_status, ModerationStatus)
@@ -452,6 +571,7 @@ class SqlAlchemyProductVariantRepository:
             color_hex=model.color_hex,
             price_override=model.price_override,
             stock_quantity=model.stock_quantity,
+            orders_count=model.orders_count,
             created_at=model.created_at,
             updated_at=model.updated_at,
         )
@@ -529,6 +649,7 @@ class SqlAlchemyProductVariantRepository:
             color_hex=variant.color_hex,
             price_override=variant.price_override,
             stock_quantity=variant.stock_quantity,
+            orders_count=variant.orders_count,
             created_by=variant.created_by,
             created_at=variant.created_at,
             updated_at=variant.updated_at,
@@ -540,6 +661,14 @@ class SqlAlchemyProductVariantRepository:
             raise EntityAlreadyExistsError(
                 f"Variant with SKU '{variant.sku}' already exists"
             ) from exc
+
+    async def increment_orders(self, variant_id: UUID, quantity: int) -> None:
+        stmt = (
+            update(ProductVariantModel)
+            .where(ProductVariantModel.id == variant_id)
+            .values(orders_count=ProductVariantModel.orders_count + quantity)
+        )
+        await self.session.execute(stmt)
 
     async def update(self, variant: ProductVariantDomain) -> None:
         model = await self.session.get(ProductVariantModel, variant.id)

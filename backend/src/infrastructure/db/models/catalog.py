@@ -79,6 +79,12 @@ class ProductModel(Base):
     is_limited: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false", nullable=False
     )
+    views_count: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
+    orders_count: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
     moderation_status: Mapped[str] = mapped_column(
         String(20),
         default="pending",
@@ -156,6 +162,9 @@ class ProductVariantModel(Base):
         Numeric(12, 2), nullable=True
     )
     stock_quantity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    orders_count: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
     created_by: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )

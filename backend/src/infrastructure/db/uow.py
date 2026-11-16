@@ -168,12 +168,14 @@ class SqlAlchemyCartUnitOfWork:
         self.carts: SqlAlchemyCartRepository
         self.variants: SqlAlchemyProductVariantRepository
         self.products: SqlAlchemyProductRepository
+        self.images: SqlAlchemyProductImageRepository
 
     async def __aenter__(self) -> Self:
         self._session = self._session_factory()
         self.carts = SqlAlchemyCartRepository(self._session)
         self.variants = SqlAlchemyProductVariantRepository(self._session)
         self.products = SqlAlchemyProductRepository(self._session)
+        self.images = SqlAlchemyProductImageRepository(self._session)
         return self
 
     async def __aexit__(
@@ -213,6 +215,7 @@ class SqlAlchemyOrderUnitOfWork:
         self.products: SqlAlchemyProductRepository
         self.addresses: SqlAlchemyUserAddressRepository
         self.payments: SqlAlchemyPaymentRepository
+        self.brands: SqlAlchemyBrandRepository
 
     async def __aenter__(self) -> Self:
         self._session = self._session_factory()
@@ -222,6 +225,7 @@ class SqlAlchemyOrderUnitOfWork:
         self.products = SqlAlchemyProductRepository(self._session)
         self.addresses = SqlAlchemyUserAddressRepository(self._session)
         self.payments = SqlAlchemyPaymentRepository(self._session)
+        self.brands = SqlAlchemyBrandRepository(self._session)
         return self
 
     async def __aexit__(

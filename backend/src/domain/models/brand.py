@@ -8,6 +8,7 @@ from uuid6 import uuid7
 from src.utils import factory_now
 
 from .base import BaseDomain
+from .product import ModerationStatus
 
 
 class BrandMemberRole(StrEnum):
@@ -23,6 +24,11 @@ class BrandDomain(BaseDomain):
     his_url: str | None = None
     logo_url: str | None = None
     is_deleted: bool = False
+    views_count: int = 0
+    orders_count: int = 0
+    moderation_status: ModerationStatus = field(default=ModerationStatus.PENDING)
+    rejection_reason: str | None = None
+    is_verified: bool = False
     created_at: datetime = field(default_factory=factory_now)
 
 

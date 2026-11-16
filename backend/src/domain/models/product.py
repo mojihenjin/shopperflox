@@ -38,6 +38,9 @@ class ProductDomain(BaseDomain):
     brand_id: UUID | None = field(default=None)
     brand: str | None = field(default=None)
     brand_slug: str | None = field(default=None)
+    brand_logo_url: str | None = field(default=None)
+    brand_his_url: str | None = field(default=None)
+    brand_is_verified: bool = field(default=False)
     brand_is_deleted: bool = field(default=False)
     is_self_worked: bool = field(default=False)
     price_usd: Decimal | None = field(default=None)
@@ -53,6 +56,11 @@ class ProductDomain(BaseDomain):
     is_published: bool = field(default=False)
     is_hidden: int = field(default=0)
     is_limited: bool = field(default=False)
+    views_count: int = field(default=0)
+    orders_count: int = field(default=0)
+
+    images: list["ProductImageDomain"] = field(default_factory=list)
+    variants: list["ProductVariantDomain"] = field(default_factory=list)
 
     moderation_status: ModerationStatus = field(default=ModerationStatus.PENDING)
     request_type: ModerationRequestType = field(default=ModerationRequestType.CREATE)
@@ -93,6 +101,7 @@ class ProductVariantDomain(BaseDomain):
     color_hex: str | None = field(default=None)
     price_override: Decimal | None = field(default=None)
     stock_quantity: int = field(default=0)
+    orders_count: int = field(default=0)
 
     created_at: datetime = field(default_factory=factory_now)
     updated_at: datetime = field(default_factory=factory_now)

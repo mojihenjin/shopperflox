@@ -5,7 +5,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.exceptions import EntityAlreadyExistsError
-from src.domain.models import BrandDomain, BrandMemberDomain, BrandMemberRole
+from src.domain.models import (
+    BrandDomain,
+    BrandMemberDomain,
+    BrandMemberRole,
+    ModerationStatus,
+)
 from src.infrastructure.db.models import BrandMemberModel, BrandModel, UserModel
 
 
@@ -21,6 +26,13 @@ class SqlAlchemyBrandRepository:
             his_url=model.his_url,
             logo_url=model.logo_url,
             is_deleted=model.is_deleted,
+            views_count=model.views_count,
+            orders_count=model.orders_count,
+            moderation_status=ModerationStatus(model.moderation_status)
+            if model.moderation_status
+            else ModerationStatus.PENDING,
+            rejection_reason=model.rejection_reason,
+            is_verified=model.is_verified,
             created_at=model.created_at,
         )
 
@@ -45,13 +57,60 @@ class SqlAlchemyBrandRepository:
     async def list_active(self, limit: int = 100, offset: int = 0) -> list[BrandDomain]:
         stmt = (
             select(BrandModel)
-            .where(BrandModel.is_deleted.is_(False))
+            .where(
+                BrandModel.is_deleted.is_(False),
+                BrandModel.moderation_status == ModerationStatus.APPROVED.value,
+            )
             .order_by(BrandModel.name.asc())
             .limit(limit)
             .offset(offset)
         )
         res = await self.session.execute(stmt)
         return [self._to_domain(m) for m in res.scalars().all()]
+
+    async def list_pending(
+        self, limit: int = 100, offset: int = 0
+    ) -> list[BrandDomain]:
+        stmt = (
+            select(BrandModel)
+            .where(
+                BrandModel.is_deleted.is_(False),
+                BrandModel.moderation_status == ModerationStatus.PENDING.value,
+            )
+            .order_by(BrandModel.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        res = await self.session.execute(stmt)
+        return [self._to_domain(m) for m in res.scalars().all()]
+
+    async def count_pending(self) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(BrandModel)
+            .where(
+                BrandModel.is_deleted.is_(False),
+                BrandModel.moderation_status == ModerationStatus.PENDING.value,
+            )
+        )
+        res = await self.session.execute(stmt)
+        return res.scalar_one() or 0
+
+    async def increment_views(self, brand_id: UUID) -> None:
+        stmt = (
+            update(BrandModel)
+            .where(BrandModel.id == brand_id)
+            .values(views_count=BrandModel.views_count + 1)
+        )
+        await self.session.execute(stmt)
+
+    async def increment_orders(self, brand_id: UUID, quantity: int) -> None:
+        stmt = (
+            update(BrandModel)
+            .where(BrandModel.id == brand_id)
+            .values(orders_count=BrandModel.orders_count + quantity)
+        )
+        await self.session.execute(stmt)
 
     async def list_by_user_id(
         self, user_id: UUID
@@ -77,6 +136,13 @@ class SqlAlchemyBrandRepository:
             his_url=brand.his_url,
             logo_url=brand.logo_url,
             is_deleted=brand.is_deleted,
+            views_count=brand.views_count,
+            orders_count=brand.orders_count,
+            moderation_status=brand.moderation_status.value
+            if isinstance(brand.moderation_status, ModerationStatus)
+            else str(brand.moderation_status),
+            rejection_reason=brand.rejection_reason,
+            is_verified=brand.is_verified,
             created_at=brand.created_at,
         )
         self.session.add(model)
@@ -97,6 +163,13 @@ class SqlAlchemyBrandRepository:
                 his_url=brand.his_url,
                 logo_url=brand.logo_url,
                 is_deleted=brand.is_deleted,
+                views_count=brand.views_count,
+                orders_count=brand.orders_count,
+                moderation_status=brand.moderation_status.value
+                if isinstance(brand.moderation_status, ModerationStatus)
+                else str(brand.moderation_status),
+                rejection_reason=brand.rejection_reason,
+                is_verified=brand.is_verified,
             )
         )
         try:

@@ -2,6 +2,7 @@ from types import TracebackType
 from typing import Protocol, Self
 from uuid import UUID
 
+from src.domain.interfaces.brand import BrandRepositoryProtocol
 from src.domain.interfaces.cart import CartRepositoryProtocol
 from src.domain.interfaces.catalog import (
     ProductRepositoryProtocol,
@@ -87,6 +88,7 @@ class OrderUnitOfWorkProtocol(Protocol):
     products: ProductRepositoryProtocol
     addresses: UserAddressRepositoryProtocol
     payments: PaymentRepositoryProtocol
+    brands: BrandRepositoryProtocol
 
     async def commit(self) -> None: ...
 
