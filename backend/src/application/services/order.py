@@ -96,6 +96,11 @@ class OrderService:
                         f"Product '{product.title if product else variant.sku}' is not available"
                     )
 
+                if product.brand_is_deleted:
+                    raise DomainValidationError(
+                        "Заказ невозможен, бренд снялся с продажи"
+                    )
+
                 if variant.stock_quantity < cart_item.quantity:
                     raise DomainValidationError(
                         f"Insufficient stock for variant '{variant.sku}': requested {cart_item.quantity}, available {variant.stock_quantity}"

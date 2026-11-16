@@ -66,20 +66,22 @@ class CatalogService:
                 "Permission 'catalog:manage' or 'creator:*' required"
             )
 
-    def _check_product_modify_permission(
+    async def _check_product_modify_permission(
         self, actor: UserDomain, product: ProductDomain
     ) -> None:
         if not actor:
             raise PermissionDeniedError("Authentication required")
-        perms = actor.global_permissions
-        if "*" in perms or "catalog:manage" in perms:
+        perms = set(actor.global_permissions)
+        if bool({"*", "catalog:manage", "mod:update", "mod:delete"} & perms):
             return
-        is_creator = any(p.startswith("creator:") or p == "creator" for p in perms)
-        is_owner = product.creator_id is not None and product.creator_id == actor.id
-        if is_creator and is_owner:
+        if product.creator_id is not None and product.creator_id == actor.id:
             return
+        if product.brand_id is not None and getattr(self.uow, "brands", None):
+            member = await self.uow.brands.get_member(product.brand_id, actor.id)
+            if member is not None:
+                return
         raise PermissionDeniedError(
-            "Access denied: only product creator or catalog manager can modify this product"
+            "Access denied: only product creator, brand members, or catalog managers can modify this product"
         )
 
     async def get_categories(self) -> list[CategoryDomain]:
@@ -254,6 +256,7 @@ class CatalogService:
         base_price: Decimal,
         price_usd: Decimal | None = None,
         price_eur: Decimal | None = None,
+        brand_id: UUID | None = None,
         brand: str | None = None,
         is_self_worked: bool = False,
         material: str | None = None,
@@ -286,12 +289,31 @@ class CatalogService:
             if category is None:
                 raise EntityNotFoundError("Category not found")
 
+            brand_slug = None
+            brand_is_deleted = False
+            if brand_id is not None and getattr(self.uow, "brands", None):
+                brand_domain = await self.uow.brands.get_by_id(brand_id)
+                if brand_domain is None:
+                    raise EntityNotFoundError("Brand not found")
+                clean_brand = brand_domain.name
+                brand_slug = brand_domain.slug
+                brand_is_deleted = brand_domain.is_deleted
+                if "*" not in actor.global_permissions:
+                    member = await self.uow.brands.get_member(brand_id, actor.id)
+                    if not member:
+                        raise PermissionDeniedError(
+                            "Membership in brand required to create brand products"
+                        )
+
             product = ProductDomain(
                 category_id=category_id,
                 creator_id=actor.id,
+                brand_id=brand_id,
                 title=title,
                 slug=slug,
                 brand=clean_brand,
+                brand_slug=brand_slug,
+                brand_is_deleted=brand_is_deleted,
                 is_self_worked=is_self_worked,
                 base_price=base_price,
                 price_usd=price_usd,
@@ -348,6 +370,7 @@ class CatalogService:
         actor: UserDomain,
         product_id: UUID,
         category_id: UUID | None = None,
+        brand_id: UUID | None = ...,  # type: ignore[assignment]
         title: str | None = None,
         slug: str | None = None,
         brand: str | None = ...,  # type: ignore[assignment]
@@ -373,7 +396,7 @@ class CatalogService:
             if product is None or product.deleted_at is not None:
                 raise EntityNotFoundError("Product not found")
 
-            self._check_product_modify_permission(actor, product)
+            await self._check_product_modify_permission(actor, product)
 
             is_substantial = False
 
@@ -403,6 +426,29 @@ class CatalogService:
             if is_self_worked is not None and is_self_worked != product.is_self_worked:
                 product.is_self_worked = is_self_worked
                 is_substantial = True
+
+            if brand_id is not ...:
+                if brand_id is not None and getattr(self.uow, "brands", None):
+                    brand_domain = await self.uow.brands.get_by_id(brand_id)
+                    if brand_domain is None:
+                        raise EntityNotFoundError("Brand not found")
+                    if "*" not in actor.global_permissions:
+                        member = await self.uow.brands.get_member(brand_id, actor.id)
+                        if not member:
+                            raise PermissionDeniedError(
+                                "Membership in brand required to assign product to brand"
+                            )
+                    if brand_id != product.brand_id:
+                        product.brand_id = brand_id
+                        product.brand = brand_domain.name
+                        product.brand_slug = brand_domain.slug
+                        product.brand_is_deleted = brand_domain.is_deleted
+                        is_substantial = True
+                elif brand_id is None and product.brand_id is not None:
+                    product.brand_id = None
+                    product.brand_slug = None
+                    product.brand_is_deleted = False
+                    is_substantial = True
 
             if brand is not ...:
                 brand_clean = brand.strip() if brand else None
@@ -495,7 +541,7 @@ class CatalogService:
             if product is None or product.deleted_at is not None:
                 raise EntityNotFoundError("Product not found")
 
-            self._check_product_modify_permission(actor, product)
+            await self._check_product_modify_permission(actor, product)
 
             now = factory_now()
             product.deleted_at = now
@@ -526,7 +572,7 @@ class CatalogService:
             if product is None or product.deleted_at is not None:
                 raise EntityNotFoundError("Product not found")
 
-            self._check_product_modify_permission(actor, product)
+            await self._check_product_modify_permission(actor, product)
 
             variant = ProductVariantDomain(
                 product_id=product_id,
@@ -565,7 +611,7 @@ class CatalogService:
             if product is None or product.deleted_at is not None:
                 raise EntityNotFoundError("Product not found")
 
-            self._check_product_modify_permission(actor, product)
+            await self._check_product_modify_permission(actor, product)
 
             if sku is not None:
                 sku_clean = sku.strip()
@@ -617,7 +663,7 @@ class CatalogService:
             if product is None or product.deleted_at is not None:
                 raise EntityNotFoundError("Product not found")
 
-            self._check_product_modify_permission(actor, product)
+            await self._check_product_modify_permission(actor, product)
 
             if variant_id is not None:
                 variant = await self.uow.variants.get_by_id(variant_id)
@@ -704,7 +750,7 @@ class CatalogService:
             if product is None or product.deleted_at is not None:
                 raise EntityNotFoundError("Product not found")
 
-            self._check_product_modify_permission(actor, product)
+            await self._check_product_modify_permission(actor, product)
 
             image_id = uuid7()
             key = f"products/{product_id}/{image_id}.{ext}"
@@ -774,7 +820,7 @@ class CatalogService:
             if product is None or product.deleted_at is not None:
                 raise EntityNotFoundError("Product not found")
 
-            self._check_product_modify_permission(actor, product)
+            await self._check_product_modify_permission(actor, product)
 
             image = await self.uow.images.get_by_id(image_id)
             if image is None or image.product_id != product_id:

@@ -46,7 +46,9 @@ class CartService:
                 if variant and product:
                     unit_price = product.resolve_price(variant)
                     is_available = (
-                        product.is_available and variant.stock_quantity >= item.quantity
+                        product.is_available
+                        and not product.brand_is_deleted
+                        and variant.stock_quantity >= item.quantity
                     )
                 else:
                     unit_price = Decimal("0.00")
@@ -87,6 +89,9 @@ class CartService:
             product = await self.uow.products.get_by_id(variant.product_id)
             if product is None or not product.is_available:
                 raise DomainValidationError("Product is not available for purchase")
+
+            if product.brand_is_deleted:
+                raise DomainValidationError("Заказ невозможен, бренд снялся с продажи")
 
             if quantity > variant.stock_quantity:
                 raise DomainValidationError(
