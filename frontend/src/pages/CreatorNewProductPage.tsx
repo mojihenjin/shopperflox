@@ -363,12 +363,13 @@ export function CreatorNewProductPage() {
       return;
     }
 
-    // Prepare variants array
+    // Prepare variants array with sku: undefined so the backend generates unique SKUs
     const variantItems: VariantCreateItem[] = [];
     for (const cb of colorBlocks) {
       const colorName = cb.name.trim() || 'Основной';
       if (cb.sizes.length === 0) {
         variantItems.push({
+          sku: undefined,
           color: colorName,
           color_name: colorName,
           size: 'ONE SIZE',
@@ -377,6 +378,7 @@ export function CreatorNewProductPage() {
       } else {
         for (const s of cb.sizes) {
           variantItems.push({
+            sku: undefined,
             color: colorName,
             color_name: colorName,
             size: s.size.trim(),

@@ -8,6 +8,44 @@ import type { ApiError } from '../api/client';
 
 const PRESET_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'ONE SIZE'];
 
+const RU_TO_EN: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh',
+  з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o',
+  п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'ts',
+  ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+};
+
+function transliterateToLatin(text: string): string {
+  return text
+    .toLowerCase()
+    .split('')
+    .map((ch) => RU_TO_EN[ch] ?? ch)
+    .join('')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toUpperCase();
+}
+
+function generateSafeVariantSku(
+  productSlug: string,
+  color?: string,
+  size?: string,
+  index?: number
+): string {
+  const slugPart = transliterateToLatin(productSlug).slice(0, 16) || 'ITEM';
+  const colorPart = color ? transliterateToLatin(color).slice(0, 8) : '';
+  const sizePart = size ? transliterateToLatin(size).slice(0, 6) : '';
+  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+
+  const parts = [slugPart];
+  if (colorPart) parts.push(colorPart);
+  if (sizePart) parts.push(sizePart);
+  if (index !== undefined) parts.push(String(index));
+  parts.push(rand);
+
+  return parts.join('-').slice(0, 64);
+}
+
 interface VariantReplenishCardProps {
   variant: ProductVariantResponse;
   onUpdateStock: (variantId: string, newStock: number) => Promise<void>;
@@ -329,10 +367,23 @@ export function CreatorEditProductPage() {
       setAddVariantError(null);
       setAddVariantSuccess(null);
       if (!product?.id) throw new Error('Товар не найден');
-      if (!newSku.trim()) throw new Error('Укажите артикул (SKU)');
+
+      let resolvedSku = newSku.trim();
+      if (!resolvedSku) {
+        resolvedSku = generateSafeVariantSku(
+          product.slug,
+          newColorName,
+          newSize,
+          variants.length + 1
+        );
+      } else {
+        const latinBase = transliterateToLatin(resolvedSku);
+        const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+        resolvedSku = `${(latinBase || 'SKU').slice(0, 56)}-${rand}`;
+      }
 
       return productsApi.createVariant(product.id, {
-        sku: newSku.trim(),
+        sku: resolvedSku,
         size: newSize.trim() || null,
         color_name: newColorName.trim() || null,
         color: newColorName.trim() || null,
@@ -925,7 +976,14 @@ export function CreatorEditProductPage() {
                   type="button"
                   onClick={() => {
                     setIsAddVariantOpen(true);
-                    setNewSku(`${product?.slug || 'item'}-${variants.length + 1}`);
+                    setNewSku(
+                      generateSafeVariantSku(
+                        product?.slug || 'item',
+                        newColorName,
+                        newSize,
+                        variants.length + 1
+                      )
+                    );
                   }}
                   className="border border-[#3F2021] text-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] px-4 py-2.5 text-xs font-sans uppercase tracking-wider font-semibold transition-colors rounded-none cursor-pointer"
                 >
