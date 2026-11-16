@@ -15,7 +15,7 @@ from sqlalchemy import (
     Text,
     text,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
 
@@ -50,6 +50,9 @@ class ProductModel(Base):
     )
     creator_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    brand_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("brands.id", ondelete="SET NULL"), nullable=True, index=True
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -97,6 +100,8 @@ class ProductModel(Base):
     created_at: Mapped[datetime] = mapped_column(nullable=False)
     updated_at: Mapped[datetime] = mapped_column(nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    brand_rel = relationship("BrandModel", foreign_keys=[brand_id])
 
     __table_args__ = (
         CheckConstraint("base_price >= 0", name="chk_products_base_price_non_negative"),

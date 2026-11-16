@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 
 from src.domain.models import (
@@ -12,6 +12,9 @@ from src.domain.models import (
 )
 
 from .uow import UnitOfWorkProtocol
+
+if TYPE_CHECKING:
+    from .brand import BrandRepositoryProtocol
 
 
 class CategoryRepositoryProtocol(Protocol):
@@ -59,6 +62,10 @@ class ProductRepositoryProtocol(Protocol):
     async def search_brands(
         self, query: str, limit: int = 10
     ) -> list[BrandSearchResult]: ...
+
+    async def update_brand_name_for_products(
+        self, brand_id: UUID, brand_name: str
+    ) -> None: ...
 
     async def list_pending_products(
         self,
@@ -129,3 +136,4 @@ class CatalogUnitOfWorkProtocol(UnitOfWorkProtocol, Protocol):
     variants: ProductVariantRepositoryProtocol
     images: ProductImageRepositoryProtocol
     favorites: FavoriteRepositoryProtocol
+    brands: "BrandRepositoryProtocol"

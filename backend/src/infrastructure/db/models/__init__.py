@@ -1,4 +1,5 @@
 from .base import Base
+from .brand import BrandMemberModel, BrandModel
 from .catalog import (
     CategoryModel,
     FavoriteModel,
@@ -24,6 +25,8 @@ from .user import (
 
 __all__ = [
     "Base",
+    "BrandMemberModel",
+    "BrandModel",
     "CartItemModel",
     "CartModel",
     "CategoryModel",

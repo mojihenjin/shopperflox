@@ -35,7 +35,10 @@ class ProductDomain(BaseDomain):
 
     creator_id: UUID | None = field(default=None)
     description: str | None = field(default=None)
+    brand_id: UUID | None = field(default=None)
     brand: str | None = field(default=None)
+    brand_slug: str | None = field(default=None)
+    brand_is_deleted: bool = field(default=False)
     is_self_worked: bool = field(default=False)
     price_usd: Decimal | None = field(default=None)
     price_eur: Decimal | None = field(default=None)

@@ -1,5 +1,6 @@
 from .auth import RegisterResultDomain
 from .base import BaseDomain
+from .brand import BrandDomain, BrandMemberDomain, BrandMemberRole
 from .cart import CartDomain, CartItemDomain
 from .category import CategoryDomain
 from .favorite import FavoriteDomain
@@ -24,6 +25,9 @@ from .user import (
 
 __all__ = [
     "BaseDomain",
+    "BrandDomain",
+    "BrandMemberDomain",
+    "BrandMemberRole",
     "BrandSearchResult",
     "CartDomain",
     "CartItemDomain",

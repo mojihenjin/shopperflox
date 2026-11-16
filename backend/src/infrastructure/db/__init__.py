@@ -1,5 +1,7 @@
 from .models import (
     Base,
+    BrandMemberModel,
+    BrandModel,
     CartItemModel,
     CartModel,
     CategoryModel,
@@ -18,6 +20,7 @@ from .models import (
     UserPersonalModel,
 )
 from .repositories import (
+    SqlAlchemyBrandRepository,
     SqlAlchemyCartRepository,
     SqlAlchemyCategoryRepository,
     SqlAlchemyFavoriteRepository,
@@ -41,6 +44,7 @@ from .session import (
     get_session,
 )
 from .uow import (
+    SqlAlchemyBrandUnitOfWork,
     SqlAlchemyCartUnitOfWork,
     SqlAlchemyCatalogUnitOfWork,
     SqlAlchemyNotificationUnitOfWork,
@@ -51,6 +55,8 @@ from .uow import (
 
 __all__ = [
     "Base",
+    "BrandMemberModel",
+    "BrandModel",
     "CartItemModel",
     "CartModel",
     "CategoryModel",
@@ -63,6 +69,8 @@ __all__ = [
     "ProductModel",
     "ProductVariantModel",
     "ReviewModel",
+    "SqlAlchemyBrandRepository",
+    "SqlAlchemyBrandUnitOfWork",
     "SqlAlchemyCartRepository",
     "SqlAlchemyCartUnitOfWork",
     "SqlAlchemyCatalogUnitOfWork",

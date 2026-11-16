@@ -17,6 +17,7 @@ from src.domain.models import (
     ProductVariantDomain,
 )
 from src.infrastructure.db.models import (
+    BrandModel,
     CategoryModel,
     FavoriteModel,
     ProductImageModel,
@@ -101,14 +102,31 @@ class SqlAlchemyProductRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    def _to_domain(self, model: ProductModel) -> ProductDomain:
+    def _to_domain(
+        self, model: ProductModel, brand_model: BrandModel | None = None
+    ) -> ProductDomain:
+        brand_name = model.brand
+        brand_slug = None
+        brand_is_deleted = False
+        rel = brand_model
+        if rel is None and "brand_rel" in model.__dict__:
+            rel = model.__dict__["brand_rel"]
+
+        if rel is not None:
+            brand_name = rel.name
+            brand_slug = rel.slug
+            brand_is_deleted = rel.is_deleted
+
         return ProductDomain(
             id=model.id,
             category_id=model.category_id,
             creator_id=model.creator_id,
+            brand_id=model.brand_id,
             title=model.title,
             slug=model.slug,
-            brand=model.brand,
+            brand=brand_name,
+            brand_slug=brand_slug,
+            brand_is_deleted=brand_is_deleted,
             is_self_worked=model.is_self_worked,
             base_price=model.base_price,
             price_usd=model.price_usd,
@@ -139,26 +157,36 @@ class SqlAlchemyProductRepository:
     async def get_by_id(
         self, product_id: UUID, *, include_unpublished: bool = False
     ) -> ProductDomain | None:
-        stmt = select(ProductModel).where(
-            ProductModel.id == product_id, ProductModel.deleted_at.is_(None)
+        stmt = (
+            select(ProductModel, BrandModel)
+            .outerjoin(BrandModel, ProductModel.brand_id == BrandModel.id)
+            .where(ProductModel.id == product_id, ProductModel.deleted_at.is_(None))
         )
         if not include_unpublished:
             stmt = stmt.where(ProductModel.is_published.is_(True))
         result = await self.session.execute(stmt)
-        model = result.scalar_one_or_none()
-        return self._to_domain(model) if model else None
+        row = result.first()
+        if not row:
+            return None
+        model, brand_model = row
+        return self._to_domain(model, brand_model)
 
     async def get_by_slug(
         self, slug: str, *, include_unpublished: bool = False
     ) -> ProductDomain | None:
-        stmt = select(ProductModel).where(
-            ProductModel.slug == slug, ProductModel.deleted_at.is_(None)
+        stmt = (
+            select(ProductModel, BrandModel)
+            .outerjoin(BrandModel, ProductModel.brand_id == BrandModel.id)
+            .where(ProductModel.slug == slug, ProductModel.deleted_at.is_(None))
         )
         if not include_unpublished:
             stmt = stmt.where(ProductModel.is_published.is_(True))
         result = await self.session.execute(stmt)
-        model = result.scalar_one_or_none()
-        return self._to_domain(model) if model else None
+        row = result.first()
+        if not row:
+            return None
+        model, brand_model = row
+        return self._to_domain(model, brand_model)
 
     async def list_catalog(
         self,
@@ -175,6 +203,7 @@ class SqlAlchemyProductRepository:
             ProductModel.deleted_at.is_(None),
             ProductModel.is_hidden == 0,
             ProductModel.moderation_status == "approved",
+            or_(BrandModel.id.is_(None), BrandModel.is_deleted.is_(False)),
         ]
         if category_id is not None:
             base_filters.append(ProductModel.category_id == category_id)
@@ -191,26 +220,32 @@ class SqlAlchemyProductRepository:
                 )
             )
 
-        count_stmt = select(func.count(ProductModel.id)).where(*base_filters)
+        count_stmt = (
+            select(func.count(ProductModel.id))
+            .outerjoin(BrandModel, ProductModel.brand_id == BrandModel.id)
+            .where(*base_filters)
+        )
         count_res = await self.session.execute(count_stmt)
         total_count = count_res.scalar() or 0
 
         data_stmt = (
-            select(ProductModel)
+            select(ProductModel, BrandModel)
+            .outerjoin(BrandModel, ProductModel.brand_id == BrandModel.id)
             .where(*base_filters)
             .order_by(ProductModel.created_at.desc())
             .limit(limit)
             .offset(offset)
         )
         data_res = await self.session.execute(data_stmt)
-        models = data_res.scalars().all()
-        return [self._to_domain(m) for m in models], total_count
+        rows = data_res.all()
+        return [self._to_domain(m, b) for m, b in rows], total_count
 
     async def add(self, product: ProductDomain) -> None:
         model = ProductModel(
             id=product.id,
             category_id=product.category_id,
             creator_id=product.creator_id,
+            brand_id=product.brand_id,
             title=product.title,
             slug=product.slug,
             brand=product.brand,
@@ -254,6 +289,7 @@ class SqlAlchemyProductRepository:
             raise EntityNotFoundError("Product not found")
         model.category_id = product.category_id
         model.creator_id = product.creator_id
+        model.brand_id = product.brand_id
         model.title = product.title
         model.slug = product.slug
         model.brand = product.brand
@@ -299,12 +335,14 @@ class SqlAlchemyProductRepository:
             return []
         pattern = f"%{escaped}%"
         stmt = (
-            select(ProductModel)
+            select(ProductModel, BrandModel)
+            .outerjoin(BrandModel, ProductModel.brand_id == BrandModel.id)
             .where(
                 ProductModel.is_published.is_(True),
                 ProductModel.deleted_at.is_(None),
                 ProductModel.is_hidden == 0,
                 ProductModel.moderation_status == "approved",
+                or_(BrandModel.id.is_(None), BrandModel.is_deleted.is_(False)),
                 or_(
                     ProductModel.title.ilike(pattern, escape="\\"),
                     ProductModel.description.ilike(pattern, escape="\\"),
@@ -315,8 +353,8 @@ class SqlAlchemyProductRepository:
             .limit(limit)
         )
         result = await self.session.execute(stmt)
-        models = result.scalars().all()
-        return [self._to_domain(m) for m in models]
+        rows = result.all()
+        return [self._to_domain(m, b) for m, b in rows]
 
     async def search_brands(
         self, query: str, limit: int = 10
@@ -329,11 +367,13 @@ class SqlAlchemyProductRepository:
         pattern = f"%{escaped}%"
         stmt = (
             select(ProductModel.brand, func.count(ProductModel.id))
+            .outerjoin(BrandModel, ProductModel.brand_id == BrandModel.id)
             .where(
                 ProductModel.is_published.is_(True),
                 ProductModel.deleted_at.is_(None),
                 ProductModel.is_hidden == 0,
                 ProductModel.moderation_status == "approved",
+                or_(BrandModel.id.is_(None), BrandModel.is_deleted.is_(False)),
                 ProductModel.brand.isnot(None),
                 ProductModel.brand != "",
                 ProductModel.brand.ilike(pattern, escape="\\"),
@@ -365,15 +405,16 @@ class SqlAlchemyProductRepository:
         total_count = count_res.scalar() or 0
 
         data_stmt = (
-            select(ProductModel)
+            select(ProductModel, BrandModel)
+            .outerjoin(BrandModel, ProductModel.brand_id == BrandModel.id)
             .where(*filters)
             .order_by(ProductModel.created_at.asc())
             .limit(limit)
             .offset(offset)
         )
         data_res = await self.session.execute(data_stmt)
-        models = data_res.scalars().all()
-        return [self._to_domain(m) for m in models], total_count
+        rows = data_res.all()
+        return [self._to_domain(m, b) for m, b in rows], total_count
 
     async def count_pending_products(self) -> int:
         stmt = select(func.count(ProductModel.id)).where(
@@ -382,6 +423,17 @@ class SqlAlchemyProductRepository:
         )
         res = await self.session.execute(stmt)
         return res.scalar() or 0
+
+    async def update_brand_name_for_products(
+        self, brand_id: UUID, brand_name: str
+    ) -> None:
+        stmt = (
+            update(ProductModel)
+            .where(ProductModel.brand_id == brand_id)
+            .values(brand=brand_name)
+        )
+        await self.session.execute(stmt)
+        await self.session.flush()
 
 
 class SqlAlchemyProductVariantRepository:

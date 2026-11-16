@@ -1,3 +1,7 @@
+from .brand import (
+    BrandRepositoryProtocol,
+    BrandUnitOfWorkProtocol,
+)
 from .cart import (
     CartRepositoryProtocol,
     CartUnitOfWorkProtocol,
@@ -44,6 +48,8 @@ from .user import (
 )
 
 __all__ = [
+    "BrandRepositoryProtocol",
+    "BrandUnitOfWorkProtocol",
     "CartRepositoryProtocol",
     "CartUnitOfWorkProtocol",
     "CatalogUnitOfWorkProtocol",

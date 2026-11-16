@@ -1,3 +1,4 @@
+from .brand import SqlAlchemyBrandRepository
 from .cart import SqlAlchemyCartRepository
 from .catalog import (
     SqlAlchemyCategoryRepository,
@@ -20,6 +21,7 @@ from .user import (
 )
 
 __all__ = [
+    "SqlAlchemyBrandRepository",
     "SqlAlchemyCartRepository",
     "SqlAlchemyCategoryRepository",
     "SqlAlchemyFavoriteRepository",
