@@ -1,7 +1,7 @@
 from .auth import AuthService
 from .brand import BrandService
 from .cart import CartItemDetail, CartService
-from .catalog import CatalogService
+from .catalog import CatalogService, generate_variant_sku, transliterate_to_latin
 from .favorite import FavoriteService
 from .moderation import UserModerationService
 from .notification import NotificationService
@@ -23,4 +23,6 @@ __all__ = [
     "ReviewService",
     "UserModerationService",
     "UserService",
+    "generate_variant_sku",
+    "transliterate_to_latin",
 ]

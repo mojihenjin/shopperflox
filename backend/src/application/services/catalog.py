@@ -1,3 +1,5 @@
+import re
+import secrets
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -26,6 +28,88 @@ from src.domain.models import (
 from src.utils import factory_now
 
 from .notification import NotificationService
+
+CYRILLIC_TO_LATIN: dict[str, str] = {
+    "а": "a",
+    "б": "b",
+    "в": "v",
+    "г": "g",
+    "д": "d",
+    "е": "e",
+    "ё": "yo",
+    "ж": "zh",
+    "з": "z",
+    "и": "i",
+    "й": "y",
+    "к": "k",
+    "л": "l",
+    "м": "m",
+    "н": "n",
+    "о": "o",
+    "п": "p",
+    "р": "r",
+    "с": "s",
+    "т": "t",
+    "у": "u",
+    "ф": "f",
+    "х": "kh",
+    "ц": "ts",
+    "ч": "ch",
+    "ш": "sh",
+    "щ": "shch",
+    "ъ": "",
+    "ы": "y",
+    "ь": "",
+    "э": "e",
+    "ю": "yu",
+    "я": "ya",
+    "і": "i",
+    "ї": "yi",
+    "є": "ye",
+    "ґ": "g",
+    "ў": "u",
+}
+
+
+def transliterate_to_latin(text: str) -> str:
+    return "".join(CYRILLIC_TO_LATIN.get(ch, ch) for ch in text.lower())
+
+
+def generate_variant_sku(
+    *,
+    product_slug: str,
+    color: str | None = None,
+    size: str | None = None,
+    used_skus: set[str] | None = None,
+) -> str:
+    slug_clean = (
+        re.sub(r"[^A-Za-z0-9]+", "-", transliterate_to_latin(product_slug))
+        .strip("-")
+        .upper()
+    )
+    prefix = slug_clean[:16] if slug_clean else "ITEM"
+
+    parts = [prefix]
+    if color:
+        color_clean = re.sub(
+            r"[^A-Za-z0-9]+", "", transliterate_to_latin(color)
+        ).upper()
+        if color_clean:
+            parts.append(color_clean[:12])
+
+    if size:
+        size_clean = re.sub(r"[^A-Za-z0-9]+", "", transliterate_to_latin(size)).upper()
+        if size_clean:
+            parts.append(size_clean[:8])
+
+    base = "-".join(parts)[:56]
+    while True:
+        suffix = secrets.token_hex(3).upper()
+        candidate = f"{base}-{suffix}"
+        if used_skus is None or candidate not in used_skus:
+            if used_skus is not None:
+                used_skus.add(candidate)
+            return candidate
 
 
 class CatalogService:
@@ -336,14 +420,36 @@ class CatalogService:
             await self.uow.products.add(product)
 
             if variants:
+                used_skus: set[str] = set()
+                # 1. First validate any explicitly provided SKUs in the batch
+                for item in variants:
+                    explicit_sku = (item.get("sku") or "").strip()
+                    if explicit_sku:
+                        if explicit_sku in used_skus:
+                            raise DomainValidationError(
+                                f"Duplicate SKU '{explicit_sku}' in variants batch"
+                            )
+                        used_skus.add(explicit_sku)
+
+                # 2. Add variants, auto-generating SKU when not provided
                 for item in variants:
                     sku = (item.get("sku") or "").strip()
-                    if not sku:
-                        sku = f"{slug[:16]}-{uuid7().hex[:8]}".upper()
                     color = item.get("color") or item.get("color_name")
                     color_clean = color.strip() if color else None
                     size = item.get("size")
                     size_clean = size.strip() if size else None
+                    if not sku:
+                        while True:
+                            candidate = generate_variant_sku(
+                                product_slug=slug,
+                                color=color_clean,
+                                size=size_clean,
+                                used_skus=used_skus,
+                            )
+                            existing = await self.uow.variants.get_by_sku(candidate)
+                            if existing is None:
+                                sku = candidate
+                                break
                     stock_qty = int(item.get("stock_quantity", 0))
                     price_override = item.get("price_override")
                     variant = ProductVariantDomain(
@@ -554,16 +660,14 @@ class CatalogService:
         *,
         actor: UserDomain,
         product_id: UUID,
-        sku: str,
+        sku: str | None = None,
         size: str | None = None,
         color_name: str | None = None,
         color_hex: str | None = None,
         price_override: Decimal | None = None,
         stock_quantity: int = 0,
     ) -> ProductVariantDomain:
-        sku = sku.strip()
-        if not sku:
-            raise DomainValidationError("SKU cannot be empty")
+        sku_clean = (sku or "").strip()
 
         async with self.uow:
             product = await self.uow.products.get_by_id(
@@ -574,11 +678,24 @@ class CatalogService:
 
             await self._check_product_modify_permission(actor, product)
 
+            if not sku_clean:
+                while True:
+                    candidate = generate_variant_sku(
+                        product_slug=product.slug,
+                        color=color_name,
+                        size=size,
+                    )
+                    existing = await self.uow.variants.get_by_sku(candidate)
+                    if existing is None:
+                        sku_clean = candidate
+                        break
+
             variant = ProductVariantDomain(
                 product_id=product_id,
-                sku=sku,
+                sku=sku_clean,
                 size=size,
                 color_name=color_name,
+                color=color_name,
                 color_hex=color_hex,
                 price_override=price_override,
                 stock_quantity=stock_quantity,
@@ -616,7 +733,22 @@ class CatalogService:
             if sku is not None:
                 sku_clean = sku.strip()
                 if not sku_clean:
-                    raise DomainValidationError("SKU cannot be empty")
+                    target_color = (
+                        color_name
+                        if color_name is not None
+                        else (variant.color_name or variant.color)
+                    )
+                    target_size = size if size is not None else variant.size
+                    while True:
+                        candidate = generate_variant_sku(
+                            product_slug=product.slug,
+                            color=target_color,
+                            size=target_size,
+                        )
+                        existing = await self.uow.variants.get_by_sku(candidate)
+                        if existing is None or existing.id == variant.id:
+                            sku_clean = candidate
+                            break
                 variant.sku = sku_clean
 
             if size is not None:

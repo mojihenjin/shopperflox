@@ -253,3 +253,65 @@ async def test_creator_product_creation_and_authorization(catalog_uow, admin_use
         stock_quantity=12,
     )
     assert admin_updated_var.stock_quantity == 12
+
+
+@pytest.mark.anyio
+async def test_generate_variant_sku_and_cyrillic_auto_sku(catalog_uow, admin_user):
+    from src.application.services.catalog import (
+        generate_variant_sku,
+        transliterate_to_latin,
+    )
+
+    # Test transliteration
+    assert transliterate_to_latin("ЛЕОПАРДОВЫЙ") == "leopardovyy"
+    assert transliterate_to_latin("РОЗОВЫЙ") == "rozovyy"
+    assert transliterate_to_latin("МАЛЕНЬКИЙ") == "malenkiy"
+
+    # Test SKU generation uniqueness even with identical inputs
+    sku_a = generate_variant_sku(
+        product_slug="leopard-dress", color="ЛЕОПАРДОВЫЙ", size="МАЛЕНЬКИЙ"
+    )
+    sku_b = generate_variant_sku(
+        product_slug="leopard-dress", color="ЛЕОПАРДОВЫЙ", size="МАЛЕНЬКИЙ"
+    )
+    assert sku_a != sku_b
+    assert "LEOPARD" in sku_a
+    assert "MALENKIY" in sku_a
+
+    # Test used_skus set prevents duplicates
+    used = set()
+    sku_c = generate_variant_sku(
+        product_slug="item", color="РОЗОВЫЙ", size="МАЛЕНЬКИЙ", used_skus=used
+    )
+    sku_d = generate_variant_sku(
+        product_slug="item", color="РОЗОВЫЙ", size="МАЛЕНЬКИЙ", used_skus=used
+    )
+    assert sku_c != sku_d
+    assert sku_c in used
+    assert sku_d in used
+
+    # Test CatalogService creation with cyrillic variants
+    service = CatalogService(uow=catalog_uow)
+    cat = await service.create_category(
+        actor=admin_user,
+        name="Летняя одежда",
+        slug="summer-wear",
+    )
+    prod = await service.create_product(
+        actor=admin_user,
+        category_id=cat.id,
+        title="Шелковая юбка",
+        slug="shelkovaya-yubka",
+        base_price=Decimal("4000.00"),
+        variants=[
+            {"color": "ЛЕОПАРДОВЫЙ", "size": "МАЛЕНЬКИЙ", "stock_quantity": 7},
+            {"color": "РОЗОВЫЙ", "size": "МАЛЕНЬКИЙ", "stock_quantity": 14},
+        ],
+    )
+    vars_list = await catalog_uow.variants.list_by_product_id(prod.id)
+    assert len(vars_list) == 2
+    assert vars_list[0].sku != vars_list[1].sku
+    assert len(vars_list[0].sku) <= 64
+    assert len(vars_list[1].sku) <= 64
+    assert any("LEOPARD" in v.sku for v in vars_list)
+    assert any("ROZOV" in v.sku for v in vars_list)
