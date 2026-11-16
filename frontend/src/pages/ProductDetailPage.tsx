@@ -212,12 +212,14 @@ export function ProductDetailPage() {
   }, [location.hash, isLoading]);
 
   // --- MUTATION HOOKS (Strictly top-level) ---
-  // Toggle Publish Mutation
-  const togglePublishMutation = useMutation({
-    mutationFn: async () => {
+  // Update Visibility Mutation (0 = Open, 1 = Link only, 2 = Hidden)
+  const updateVisibilityMutation = useMutation({
+    mutationFn: async (newHidden: 0 | 1 | 2) => {
       if (!product?.id) return;
-      const newStatus = !product.is_published;
-      return productsApi.update(product.id, { is_published: newStatus });
+      return productsApi.update(product.id, {
+        is_hidden: newHidden,
+        is_published: newHidden !== 2,
+      });
     },
     onSuccess: (res) => {
       queryClient.setQueryData(['product', slug], (old: { data?: { product?: typeof product } } | undefined) => {
@@ -228,6 +230,7 @@ export function ProductDetailPage() {
             ...old.data,
             product: {
               ...old.data.product,
+              is_hidden: res?.data?.is_hidden,
               is_published: res?.data?.is_published,
             },
           },
@@ -235,15 +238,18 @@ export function ProductDetailPage() {
       });
       queryClient.invalidateQueries({ queryKey: ['product', slug] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      const hiddenVal = res?.data?.is_hidden ?? 0;
       setFeedbackNotice(
-        res?.data?.is_published
-          ? 'ТОВАР ТЕПЕРЬ ОПУБЛИКОВАН В КАТАЛОГЕ'
-          : 'ТОВАР СКРЫТ ИЗ ПУБЛИЧНОГО ДОСТУПА'
+        hiddenVal === 0
+          ? 'УРОВЕНЬ ВИДИМОСТИ: ОТКРЫТ ВСЕМ'
+          : hiddenVal === 1
+          ? 'УРОВЕНЬ ВИДИМОСТИ: ТОЛЬКО ПО ПРЯМОЙ ССЫЛКЕ'
+          : 'УРОВЕНЬ ВИДИМОСТИ: ПОЛНОСТЬЮ СКРЫТ'
       );
       setTimeout(() => setFeedbackNotice(null), 3500);
     },
     onError: (err: ApiError) => {
-      setFeedbackNotice(err.message || 'Не удалось обновить статус публикации');
+      setFeedbackNotice(err.message || 'Не удалось обновить видимость товара');
       setTimeout(() => setFeedbackNotice(null), 3500);
     },
   });
@@ -383,7 +389,8 @@ export function ProductDetailPage() {
     : 'НЕ УКАЗАНО';
 
   const stockQuantity = activeVariant?.stock_quantity ?? 0;
-  const isOutOfStock = activeVariant !== null && stockQuantity === 0;
+  const totalStockAcrossAllVariants = variants.reduce((sum, v) => sum + (v.stock_quantity ?? 0), 0);
+  const isOutOfStock = variants.length > 0 ? (activeVariant !== null ? stockQuantity === 0 : totalStockAcrossAllVariants === 0) : false;
 
   const handlePrevImage = () => {
     if (totalImagesCount <= 1) return;
@@ -518,11 +525,28 @@ export function ProductDetailPage() {
           {/* RIGHT COLUMN: Information, Variant Picker, Characteristics, Actions (5 columns) */}
           <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
             <div className="space-y-6">
-              {/* Mandatory Field 1: Brand / (self-worked) */}
+              {/* Visibility Banner (for author and moderators) */}
+              {permissions.canUpdate && product.is_hidden === 1 && (
+                <div className="border border-[#3F2021]/30 bg-[#F2E9DB] p-2 text-center text-xs font-sans uppercase tracking-widest text-[#3F2021] font-semibold">
+                  ( ДОСТУПЕН ТОЛЬКО ПО ПРЯМОЙ ССЫЛКЕ )
+                </div>
+              )}
+              {permissions.canUpdate && product.is_hidden === 2 && (
+                <div className="border border-[#FF8562] bg-[#FF8562]/10 p-2 text-center text-xs font-sans uppercase tracking-widest text-[#3F2021] font-semibold">
+                  ( ТОВАР СКРЫТ ОТ ПОКУПАТЕЛЕЙ )
+                </div>
+              )}
+
+              {/* Mandatory Field 1: Brand / (self-worked) / (LIMITED) */}
               <div className="flex flex-wrap items-center gap-2">
                 {product.is_self_worked && (
                   <span className="bg-[#3F2021] text-[#F2E9DB] px-2.5 py-0.5 text-[10px] font-sans uppercase tracking-widest font-semibold rounded-none">
                     ( self-worked )
+                  </span>
+                )}
+                {product.is_limited && (
+                  <span className="bg-[#3F2021] text-[#F2E9DB] px-2.5 py-0.5 text-[10px] font-sans uppercase tracking-widest font-semibold rounded-none">
+                    ( LIMITED )
                   </span>
                 )}
                 <span className="text-xs font-sans font-semibold uppercase tracking-widest text-[#3F2021]/70">
@@ -689,51 +713,90 @@ export function ProductDetailPage() {
 
               {/* Control Panel: Immediately under characteristics for creator, brand or moderator */}
               {(permissions.canUpdate || permissions.canDelete) && (
-                <div className="border border-[#3F2021]/30 bg-[#F2E9DB] p-4 space-y-3 rounded-none">
+                <div className="border border-[#3F2021]/30 bg-[#F2E9DB] p-4 space-y-3.5 rounded-none">
                   <div className="flex items-center justify-between border-b border-[#3F2021]/15 pb-2">
                     <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-[#3F2021]">
                       ( УПРАВЛЕНИЕ ТОВАРОМ )
                     </span>
                     <span className="text-[10px] font-sans uppercase tracking-wider text-[#3F2021]/70">
-                      СТАТУС: <strong className="text-[#3F2021]">{product.is_published ? 'ОПУБЛИКОВАН' : 'СКРЫТ'}</strong>
+                      СТАТУС: <strong className="text-[#3F2021]">
+                        {(product.is_hidden ?? 0) === 0
+                          ? 'ОТКРЫТ ВСЕМ'
+                          : product.is_hidden === 1
+                          ? 'ТОЛЬКО ПО ССЫЛКЕ'
+                          : 'ПОЛНОСТЬЮ СКРЫТ'}
+                      </strong>
                     </span>
                   </div>
 
                   {!showDeleteConfirm ? (
-                    <div className="flex flex-wrap gap-2.5 pt-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                      {/* Left: 3-position visibility switcher */}
                       {permissions.canUpdate && (
-                        <Link
-                          to={`/creator/products/${product.slug}/edit`}
-                          className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-4 py-2 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none inline-block"
-                        >
-                          ИЗМЕНИТЬ ↗
-                        </Link>
+                        <div className="flex items-center border border-[#3F2021]/30 bg-[#FFFFFF] p-0.5 rounded-none">
+                          <span className="text-[10px] font-sans font-semibold uppercase tracking-wider text-[#3F2021]/80 px-2 select-none">
+                            ВИДИМОСТЬ:
+                          </span>
+                          <button
+                            type="button"
+                            disabled={updateVisibilityMutation.isPending}
+                            onClick={() => updateVisibilityMutation.mutate(0)}
+                            className={`px-2.5 py-1 text-[10px] font-sans font-semibold uppercase tracking-wider transition-colors rounded-none ${
+                              (product.is_hidden ?? 0) === 0
+                                ? 'bg-[#3F2021] text-[#F2E9DB]'
+                                : 'text-[#3F2021]/70 hover:text-[#3F2021] hover:bg-[#3F2021]/10'
+                            }`}
+                          >
+                            ОТКРЫТ
+                          </button>
+                          <button
+                            type="button"
+                            disabled={updateVisibilityMutation.isPending}
+                            onClick={() => updateVisibilityMutation.mutate(1)}
+                            className={`px-2.5 py-1 text-[10px] font-sans font-semibold uppercase tracking-wider transition-colors rounded-none ${
+                              product.is_hidden === 1
+                                ? 'bg-[#3F2021] text-[#F2E9DB]'
+                                : 'text-[#3F2021]/70 hover:text-[#3F2021] hover:bg-[#3F2021]/10'
+                            }`}
+                          >
+                            ПО ССЫЛКЕ
+                          </button>
+                          <button
+                            type="button"
+                            disabled={updateVisibilityMutation.isPending}
+                            onClick={() => updateVisibilityMutation.mutate(2)}
+                            className={`px-2.5 py-1 text-[10px] font-sans font-semibold uppercase tracking-wider transition-colors rounded-none ${
+                              product.is_hidden === 2
+                                ? 'bg-[#3F2021] text-[#F2E9DB]'
+                                : 'text-[#3F2021]/70 hover:text-[#3F2021] hover:bg-[#3F2021]/10'
+                            }`}
+                          >
+                            СКРЫТ
+                          </button>
+                        </div>
                       )}
 
-                      {permissions.canUpdate && (
-                        <button
-                          type="button"
-                          disabled={togglePublishMutation.isPending}
-                          onClick={() => togglePublishMutation.mutate()}
-                          className="border border-[#3F2021] text-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] px-4 py-2 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none"
-                        >
-                          {togglePublishMutation.isPending
-                            ? 'ОБНОВЛЕНИЕ...'
-                            : product.is_published
-                            ? 'СКРЫТЬ'
-                            : 'ПОКАЗАТЬ'}
-                        </button>
-                      )}
+                      {/* Right: Edit & Delete buttons */}
+                      <div className="flex items-center gap-2">
+                        {permissions.canUpdate && (
+                          <Link
+                            to={`/creator/products/${product.slug}/edit`}
+                            className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-3.5 py-1.5 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none inline-block whitespace-nowrap"
+                          >
+                            ИЗМЕНИТЬ ↗
+                          </Link>
+                        )}
 
-                      {permissions.canDelete && (
-                        <button
-                          type="button"
-                          onClick={() => setShowDeleteConfirm(true)}
-                          className="border border-[#3F2021]/60 text-[#3F2021]/80 hover:bg-[#3F2021] hover:text-[#F2E9DB] px-4 py-2 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none"
-                        >
-                          УДАЛИТЬ
-                        </button>
-                      )}
+                        {permissions.canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="border border-[#3F2021]/60 text-[#3F2021]/80 hover:bg-[#3F2021] hover:text-[#F2E9DB] px-3.5 py-1.5 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none whitespace-nowrap"
+                          >
+                            УДАЛИТЬ
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     /* Inline confirmation for deletion (NO browser window.confirm) */
@@ -797,7 +860,9 @@ export function ProductDetailPage() {
                   <div>
                     {isOutOfStock ? (
                       <span className="text-xs font-sans uppercase tracking-wider font-semibold text-[#FF8562]">
-                        НЕТ В НАЛИЧИИ
+                        {product.is_limited
+                          ? 'ЛИМИТИРОВАННЫЙ ТИРАЖ · РАСПРОДАНО'
+                          : 'НЕТ В НАЛИЧИИ · ОЖИДАЕТСЯ ПОПОЛНЕНИЕ'}
                       </span>
                     ) : (
                       <span className="text-xs font-sans uppercase tracking-wider font-semibold text-[#3F2021]/80">
@@ -817,7 +882,9 @@ export function ProductDetailPage() {
                     {addToCartMutation.isPending
                       ? 'ДОБАВЛЕНИЕ...'
                       : isOutOfStock
-                      ? 'ТОВАР РАСПРОДАН'
+                      ? product.is_limited
+                        ? 'ЛИМИТИРОВАННЫЙ ТИРАЖ · РАСПРОДАНО'
+                        : 'НЕТ В НАЛИЧИИ · ОЖИДАЕТСЯ ПОПОЛНЕНИЕ'
                       : 'В КОРЗИНУ ↗'}
                   </button>
 

@@ -126,6 +126,8 @@ export interface ProductResponse {
   description?: string | null;
   attributes?: Record<string, unknown> | null;
   is_published?: boolean;
+  is_hidden?: 0 | 1 | 2;
+  is_limited?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -157,6 +159,8 @@ export interface ProductCreateRequest {
   description?: string | null;
   attributes?: Record<string, unknown>;
   is_published?: boolean;
+  is_hidden?: 0 | 1 | 2;
+  is_limited?: boolean;
   variants?: VariantCreateItem[];
 }
 
@@ -177,6 +181,8 @@ export interface ProductUpdateRequest {
   description?: string | null;
   attributes?: Record<string, unknown> | null;
   is_published?: boolean | null;
+  is_hidden?: 0 | 1 | 2 | null;
+  is_limited?: boolean | null;
 }
 
 export interface ProductVariantResponse {

@@ -13,6 +13,7 @@ export interface ProductCardProps {
   onAddToCart?: (product: ProductResponse, e: React.MouseEvent) => void;
   columns?: GridColumns;
   variationsText?: string;
+  totalStock?: number;
   className?: string;
 }
 
@@ -24,6 +25,7 @@ export function ProductCard({
   onAddToCart,
   columns = 4,
   variationsText,
+  totalStock,
   className = '',
 }: ProductCardProps) {
   const navigate = useNavigate();
@@ -87,6 +89,15 @@ export function ProductCard({
     (product.attributes?.colors
       ? `${(product.attributes.colors as unknown[]).length} ЦВЕТА`
       : '( ОПРАВА )');
+
+  const isOutOfStock =
+    totalStock !== undefined
+      ? totalStock === 0
+      : product.attributes?.total_stock !== undefined
+      ? Number(product.attributes.total_stock) === 0
+      : (product as { stock_quantity?: number }).stock_quantity !== undefined
+      ? Number((product as { stock_quantity?: number }).stock_quantity) === 0
+      : false;
 
   return (
     <div
@@ -152,13 +163,18 @@ export function ProductCard({
         }`}
       >
         <div className="space-y-1">
-          {/* Author / Brand in text-[#3F2021]/60 */}
+          {/* Author / Brand in text-[#3F2021]/60 with LIMITED badge */}
           <div
-            className={`font-sans uppercase text-[#3F2021]/60 font-semibold truncate ${
+            className={`font-sans uppercase text-[#3F2021]/60 font-semibold flex items-center justify-between gap-1 ${
               isCompact ? 'text-[9px] tracking-wider' : 'text-[11px] tracking-widest'
             }`}
           >
-            {product.brand || 'ShopperFlox'}
+            <span className="truncate">{product.brand || 'ShopperFlox'}</span>
+            {product.is_limited && (
+              <span className="bg-[#3F2021] text-[#F2E9DB] px-1.5 py-0.5 text-[9px] font-sans font-bold uppercase tracking-wider rounded-none whitespace-nowrap">
+                LIMITED
+              </span>
+            )}
           </div>
 
           {/* Product Title in text-[#3F2021] */}
@@ -187,12 +203,19 @@ export function ProductCard({
         {/* Full-width Add to Cart button */}
         <button
           type="button"
+          disabled={isOutOfStock}
           onClick={handleAddToCart}
-          className={`w-full rounded-none bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] uppercase tracking-[0.08em] transition-colors ${
-            isCompact ? 'py-1.5 text-[10px]' : 'py-2.5 text-xs font-semibold'
-          }`}
+          className={`w-full rounded-none uppercase tracking-[0.08em] transition-colors ${
+            isOutOfStock
+              ? 'bg-[#3F2021]/40 text-[#F2E9DB] cursor-not-allowed'
+              : 'bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516]'
+          } ${isCompact ? 'py-1.5 text-[10px]' : 'py-2.5 text-xs font-semibold'}`}
         >
-          В КОРЗИНУ ↗
+          {isOutOfStock
+            ? product.is_limited
+              ? 'РАСПРОДАНО'
+              : 'ОЖИДАЕТСЯ'
+            : 'В КОРЗИНУ ↗'}
         </button>
       </div>
     </div>

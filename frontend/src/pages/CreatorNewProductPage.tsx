@@ -98,6 +98,10 @@ export function CreatorNewProductPage() {
   ]);
   const [customSizeInputs, setCustomSizeInputs] = useState<Record<string, string>>({});
 
+  // Visibility and Edition
+  const [isHidden, setIsHidden] = useState<0 | 1 | 2>(0);
+  const [isLimited, setIsLimited] = useState(false);
+
   // Publishing State
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishProgress, setPublishProgress] = useState<string | null>(null);
@@ -388,7 +392,9 @@ export function CreatorNewProductPage() {
         print_method: printMethod.trim() || null,
         note: note.trim() || null,
         description: description.trim() || null,
-        is_published: true,
+        is_published: isHidden !== 2,
+        is_hidden: isHidden,
+        is_limited: isLimited,
         variants: variantItems,
       });
 
@@ -966,6 +972,92 @@ export function CreatorNewProductPage() {
               </div>
             </div>
 
+            {/* 5. Видимость и статус тиража */}
+            <div className="bg-[#FFFFFF] border border-[#3F2021] p-6 space-y-5 rounded-none">
+              <div className="text-xs font-sans font-semibold uppercase tracking-widest text-[#3F2021] border-b border-[#3F2021]/15 pb-2">
+                ( 5. ВИДИМОСТЬ И СТАТУС ТИРАЖА )
+              </div>
+
+              {/* Visibility Level */}
+              <div className="space-y-3">
+                <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021]">
+                  ВИДИМОСТЬ ТОВАРА *
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsHidden(0)}
+                    className={`p-3.5 text-left border transition-all rounded-none flex flex-col justify-between ${
+                      isHidden === 0
+                        ? 'border-[#3F2021] bg-[#3F2021] text-[#F2E9DB]'
+                        : 'border-[#3F2021]/30 bg-[#FFFFFF] text-[#3F2021] hover:border-[#3F2021]'
+                    }`}
+                  >
+                    <div className="text-xs font-sans font-bold uppercase tracking-wider">
+                      0 — ОТКРЫТ ВСЕМ
+                    </div>
+                    <div className="text-[10px] font-sans uppercase tracking-wide opacity-80 mt-1 leading-relaxed">
+                      Отображается в каталоге, поиске и по прямой ссылке.
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsHidden(1)}
+                    className={`p-3.5 text-left border transition-all rounded-none flex flex-col justify-between ${
+                      isHidden === 1
+                        ? 'border-[#3F2021] bg-[#3F2021] text-[#F2E9DB]'
+                        : 'border-[#3F2021]/30 bg-[#FFFFFF] text-[#3F2021] hover:border-[#3F2021]'
+                    }`}
+                  >
+                    <div className="text-xs font-sans font-bold uppercase tracking-wider">
+                      1 — ТОЛЬКО ПО ССЫЛКЕ
+                    </div>
+                    <div className="text-[10px] font-sans uppercase tracking-wide opacity-80 mt-1 leading-relaxed">
+                      Не показывается в каталоге и поиске, открывается только по прямому URL.
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsHidden(2)}
+                    className={`p-3.5 text-left border transition-all rounded-none flex flex-col justify-between ${
+                      isHidden === 2
+                        ? 'border-[#3F2021] bg-[#3F2021] text-[#F2E9DB]'
+                        : 'border-[#3F2021]/30 bg-[#FFFFFF] text-[#3F2021] hover:border-[#3F2021]'
+                    }`}
+                  >
+                    <div className="text-xs font-sans font-bold uppercase tracking-wider">
+                      2 — ПОЛНОСТЬЮ СКРЫТ
+                    </div>
+                    <div className="text-[10px] font-sans uppercase tracking-wide opacity-80 mt-1 leading-relaxed">
+                      Черновик, виден только автору и модераторам.
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Limited Edition */}
+              <div className="pt-2 border-t border-[#3F2021]/15">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isLimited}
+                    onChange={(e) => setIsLimited(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 accent-[#3F2021] rounded-none cursor-pointer"
+                  />
+                  <div>
+                    <div className="text-xs font-sans font-semibold uppercase tracking-wider text-[#3F2021]">
+                      ЛИМИТИРОВАННЫЙ ТИРАЖ
+                    </div>
+                    <p className="text-[11px] font-sans uppercase tracking-wider text-[#3F2021]/70 mt-0.5 leading-relaxed">
+                      Если включено, товар помечается как лимитированный и не подразумевает повторного пополнения после распродажи.
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
             {/* Submit Action */}
             <div className="pt-2">
               <button
@@ -1020,19 +1112,39 @@ export function CreatorNewProductPage() {
                 )}
 
                 {/* Badge tags overlay */}
-                <div className="relative z-10 flex justify-between items-start">
-                  {isSelfWorked ? (
-                    <span className="bg-[#3F2021] text-[#F2E9DB] px-2 py-0.5 text-[9px] font-sans uppercase tracking-widest font-semibold">
-                      SELF-WORKED
-                    </span>
-                  ) : (
-                    <span className="bg-[#3F2021]/80 text-[#F2E9DB] px-1.5 py-0.5 text-[9px] font-sans uppercase tracking-widest">
-                      {brand || 'ShopperFlox'}
-                    </span>
-                  )}
+                <div className="relative z-10 flex flex-wrap gap-1 items-start justify-between">
+                  <div className="flex flex-wrap gap-1 items-start">
+                    {isSelfWorked ? (
+                      <span className="bg-[#3F2021] text-[#F2E9DB] px-2 py-0.5 text-[9px] font-sans uppercase tracking-widest font-semibold rounded-none">
+                        SELF-WORKED
+                      </span>
+                    ) : (
+                      <span className="bg-[#3F2021]/80 text-[#F2E9DB] px-1.5 py-0.5 text-[9px] font-sans uppercase tracking-widest rounded-none">
+                        {brand || 'ShopperFlox'}
+                      </span>
+                    )}
+
+                    {isLimited && (
+                      <span className="bg-[#3F2021] text-[#F2E9DB] px-1.5 py-0.5 text-[9px] font-sans uppercase tracking-widest font-semibold rounded-none">
+                        LIMITED
+                      </span>
+                    )}
+
+                    {isHidden === 1 && (
+                      <span className="bg-[#3F2021]/70 text-[#F2E9DB] px-1.5 py-0.5 text-[9px] font-sans uppercase tracking-widest rounded-none">
+                        ПО ССЫЛКЕ
+                      </span>
+                    )}
+
+                    {isHidden === 2 && (
+                      <span className="bg-[#FF8562] text-[#F2E9DB] px-1.5 py-0.5 text-[9px] font-sans uppercase tracking-widest rounded-none">
+                        СКРЫТ
+                      </span>
+                    )}
+                  </div>
 
                   {colorBlocks.flatMap((c) => c.photos).length > 1 && (
-                    <span className="bg-[#F2E9DB]/90 text-[#3F2021] px-1.5 py-0.5 text-[9px] font-mono font-bold">
+                    <span className="bg-[#F2E9DB]/90 text-[#3F2021] px-1.5 py-0.5 text-[9px] font-mono font-bold rounded-none">
                       {colorBlocks.flatMap((c) => c.photos).length} ФОТО
                     </span>
                   )}
