@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi, categoriesApi, favoritesApi } from '../api/endpoints';
-import { ProductCard } from '../components/ProductCard';
+import { ProductCard, type GridColumns } from '../components/ProductCard';
 import { useAuthStore } from '../store/auth';
 
 const PAGE_SIZE = 12;
@@ -27,6 +27,7 @@ export function HomePage() {
   // Local filter states for input forms
   const [minPriceInput, setMinPriceInput] = useState(minPriceParam);
   const [maxPriceInput, setMaxPriceInput] = useState(maxPriceParam);
+  const [columns, setColumns] = useState<GridColumns>(4);
 
   useEffect(() => {
     setMinPriceInput(minPriceParam);
@@ -295,8 +296,32 @@ export function HomePage() {
               </h2>
             </div>
 
-            <div className="text-xs font-sans uppercase tracking-wider text-sf-muted">
-              ( ПОКАЗАНО: {products.length} ИЗ {totalProducts} МОДЕЛЕЙ )
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+              {/* Density selector 2 / 4 / 6 / 8 */}
+              <div className="flex items-center border border-sf-dark/25 p-0.5 bg-[#FFFFFF]">
+                <span className="text-[10px] font-sans uppercase tracking-wider text-sf-muted px-2 select-none">
+                  СЕТКА:
+                </span>
+                {([2, 4, 6, 8] as GridColumns[]).map((cols) => (
+                  <button
+                    key={cols}
+                    type="button"
+                    onClick={() => setColumns(cols)}
+                    className={`px-2.5 py-1 text-xs font-sans font-semibold transition-colors ${
+                      columns === cols
+                        ? 'bg-[#3F2021] text-[#F2E9DB]'
+                        : 'text-[#3F2021]/60 hover:text-[#3F2021]'
+                    }`}
+                    title={`Сетка: ${cols} колонок`}
+                  >
+                    {cols}
+                  </button>
+                ))}
+              </div>
+
+              <div className="text-xs font-sans uppercase tracking-wider text-sf-muted">
+                ( ПОКАЗАНО: {products.length} ИЗ {totalProducts} МОДЕЛЕЙ )
+              </div>
             </div>
           </div>
 
@@ -396,11 +421,22 @@ export function HomePage() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+            <div
+              className={
+                columns === 2
+                  ? 'grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8'
+                  : columns === 6
+                  ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4'
+                  : columns === 8
+                  ? 'grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 md:gap-3'
+                  : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8'
+              }
+            >
               {products.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
+                  columns={columns}
                   isFavorite={favoriteIds.has(product.id)}
                   onToggleFavorite={(id) => toggleFavoriteMutation.mutate(id)}
                 />

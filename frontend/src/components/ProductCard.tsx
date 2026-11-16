@@ -1,13 +1,18 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import type { ProductResponse } from '../types/api';
 import { formatImageUrl, formatPrice } from '../utils/format';
 
-interface ProductCardProps {
+export type GridColumns = 2 | 4 | 6 | 8;
+
+export interface ProductCardProps {
   product: ProductResponse;
   images?: string[];
   isFavorite?: boolean;
   onToggleFavorite?: (productId: string) => void;
+  onAddToCart?: (product: ProductResponse, e: React.MouseEvent) => void;
+  columns?: GridColumns;
+  variationsText?: string;
   className?: string;
 }
 
@@ -16,25 +21,84 @@ export function ProductCard({
   images = [],
   isFavorite = false,
   onToggleFavorite,
+  onAddToCart,
+  columns = 4,
+  variationsText,
   className = '',
 }: ProductCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
+  const navigate = useNavigate();
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const timerRef = useRef<number | null>(null);
 
-  // Determine images
-  const primaryImg = images[0] || null;
-  const secondaryImg = images[1] || primaryImg;
+  // Gallery resolution
+  const gallery: string[] =
+    images.length > 0
+      ? images
+      : (product.attributes?.images as string[] | undefined) || [
+          formatImageUrl(null, product.title),
+        ];
+
+  // Stop interval helper
+  const clearHoverTimer = () => {
+    if (timerRef.current !== null) {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      clearHoverTimer();
+    };
+  }, []);
+
+  const handleMouseEnter = () => {
+    if (gallery.length > 1) {
+      clearHoverTimer();
+      // Immediately switch to the second image (index = 1)
+      setActiveImageIndex(1);
+      // Start 3000ms cycling interval
+      timerRef.current = window.setInterval(() => {
+        setActiveImageIndex((prev) => (prev + 1) % gallery.length);
+      }, 3000);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    clearHoverTimer();
+    // Return to first image (index = 0)
+    setActiveImageIndex(0);
+  };
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onAddToCart) {
+      onAddToCart(product, e);
+    } else {
+      navigate(`/products/${product.slug}`);
+    }
+  };
+
+  const isCompact = columns >= 6;
+  const displayVariations =
+    variationsText ||
+    (product.attributes?.colors
+      ? `${(product.attributes.colors as unknown[]).length} ЦВЕТА`
+      : '( ОПРАВА )');
 
   return (
     <div
-      className={`group relative flex flex-col ${className}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className={`group relative flex flex-col rounded-none overflow-hidden ${className}`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* 2:3 Portrait image container */}
-      <div className="relative aspect-[2/3] w-full bg-[#E5DBCB] overflow-hidden border border-sf-dark/15">
+      <div className="relative aspect-[2/3] w-full bg-[#E5DBCB] overflow-hidden rounded-none">
         <Link to={`/products/${product.slug}`} className="block w-full h-full">
           <img
-            src={formatImageUrl(isHovered && secondaryImg ? secondaryImg : primaryImg, product.title)}
+            src={formatImageUrl(gallery[activeImageIndex], product.title)}
             alt={product.title}
             className="w-full h-full object-cover transition-opacity duration-300"
             loading="lazy"
@@ -50,38 +114,86 @@ export function ProductCard({
               e.stopPropagation();
               onToggleFavorite(product.id);
             }}
-            className="absolute top-2 right-2 bg-sf-cream/90 hover:bg-sf-cream text-sf-dark px-2 py-1 text-[11px] font-sans font-semibold border border-sf-dark/30 transition-colors uppercase"
+            className={`absolute top-2 right-2 bg-[#F2E9DB]/90 hover:bg-[#F2E9DB] text-[#3F2021] font-sans font-semibold border border-[#3F2021]/30 transition-colors uppercase ${
+              isCompact ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-1 text-[11px]'
+            }`}
             title={isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}
           >
-            {isFavorite ? '♥ (СОХРАНЕНО)' : '♡ (В ИЗБРАННОЕ)'}
+            {isFavorite ? '♥' : '♡'}
           </button>
         )}
 
-        {/* Stock / New tag */}
+        {/* Brand tag on photo if present */}
         {product.brand && (
-          <div className="absolute bottom-2 left-2 bg-sf-dark/80 text-sf-cream px-2 py-0.5 text-[10px] font-sans uppercase tracking-widest">
+          <div className="absolute top-2 left-2 bg-[#3F2021]/80 text-[#F2E9DB] px-1.5 py-0.5 text-[9px] font-sans uppercase tracking-widest">
             {product.brand}
+          </div>
+        )}
+
+        {/* Minimalist 2px multi-segment indicator along bottom edge */}
+        {gallery.length > 1 && (
+          <div className="absolute bottom-0 left-0 right-0 h-[2px] flex z-10">
+            {gallery.map((_, idx) => (
+              <div
+                key={idx}
+                className={`flex-1 h-full transition-colors duration-300 ${
+                  activeImageIndex === idx ? 'bg-[#3F2021]' : 'bg-[#3F2021]/20'
+                }`}
+              />
+            ))}
           </div>
         )}
       </div>
 
-      {/* Product metadata */}
-      <div className="pt-3 pb-1 flex flex-col">
-        <Link
-          to={`/products/${product.slug}`}
-          className="font-serif text-[15px] sm:text-[16px] uppercase tracking-wide text-sf-dark group-hover:opacity-75 transition-opacity line-clamp-1"
-        >
-          {product.title}
-        </Link>
+      {/* Bottom Information Block: #FFFFFF background */}
+      <div
+        className={`bg-[#FFFFFF] flex flex-col justify-between flex-1 ${
+          isCompact ? 'p-2.5 gap-2' : 'p-4 gap-3'
+        }`}
+      >
+        <div className="space-y-1">
+          {/* Author / Brand in text-[#3F2021]/60 */}
+          <div
+            className={`font-sans uppercase text-[#3F2021]/60 font-semibold truncate ${
+              isCompact ? 'text-[9px] tracking-wider' : 'text-[11px] tracking-widest'
+            }`}
+          >
+            {product.brand || 'ShopperFlox'}
+          </div>
 
-        <div className="mt-1 flex items-baseline justify-between text-[13px] font-sans">
-          <span className="font-semibold text-sf-black">
+          {/* Product Title in text-[#3F2021] */}
+          <Link
+            to={`/products/${product.slug}`}
+            className={`font-serif uppercase text-[#3F2021] group-hover:opacity-75 transition-opacity truncate block ${
+              isCompact ? 'text-[13px]' : 'text-[15px] sm:text-[16px]'
+            }`}
+          >
+            {product.title}
+          </Link>
+        </div>
+
+        {/* Variations row and price in text-[#3F2021] */}
+        <div
+          className={`flex items-baseline justify-between gap-1 text-[#3F2021] font-sans ${
+            isCompact ? 'text-[11px]' : 'text-[13px]'
+          }`}
+        >
+          <span className="truncate text-[#3F2021]/70">{displayVariations}</span>
+          <span className="font-bold whitespace-nowrap text-[#3F2021]">
             {formatPrice(product.base_price)}
           </span>
-          <span className="text-[11px] text-sf-muted uppercase tracking-wider group-hover:text-sf-dark transition-colors">
-            СМОТРЕТЬ ↗
-          </span>
         </div>
+
+        {/* Full-width Add to Cart button */}
+        <button
+          type="button"
+          onClick={handleAddToCart}
+          className={`w-full rounded-none bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] uppercase tracking-[0.08em] transition-colors ${
+            isCompact ? 'py-1.5 text-[10px]' : 'py-2.5 text-xs font-semibold'
+          }`}
+        >
+          В КОРЗИНУ ↗
+        </button>
       </div>
     </div>
   );
