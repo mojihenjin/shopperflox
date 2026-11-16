@@ -198,6 +198,19 @@ export function ProductDetailPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [filteredImages.length]);
 
+  // 5. Scroll to #reviews if present in URL
+  useEffect(() => {
+    if (location.hash === '#reviews') {
+      const timer = setTimeout(() => {
+        const el = document.getElementById('reviews');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [location.hash, isLoading]);
+
   // --- MUTATION HOOKS (Strictly top-level) ---
   // Toggle Publish Mutation
   const togglePublishMutation = useMutation({
@@ -829,7 +842,7 @@ export function ProductDetailPage() {
         </div>
 
         {/* REVIEWS SECTION BELOW TWO-COLUMN BLOCK */}
-        <section className="mt-20 pt-12 border-t border-[#3F2021]/20">
+        <section id="reviews" className="mt-20 pt-12 border-t border-[#3F2021]/20">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
             <div>
               <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-[#3F2021]/60">

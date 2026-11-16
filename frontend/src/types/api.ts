@@ -264,3 +264,54 @@ export interface CartResponse {
 export interface CartItemRequest {
   quantity: number;
 }
+
+export interface NotificationResponse {
+  id: string;
+  title: string;
+  body: string;
+  link?: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface UnreadCountResponse {
+  count: number;
+}
+
+export interface ReadAllNotificationsResponse {
+  marked_count: number;
+}
+
+export type OrderStatus =
+  | 'pending_payment'
+  | 'paid'
+  | 'processing'
+  | 'shipped'
+  | 'delivered'
+  | 'cancelled'
+  | 'refunded';
+
+export interface OrderItemResponse {
+  id: string;
+  variant_id?: string | null;
+  title_snapshot: string;
+  sku_snapshot: string;
+  size_snapshot: string;
+  color_snapshot: string;
+  unit_price: string;
+  quantity: number;
+  product_slug?: string | null;
+}
+
+export interface OrderResponse {
+  id: string;
+  user_id: string;
+  total_amount: string;
+  shipping_address: Record<string, unknown>;
+  status: OrderStatus;
+  tracking_number?: string | null;
+  post_code?: string | null;
+  created_at: string;
+  items?: OrderItemResponse[] | null;
+  payment?: unknown | null;
+}

@@ -1,10 +1,13 @@
 import { apiFetch } from './client';
+import { notificationsApi } from './notifications';
 import type {
   CartItemRequest,
   CartResponse,
   CategoryResponse,
   CreateReviewRequest,
   LoginRequest,
+  OrderResponse,
+  OrderStatus,
   ProductCreateRequest,
   ProductUpdateRequest,
   ProductDetailResponse,
@@ -23,6 +26,8 @@ import type {
   VerificationInitResponse,
   VerifyCodeRequest,
 } from '../types/api';
+
+export { notificationsApi };
 
 export const authApi = {
   login: (data: LoginRequest) =>
@@ -173,4 +178,21 @@ export const cartApi = {
     apiFetch<Record<string, boolean>>('/api/v1/cart', {
       method: 'DELETE',
     }),
+};
+
+export const ordersApi = {
+  list: (params: { status?: OrderStatus; limit?: number; offset?: number } = {}) => {
+    const sp = new URLSearchParams();
+    if (params.status) sp.set('status', params.status);
+    if (params.limit !== undefined) sp.set('limit', String(params.limit));
+    if (params.offset !== undefined) sp.set('offset', String(params.offset));
+    const query = sp.toString() ? `?${sp.toString()}` : '';
+    return apiFetch<OrderResponse[]>(`/api/v1/orders${query}`, { method: 'GET' });
+  },
+
+  getById: (orderId: string) =>
+    apiFetch<OrderResponse>(`/api/v1/orders/${orderId}`, { method: 'GET' }),
+
+  cancel: (orderId: string) =>
+    apiFetch<OrderResponse>(`/api/v1/orders/${orderId}/cancel`, { method: 'POST' }),
 };

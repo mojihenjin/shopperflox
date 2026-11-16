@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { categoriesApi, cartApi, searchApi, authApi } from '../api/endpoints';
+import { categoriesApi, cartApi, searchApi, authApi, notificationsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { useDebounce } from '../hooks/useDebounce';
+import { NotificationsDrawer } from './NotificationsDrawer';
 
 export function Header() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export function Header() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isOverHero, setIsOverHero] = useState(false);
   const debouncedQuery = useDebounce(searchQuery.trim(), 300);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -93,6 +95,16 @@ export function Header() {
     (acc, item) => acc + item.quantity,
     0
   );
+
+  // Unread notifications query
+  const { data: unreadNotificationsData } = useQuery({
+    queryKey: ['unreadNotificationsCount'],
+    queryFn: () => notificationsApi.getUnreadCount(),
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
+
+  const unreadCount = unreadNotificationsData?.data?.count ?? 0;
 
   // Search query (3-in-1: brands, products, variants)
   const { data: searchResults, isFetching: isSearching } = useQuery({
@@ -376,6 +388,18 @@ export function Header() {
               CART ({cartItemsCount})
             </Link>
 
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => setIsNotificationsOpen(true)}
+                className={`hover:opacity-70 transition-colors duration-200 whitespace-nowrap font-medium uppercase cursor-pointer ${
+                  isOverHero ? 'text-[#F2E9DB]' : 'text-sf-dark'
+                }`}
+              >
+                УВЕДОМЛЕНИЯ ({unreadCount})
+              </button>
+            )}
+
             {isAuthenticated ? (
               <div className="flex items-center gap-2 sm:gap-3">
                 {isCreator && (
@@ -456,6 +480,11 @@ export function Header() {
           </div>
         )}
       </div>
+
+      <NotificationsDrawer
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+      />
     </header>
   );
 }

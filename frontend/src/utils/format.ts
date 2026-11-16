@@ -35,3 +35,21 @@ export function formatDate(dateStr: string): string {
     return dateStr;
   }
 }
+
+export function formatDateTime(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    const dateFormatted = d.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+    const timeFormatted = d.toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    return `${dateFormatted}, ${timeFormatted}`;
+  } catch {
+    return dateStr;
+  }
+}
