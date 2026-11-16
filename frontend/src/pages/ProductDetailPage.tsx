@@ -19,6 +19,7 @@ export function ProductDetailPage() {
 
   // --- STATE HOOKS (Strictly top-level) ---
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [mainImageError, setMainImageError] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -405,11 +406,13 @@ export function ProductDetailPage() {
 
   const handlePrevImage = () => {
     if (totalImagesCount <= 1) return;
+    setMainImageError(false);
     setSelectedImageIndex((prev) => (prev - 1 + totalImagesCount) % totalImagesCount);
   };
 
   const handleNextImage = () => {
     if (totalImagesCount <= 1) return;
+    setMainImageError(false);
     setSelectedImageIndex((prev) => (prev + 1) % totalImagesCount);
   };
 
@@ -472,17 +475,23 @@ export function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Main Stage Image (2:3 aspect ratio, bg-[#E5E5E5], rounded-none) */}
-            <div className="relative aspect-[2/3] w-full bg-[#E5E5E5] border border-[#3F2021]/20 overflow-hidden rounded-none select-none">
-              {activeImage ? (
+            {/* Main Stage Image (2:3 aspect ratio, bg-[#E8DEC9], rounded-none) */}
+            <div className="relative aspect-[2/3] w-full bg-[#E8DEC9] border border-[#3F2021]/20 overflow-hidden rounded-none select-none">
+              {activeImage && !mainImageError ? (
                 <img
                   src={formatImageUrl(activeImage.url, product.title)}
                   alt={activeImage.alt_text || product.title}
                   className="w-full h-full object-cover rounded-none"
+                  onError={() => setMainImageError(true)}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs font-sans uppercase tracking-widest text-[#3F2021]/50">
-                  ( НЕТ ФОТОГРАФИИ )
+                <div className="w-full h-full bg-[#E8DEC9] border border-[#3F2021]/20 flex flex-col items-center justify-center p-8 text-center select-none">
+                  <span className="font-serif text-2xl uppercase tracking-wider text-[#3F2021] line-clamp-3 leading-snug">
+                    {product.title}
+                  </span>
+                  <span className="font-sans text-xs tracking-[0.25em] text-[#5F5F5F] uppercase mt-4 font-semibold">
+                    SHOPPERFLOX
+                  </span>
                 </div>
               )}
 
@@ -521,7 +530,10 @@ export function ProductDetailPage() {
                   <button
                     key={img.id || idx}
                     type="button"
-                    onClick={() => setSelectedImageIndex(idx)}
+                    onClick={() => {
+                      setMainImageError(false);
+                      setSelectedImageIndex(idx);
+                    }}
                     className={`relative w-16 h-24 sm:w-20 sm:h-28 flex-shrink-0 border transition-all rounded-none ${
                       selectedImageIndex === idx
                         ? 'border-[#3F2021] ring-2 ring-[#3F2021]'

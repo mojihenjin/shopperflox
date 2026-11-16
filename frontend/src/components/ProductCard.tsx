@@ -30,15 +30,17 @@ export function ProductCard({
 }: ProductCardProps) {
   const navigate = useNavigate();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [imageError, setImageError] = useState(false);
   const timerRef = useRef<number | null>(null);
 
-  // Gallery resolution
-  const gallery: string[] =
+  // Gallery resolution: filter out missing or data:image placeholder strings
+  const rawImages: string[] =
     images.length > 0
       ? images
-      : (product.attributes?.images as string[] | undefined) || [
-          formatImageUrl(null, product.title),
-        ];
+      : (product.attributes?.images as string[] | undefined) || [];
+  const gallery = rawImages.filter(
+    (img) => Boolean(img && typeof img === 'string' && !img.startsWith('data:image/svg+xml'))
+  );
 
   // Stop interval helper
   const clearHoverTimer = () => {
@@ -86,9 +88,13 @@ export function ProductCard({
   const isCompact = columns >= 6;
   const displayVariations =
     variationsText ||
-    (product.attributes?.colors
+    (product.attributes?.sizes && Array.isArray(product.attributes.sizes) && product.attributes.sizes.length > 0
+      ? `РАЗМЕРЫ: ${(product.attributes.sizes as string[]).join(' · ')}`
+      : product.attributes?.colors && Array.isArray(product.attributes.colors) && product.attributes.colors.length > 0
       ? `${(product.attributes.colors as unknown[]).length} ЦВЕТА`
-      : '( ОПРАВА )');
+      : product.attributes?.variants_count
+      ? `${product.attributes.variants_count} ВАРИАЦИЙ`
+      : 'В НАЛИЧИИ');
 
   const isOutOfStock =
     totalStock !== undefined
@@ -106,15 +112,30 @@ export function ProductCard({
       onMouseLeave={handleMouseLeave}
     >
       {/* 2:3 Portrait image container */}
-      <div className="relative aspect-[2/3] w-full bg-[#E5DBCB] overflow-hidden rounded-none">
-        <Link to={`/products/${product.slug}`} className="block w-full h-full">
-          <img
-            src={formatImageUrl(gallery[activeImageIndex], product.title)}
-            alt={product.title}
-            className="w-full h-full object-cover transition-opacity duration-300"
-            loading="lazy"
-          />
-        </Link>
+      <div className="relative aspect-[2/3] w-full bg-[#E8DEC9] overflow-hidden rounded-none">
+        {gallery.length > 0 && !imageError ? (
+          <Link to={`/products/${product.slug}`} className="block w-full h-full">
+            <img
+              src={formatImageUrl(gallery[activeImageIndex], product.title)}
+              alt={product.title}
+              className="w-full h-full object-cover transition-opacity duration-300"
+              loading="lazy"
+              onError={() => setImageError(true)}
+            />
+          </Link>
+        ) : (
+          <Link
+            to={`/products/${product.slug}`}
+            className="w-full h-full bg-[#E8DEC9] border border-[#3F2021]/20 flex flex-col items-center justify-center p-6 text-center select-none group-hover:bg-[#dfd3bc] transition-colors"
+          >
+            <span className="font-serif text-sm sm:text-base uppercase tracking-wider text-[#3F2021] line-clamp-3 leading-snug">
+              {product.title}
+            </span>
+            <span className="font-sans text-[10px] tracking-[0.2em] text-[#5F5F5F] uppercase mt-3 font-semibold">
+              SHOPPERFLOX
+            </span>
+          </Link>
+        )}
 
         {/* Favorite toggle badge */}
         {onToggleFavorite && (
