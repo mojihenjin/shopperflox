@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { authApi, usersApi, brandsApi } from '../api/endpoints';
+import { authApi, usersApi, brandsApi, addressesApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import type { ApiError } from '../api/client';
 
@@ -176,6 +176,72 @@ export function ProfilePage() {
     },
     onError: (err: ApiError) => {
       setPersonalError(err.message || 'Ошибка обновления персональных данных');
+    },
+  });
+
+  // Addresses query
+  const { data: addressesData, isLoading: isAddressesLoading } = useQuery({
+    queryKey: ['userAddresses'],
+    queryFn: () => addressesApi.list(),
+    enabled: isAuthenticated,
+  });
+  const addresses = addressesData?.data || [];
+
+  // Address Form State
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [addressCity, setAddressCity] = useState('');
+  const [addressStreet, setAddressStreet] = useState('');
+  const [addressPostalCode, setAddressPostalCode] = useState('');
+  const [addressIsDefault, setAddressIsDefault] = useState(false);
+  const [addressError, setAddressError] = useState<string | null>(null);
+  const [addressSuccessMsg, setAddressSuccessMsg] = useState<string | null>(null);
+
+  const createAddressMutation = useMutation({
+    mutationFn: async () => {
+      setAddressError(null);
+      setAddressSuccessMsg(null);
+      if (!addressCity.trim() || !addressStreet.trim() || !addressPostalCode.trim()) {
+        throw new Error('Заполните все обязательные поля адреса');
+      }
+      return addressesApi.create({
+        city: addressCity.trim(),
+        street: addressStreet.trim(),
+        postal_code: addressPostalCode.trim(),
+        is_default: addressIsDefault,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userAddresses'] });
+      setAddressSuccessMsg('Адрес успешно добавлен!');
+      setAddressCity('');
+      setAddressStreet('');
+      setAddressPostalCode('');
+      setAddressIsDefault(false);
+      setIsAddingAddress(false);
+      setTimeout(() => setAddressSuccessMsg(null), 3000);
+    },
+    onError: (err: ApiError) => {
+      setAddressError(err.message || 'Ошибка при добавлении адреса');
+    },
+  });
+
+  const setDefaultAddressMutation = useMutation({
+    mutationFn: (addressId: string) => addressesApi.setDefault(addressId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userAddresses'] });
+    },
+    onError: (err: ApiError) => {
+      setAddressError(err.message || 'Ошибка назначения адреса по умолчанию');
+    },
+  });
+
+  const deleteAddressMutation = useMutation({
+    mutationFn: (addressId: string) => addressesApi.delete(addressId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userAddresses'] });
+    },
+    onError: (err: ApiError) => {
+      setAddressError(err.message || 'Ошибка удаления адреса');
     },
   });
 
@@ -501,6 +567,180 @@ export function ProfilePage() {
                     {personal?.phone_number || 'Не указан'}
                   </span>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Delivery Addresses Section */}
+          <div className="space-y-4 pb-6 border-b border-sf-dark/15">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
+                ( АДРЕСА ДОСТАВКИ )
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddingAddress(!isAddingAddress);
+                  setAddressError(null);
+                  setAddressSuccessMsg(null);
+                }}
+                className="text-[11px] font-sans uppercase tracking-wider text-sf-dark underline underline-offset-4 hover:opacity-70"
+              >
+                {isAddingAddress ? 'ОТМЕНА' : '+ ДОБАВИТЬ АДРЕС'}
+              </button>
+            </div>
+
+            {addressError && (
+              <div className="text-xs text-red-700 bg-red-100/60 p-2.5 border border-red-700/20 font-sans">
+                {addressError}
+              </div>
+            )}
+            {addressSuccessMsg && (
+              <div className="text-xs text-emerald-800 bg-emerald-100/60 p-2.5 border border-emerald-800/20 font-sans">
+                {addressSuccessMsg}
+              </div>
+            )}
+
+            {/* Inline Add Address Form */}
+            {isAddingAddress && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  createAddressMutation.mutate();
+                }}
+                className="space-y-4 bg-[#F2E9DB]/40 p-4 border border-sf-dark/15"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1">
+                      ГОРОД *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Москва"
+                      value={addressCity}
+                      onChange={(e) => setAddressCity(e.target.value)}
+                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none uppercase"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1">
+                      УЛИЦА И ДОМ / КВАРТИРА *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="ул. Тверская, д. 1, кв. 10"
+                      value={addressStreet}
+                      onChange={(e) => setAddressStreet(e.target.value)}
+                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none uppercase"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1">
+                      ПОЧТОВЫЙ ИНДЕКС *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="101000"
+                      value={addressPostalCode}
+                      onChange={(e) => setAddressPostalCode(e.target.value)}
+                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="isDefaultAddr"
+                    checked={addressIsDefault}
+                    onChange={(e) => setAddressIsDefault(e.target.checked)}
+                    className="w-4 h-4 rounded-none accent-[#3F2021] border-sf-dark cursor-pointer"
+                  />
+                  <label htmlFor="isDefaultAddr" className="text-xs font-sans uppercase tracking-wider text-sf-dark cursor-pointer select-none">
+                    СДЕЛАТЬ АДРЕСОМ ПО УМОЛЧАНИЮ
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="submit"
+                    disabled={createAddressMutation.isPending}
+                    className="bg-sf-dark text-sf-cream hover:bg-sf-black px-5 py-2 text-xs font-sans uppercase tracking-wider disabled:opacity-50 transition-colors"
+                  >
+                    {createAddressMutation.isPending ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ АДРЕС ↗'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingAddress(false)}
+                    className="text-xs font-sans uppercase tracking-wider text-sf-muted hover:text-sf-dark px-2"
+                  >
+                    ОТМЕНА
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Address List */}
+            {isAddressesLoading ? (
+              <div className="text-xs font-sans uppercase tracking-wider text-sf-muted py-2">
+                ( ЗАГРУЗКА АДРЕСОВ... )
+              </div>
+            ) : addresses.length === 0 ? (
+              <div className="text-xs font-sans uppercase tracking-wider text-sf-muted py-2">
+                ( НЕТ СОХРАНЁННЫХ АДРЕСОВ )
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {addresses.map((addr) => (
+                  <div
+                    key={addr.id}
+                    className="p-3.5 bg-[#FFFFFF] border border-sf-dark/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-sans font-bold text-xs uppercase text-sf-dark">
+                          Г. {addr.city}, {addr.street}
+                        </span>
+                        {addr.is_default && (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-sans uppercase font-bold tracking-wider text-sf-dark">
+                            <span className="w-4 h-4 rounded-full bg-[#3F2021] text-[#F2E9DB] inline-flex items-center justify-center text-[10px] font-bold select-none leading-none">
+                              ✓
+                            </span>
+                            ПО УМОЛЧАНИЮ
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] font-mono text-sf-muted">
+                        ИНДЕКС: {addr.postal_code}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {!addr.is_default && (
+                        <button
+                          type="button"
+                          disabled={setDefaultAddressMutation.isPending}
+                          onClick={() => setDefaultAddressMutation.mutate(addr.id)}
+                          className="text-[11px] font-sans uppercase tracking-wider text-sf-dark underline underline-offset-4 hover:opacity-70 disabled:opacity-40"
+                        >
+                          СДЕЛАТЬ ОСНОВНЫМ
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        disabled={deleteAddressMutation.isPending}
+                        onClick={() => deleteAddressMutation.mutate(addr.id)}
+                        className="text-[11px] font-sans uppercase tracking-wider text-red-700 underline underline-offset-4 hover:opacity-70 disabled:opacity-40"
+                      >
+                        УДАЛИТЬ ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

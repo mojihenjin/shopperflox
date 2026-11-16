@@ -311,7 +311,77 @@ export function CreatorEditProductPage() {
 
   // Variants from product detail
   const variants = productData?.data?.variants || [];
+  const images = productData?.data?.images || [];
   const totalStock = variants.reduce((sum, v) => sum + (v.stock_quantity ?? 0), 0);
+
+  // Available variant colors for quick selection
+  const variantColors = useMemo(() => {
+    const set = new Set<string>();
+    variants.forEach((v) => {
+      const c = v.color_name || v.color;
+      if (c && c.trim()) set.add(c.trim());
+    });
+    return Array.from(set);
+  }, [variants]);
+
+  // Photo upload & management state
+  const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoColor, setPhotoColor] = useState('');
+  const [photoIsMain, setPhotoIsMain] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoSuccess, setPhotoSuccess] = useState<string | null>(null);
+
+  const uploadPhotoMutation = useMutation({
+    mutationFn: async () => {
+      setPhotoError(null);
+      setPhotoSuccess(null);
+      if (!product?.id) throw new Error('Товар не найден');
+      if (!selectedPhotoFile) throw new Error('Выберите файл изображения');
+
+      const formData = new FormData();
+      formData.append('file', selectedPhotoFile);
+      if (photoColor.trim()) {
+        formData.append('color', photoColor.trim());
+      }
+      formData.append('sort_order', String(images.length + 1));
+      if (photoIsMain) {
+        formData.append('is_main', 'true');
+      }
+
+      return productsApi.uploadImage(product.id, formData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product', slug] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setPhotoSuccess('Фотография успешно загружена!');
+      setSelectedPhotoFile(null);
+      if (photoPreview) {
+        URL.revokeObjectURL(photoPreview);
+        setPhotoPreview(null);
+      }
+      setPhotoColor('');
+      setPhotoIsMain(false);
+      setTimeout(() => setPhotoSuccess(null), 3000);
+    },
+    onError: (err: ApiError) => {
+      setPhotoError(err.message || 'Ошибка загрузки фотографии');
+    },
+  });
+
+  const deletePhotoMutation = useMutation({
+    mutationFn: async (imageId: string) => {
+      if (!product?.id) throw new Error('Товар не найден');
+      return productsApi.deleteImage(product.id, imageId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product', slug] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+    onError: (err: ApiError) => {
+      setPhotoError(err.message || 'Ошибка удаления фотографии');
+    },
+  });
 
   // Variant Replenishment State
   const [updatingVariantId, setUpdatingVariantId] = useState<string | null>(null);
@@ -1092,6 +1162,183 @@ export function CreatorEditProductPage() {
                       ОТМЕНА
                     </button>
                   </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Section 6: Photos & Gallery */}
+          <div className="bg-[#FFFFFF] border border-[#3F2021] p-6 space-y-6 rounded-none">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#3F2021]/20 pb-3">
+              <div>
+                <span className="text-xs font-sans font-semibold uppercase tracking-wider text-[#3F2021]">
+                  ( 6. ФОТОГРАФИИ И ГАЛЕРЕЯ )
+                </span>
+                <p className="text-[11px] font-sans text-[#3F2021]/60 uppercase tracking-wider mt-0.5">
+                  Управление изображениями и цветовыми привязками
+                </p>
+              </div>
+              <span className="text-xs font-mono uppercase text-[#3F2021]/80">
+                ВСЕГО ФОТО: {images.length}
+              </span>
+            </div>
+
+            {photoError && (
+              <div className="p-3 text-xs text-red-700 bg-red-100/60 border border-red-700/20 font-sans">
+                {photoError}
+              </div>
+            )}
+            {photoSuccess && (
+              <div className="p-3 text-xs text-emerald-800 bg-emerald-100/60 border border-emerald-800/20 font-sans">
+                {photoSuccess}
+              </div>
+            )}
+
+            {/* Existing Photos Grid */}
+            {images.length === 0 ? (
+              <div className="p-8 text-center border border-[#3F2021]/20 bg-[#F2E9DB]/30 space-y-2">
+                <div className="text-xs font-sans uppercase tracking-widest text-[#3F2021]/60">
+                  ( НЕТ ЗАГРУЖЕННЫХ ФОТОГРАФИЙ )
+                </div>
+                <p className="text-[11px] font-sans uppercase text-[#3F2021]/50">
+                  Загрузите изображения модели и привяжите их к цветам вариаций
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {images.map((img) => (
+                  <div
+                    key={img.id}
+                    className="border border-[#3F2021]/30 bg-[#F2E9DB]/20 p-2 flex flex-col justify-between space-y-2"
+                  >
+                    <div className="relative aspect-[2/3] w-full bg-[#E5E5E5] border border-[#3F2021]/20 overflow-hidden">
+                      <img
+                        src={img.url}
+                        alt={img.alt_text || product?.title || 'Фото товара'}
+                        className="w-full h-full object-cover"
+                      />
+                      {img.is_main && (
+                        <span className="absolute top-1 left-1 bg-[#3F2021] text-[#F2E9DB] px-1.5 py-0.5 text-[9px] font-sans uppercase font-bold tracking-wider">
+                          ОСНОВНОЕ
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      {img.color ? (
+                        <div className="text-[10px] font-sans uppercase tracking-wider text-[#3F2021] font-semibold truncate">
+                          ЦВЕТ: {img.color}
+                        </div>
+                      ) : (
+                        <div className="text-[10px] font-sans uppercase tracking-wider text-[#3F2021]/50">
+                          ОБЩЕЕ ФОТО
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        disabled={deletePhotoMutation.isPending}
+                        onClick={() => deletePhotoMutation.mutate(img.id)}
+                        className="w-full text-center text-[10px] font-sans uppercase tracking-wider text-red-700 hover:text-red-900 border border-red-700/30 hover:border-red-700 py-1 transition-colors"
+                      >
+                        УДАЛИТЬ ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload New Photo Form */}
+            <div className="border-t border-[#3F2021]/15 pt-5 space-y-4">
+              <div className="text-xs font-sans font-semibold uppercase tracking-wider text-[#3F2021]">
+                ( ЗАГРУЗИТЬ НОВОЕ ИЗОБРАЖЕНИЕ )
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                {/* File picker */}
+                <div>
+                  <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1">
+                    ФАЙЛ ФОТОГРАФИИ *
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setSelectedPhotoFile(file);
+                      if (photoPreview) URL.revokeObjectURL(photoPreview);
+                      if (file) {
+                        setPhotoPreview(URL.createObjectURL(file));
+                      } else {
+                        setPhotoPreview(null);
+                      }
+                    }}
+                    className="w-full text-xs font-sans file:mr-3 file:py-2 file:px-3 file:border-0 file:text-xs file:font-sans file:uppercase file:bg-[#3F2021] file:text-[#F2E9DB] file:cursor-pointer text-[#3F2021]"
+                  />
+                </div>
+
+                {/* Color Selector / Input */}
+                <div>
+                  <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1">
+                    ПРИВЯЗКА К ЦВЕТУ
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      list="variant-colors-list"
+                      placeholder="ОБЩЕЕ ФОТО ИЛИ ЦВЕТ"
+                      value={photoColor}
+                      onChange={(e) => setPhotoColor(e.target.value)}
+                      className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                    />
+                    <datalist id="variant-colors-list">
+                      {variantColors.map((c) => (
+                        <option key={c} value={c} />
+                      ))}
+                    </datalist>
+                  </div>
+                </div>
+
+                {/* Main Checkbox & Upload Button */}
+                <div className="space-y-3">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={photoIsMain}
+                      onChange={(e) => setPhotoIsMain(e.target.checked)}
+                      className="w-4 h-4 rounded-none accent-[#3F2021] border-[#3F2021] cursor-pointer"
+                    />
+                    <span className="text-xs font-sans uppercase tracking-wider font-semibold text-[#3F2021]">
+                      СДЕЛАТЬ ГЛАВНЫМ ФОТО
+                    </span>
+                  </label>
+
+                  <button
+                    type="button"
+                    disabled={uploadPhotoMutation.isPending || !selectedPhotoFile}
+                    onClick={() => uploadPhotoMutation.mutate()}
+                    className="w-full bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-4 py-2 text-xs font-sans uppercase tracking-wider font-semibold transition-colors rounded-none disabled:opacity-40 cursor-pointer"
+                  >
+                    {uploadPhotoMutation.isPending ? 'ЗАГРУЗКА...' : '+ ЗАГРУЗИТЬ ФОТО'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Local preview if selected */}
+              {photoPreview && (
+                <div className="flex items-center gap-3 pt-2">
+                  <span className="text-[10px] font-sans uppercase text-[#3F2021]/60">
+                    ПРЕДПРОСМОТР:
+                  </span>
+                  <img
+                    src={photoPreview}
+                    alt="Предпросмотр"
+                    className="w-16 h-20 object-cover border border-[#3F2021]/30"
+                  />
+                  <span className="text-xs font-mono text-[#3F2021]">
+                    {selectedPhotoFile?.name} ({(selectedPhotoFile?.size ? (selectedPhotoFile.size / 1024).toFixed(0) : 0)} КБ)
+                  </span>
                 </div>
               )}
             </div>

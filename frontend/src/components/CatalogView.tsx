@@ -8,6 +8,21 @@ import { useAuthStore } from '../store/auth';
 const PAGE_SIZE = 12;
 const STORAGE_COLUMNS_KEY = 'sf_catalog_columns';
 
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'ONE SIZE'];
+
+const COLOR_PALETTE = [
+  { name: 'ЧЁРНЫЙ', hex: '#000000', value: 'черный' },
+  { name: 'БЕЛЫЙ', hex: '#FFFFFF', value: 'белый' },
+  { name: 'СЕРЫЙ', hex: '#808080', value: 'серый' },
+  { name: 'БЕЖЕВЫЙ', hex: '#D2B48C', value: 'бежевый' },
+  { name: 'БОРДОВЫЙ', hex: '#3F2021', value: 'бордовый' },
+  { name: 'КРАСНЫЙ', hex: '#D32F2F', value: 'красный' },
+  { name: 'СИНИЙ', hex: '#1976D2', value: 'синий' },
+  { name: 'ЗЕЛЁНЫЙ', hex: '#388E3C', value: 'зеленый' },
+  { name: 'КОРИЧНЕВЫЙ', hex: '#5D4037', value: 'коричневый' },
+  { name: 'РОЗОВЫЙ', hex: '#E91E63', value: 'розовый' },
+];
+
 export interface CatalogViewProps {
   eyebrow?: string;
   defaultTitle?: string;
@@ -28,6 +43,9 @@ export function CatalogView({
   const searchParam = searchParams.get('search') || '';
   const minPriceParam = searchParams.get('min_price') || '';
   const maxPriceParam = searchParams.get('max_price') || '';
+  const sizeParam = searchParams.get('size') || '';
+  const colorParam = searchParams.get('color') || '';
+  const isLimitedParam = searchParams.get('is_limited') === 'true';
   const pageParam = parseInt(searchParams.get('page') || '1', 10);
   const offset = (Math.max(1, pageParam) - 1) * PAGE_SIZE;
 
@@ -97,6 +115,9 @@ export function CatalogView({
       searchParam,
       minPriceParam,
       maxPriceParam,
+      sizeParam,
+      colorParam,
+      isLimitedParam,
       offset,
     ],
     queryFn: () =>
@@ -105,6 +126,9 @@ export function CatalogView({
         search: searchParam || undefined,
         min_price: minPriceParam || undefined,
         max_price: maxPriceParam || undefined,
+        size: sizeParam || undefined,
+        color: colorParam || undefined,
+        is_limited: isLimitedParam ? true : undefined,
         limit: PAGE_SIZE,
         offset,
       }),
@@ -159,6 +183,39 @@ export function CatalogView({
     if (maxPriceInput) next.set('max_price', maxPriceInput);
     else next.delete('max_price');
 
+    next.set('page', '1');
+    setSearchParams(next);
+  };
+
+  const handleSizeSelect = (sz: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (!sz || sz === sizeParam) {
+      next.delete('size');
+    } else {
+      next.set('size', sz);
+    }
+    next.set('page', '1');
+    setSearchParams(next);
+  };
+
+  const handleColorSelect = (val: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (!val || val.toLowerCase() === colorParam.toLowerCase()) {
+      next.delete('color');
+    } else {
+      next.set('color', val);
+    }
+    next.set('page', '1');
+    setSearchParams(next);
+  };
+
+  const handleLimitedToggle = () => {
+    const next = new URLSearchParams(searchParams);
+    if (isLimitedParam) {
+      next.delete('is_limited');
+    } else {
+      next.set('is_limited', 'true');
+    }
     next.set('page', '1');
     setSearchParams(next);
   };
@@ -261,13 +318,13 @@ export function CatalogView({
             </div>
           )}
 
-          {/* Price range & Search active state */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
+          {/* Price range */}
+          <div className="flex flex-wrap items-center gap-4 pt-1">
             <form
               onSubmit={handlePriceFilterApply}
               className="flex flex-wrap items-center gap-2"
             >
-              <span className="text-xs font-sans uppercase tracking-wider text-sf-muted mr-1">
+              <span className="text-xs font-sans uppercase tracking-wider text-sf-muted mr-1 select-none">
                 ЦЕНА, ₽:
               </span>
               <input
@@ -287,21 +344,124 @@ export function CatalogView({
               />
               <button
                 type="submit"
-                className="bg-sf-dark text-sf-cream hover:bg-sf-black px-3 py-1 text-xs font-sans uppercase tracking-wider"
+                className="bg-sf-dark text-sf-cream hover:bg-sf-black px-3 py-1 text-xs font-sans uppercase tracking-wider transition-colors"
               >
                 ПРИМЕНИТЬ
               </button>
             </form>
+          </div>
 
-            {(categoryParam || searchParam || minPriceParam || maxPriceParam) && (
+          {/* Extended Filters: Size, Color Swatches, Limited */}
+          <div className="space-y-3 pt-3 border-t border-sf-dark/15">
+            {/* Sizes */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-sans uppercase tracking-wider text-sf-muted mr-1 select-none">
+                РАЗМЕР:
+              </span>
               <button
                 type="button"
-                onClick={handleResetFilters}
-                className="text-xs font-sans uppercase tracking-wider text-sf-dark hover:opacity-60 underline underline-offset-4"
+                onClick={() => handleSizeSelect('')}
+                className={`px-3 py-1 text-xs font-sans uppercase tracking-wider border transition-colors rounded-none ${
+                  !sizeParam
+                    ? 'bg-[#3F2021] text-[#F2E9DB] border-[#3F2021] font-semibold'
+                    : 'border-[#3F2021]/30 hover:border-[#3F2021] text-[#3F2021] bg-transparent'
+                }`}
               >
-                ( СБРОСИТЬ ВСЕ ФИЛЬТРЫ × )
+                ВСЕ
               </button>
-            )}
+              {SIZES.map((s) => {
+                const isActive = sizeParam.toUpperCase() === s.toUpperCase();
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => handleSizeSelect(s)}
+                    className={`px-3 py-1 text-xs font-sans uppercase tracking-wider border transition-colors rounded-none ${
+                      isActive
+                        ? 'bg-[#3F2021] text-[#F2E9DB] border-[#3F2021] font-semibold'
+                        : 'border-[#3F2021]/30 hover:border-[#3F2021] text-[#3F2021] bg-transparent'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Colors */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-sans uppercase tracking-wider text-sf-muted mr-1 select-none">
+                ЦВЕТ:
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {COLOR_PALETTE.map((c) => {
+                  const isActive =
+                    colorParam.toLowerCase() === c.value.toLowerCase() ||
+                    colorParam.toLowerCase() === c.name.toLowerCase();
+                  return (
+                    <button
+                      key={c.name}
+                      type="button"
+                      title={c.name}
+                      onClick={() => handleColorSelect(c.value)}
+                      style={{ backgroundColor: c.hex }}
+                      className={`w-6 h-6 rounded-none transition-all flex items-center justify-center relative cursor-pointer ${
+                        isActive
+                          ? 'border-2 border-[#3F2021] ring-1 ring-[#3F2021] scale-110 shadow-none'
+                          : 'border border-[#3F2021]/30 hover:border-[#3F2021]'
+                      }`}
+                    >
+                      {isActive && (
+                        <span
+                          className={`text-xs font-bold leading-none select-none ${
+                            c.hex === '#FFFFFF' || c.hex === '#D2B48C'
+                              ? 'text-[#3F2021]'
+                              : 'text-[#FFFFFF]'
+                          }`}
+                        >
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {colorParam && (
+                <button
+                  type="button"
+                  onClick={() => handleColorSelect('')}
+                  className="text-[11px] font-sans uppercase tracking-wider text-sf-muted hover:text-sf-dark underline underline-offset-4 ml-1"
+                >
+                  СБРОСИТЬ ЦВЕТ ×
+                </button>
+              )}
+            </div>
+
+            {/* Limited switch & Active filters reset */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isLimitedParam}
+                  onChange={handleLimitedToggle}
+                  className="w-4 h-4 rounded-none accent-[#3F2021] border-[#3F2021] cursor-pointer"
+                />
+                <span className="text-xs font-sans uppercase tracking-wider font-semibold text-[#3F2021]">
+                  ТОЛЬКО LIMITED
+                </span>
+              </label>
+
+              {(categoryParam || searchParam || minPriceParam || maxPriceParam || sizeParam || colorParam || isLimitedParam) && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="text-xs font-sans uppercase tracking-wider text-sf-dark hover:opacity-60 underline underline-offset-4"
+                >
+                  ( СБРОСИТЬ ВСЕ ФИЛЬТРЫ × )
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

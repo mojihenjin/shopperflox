@@ -10,7 +10,9 @@ import { formatImageUrl } from '../utils/format';
 export function BrandDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const queryClient = useQueryClient();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user: authUser } = useAuthStore();
+  const permissions = authUser?.global_permissions || [];
+  const canModerate = permissions.includes('*') || permissions.includes('mod:approve_manager');
 
   // 1. Fetch Brand Data
   const {
@@ -24,6 +26,18 @@ export function BrandDetailPage() {
   });
 
   const brand = brandData?.data;
+
+  // Toggle Verification Mutation
+  const toggleVerificationMutation = useMutation({
+    mutationFn: () => {
+      if (!brand?.id) throw new Error('Бренд не найден');
+      return brandsApi.verify(brand.id, !brand.is_verified);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['brand', slug] });
+      queryClient.invalidateQueries({ queryKey: ['brands'] });
+    },
+  });
 
   // 2. Fetch Active Products (limit 100)
   const { data: productsData, isLoading: isProductsLoading } = useQuery({
@@ -136,9 +150,19 @@ export function BrandDetailPage() {
               <span className="text-[10px] sm:text-[11px] font-sans font-semibold uppercase tracking-widest text-[#3F2021]/60 block">
                 ( ОФИЦИАЛЬНАЯ СТРАНИЦА БРЕНДА )
               </span>
-              <h1 className="font-serif text-3xl sm:text-5xl uppercase tracking-wider text-[#3F2021] leading-none">
-                {brand.name}
-              </h1>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="font-serif text-3xl sm:text-5xl uppercase tracking-wider text-[#3F2021] leading-none">
+                  {brand.name}
+                </h1>
+                {brand.is_verified && (
+                  <span
+                    className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#3F2021] text-[#F2E9DB] inline-flex items-center justify-center text-xs font-bold select-none leading-none shrink-0"
+                    title="Верифицированный бренд"
+                  >
+                    ✓
+                  </span>
+                )}
+              </div>
 
               {brand.his_url && !brand.is_deleted && (
                 <div className="pt-1">
@@ -156,6 +180,24 @@ export function BrandDetailPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            {canModerate && (
+              <button
+                type="button"
+                disabled={toggleVerificationMutation.isPending}
+                onClick={() => toggleVerificationMutation.mutate()}
+                className={`px-5 py-2.5 text-xs font-sans uppercase tracking-widest font-semibold transition-colors rounded-none whitespace-nowrap cursor-pointer ${
+                  brand.is_verified
+                    ? 'border border-red-700 text-red-700 hover:bg-red-700 hover:text-[#FFFFFF]'
+                    : 'bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516]'
+                }`}
+              >
+                {toggleVerificationMutation.isPending
+                  ? 'ОБРАБОТКА...'
+                  : brand.is_verified
+                  ? 'СНЯТЬ ВЕРИФИКАЦИЮ'
+                  : 'ВЕРИФИЦИРОВАТЬ БРЕНД ✓'}
+              </button>
+            )}
             <Link
               to="/catalog"
               className="border border-[#3F2021] text-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] px-5 py-2.5 text-xs font-sans uppercase tracking-widest font-semibold transition-colors rounded-none whitespace-nowrap"

@@ -66,4 +66,10 @@ export const brandsApi = {
     apiFetch<RemoveMemberResponse>(`/api/v1/brands/${brandId}/members/${userId}`, {
       method: 'DELETE',
     }),
+
+  verify: (brandId: string, isVerified: boolean) =>
+    apiFetch<BrandResponse>(`/api/v1/brands/${brandId}/verify`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_verified: isVerified }),
+    }),
 };

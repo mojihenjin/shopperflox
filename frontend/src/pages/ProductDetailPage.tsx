@@ -609,6 +609,63 @@ export function ProductDetailPage() {
                 </span>
               </div>
 
+              {/* Issuer Brand Block */}
+              {product.brand_id && (
+                <div className="flex items-center justify-between gap-4 p-3.5 bg-[#FFFFFF] border border-[#3F2021]/20 rounded-none">
+                  <div className="flex items-center gap-3">
+                    {product.brand_logo_url ? (
+                      <img
+                        src={product.brand_logo_url}
+                        alt={product.brand || 'Логотип бренда'}
+                        className="w-10 h-10 object-contain border border-[#3F2021]/15 p-0.5 bg-[#FFFFFF] rounded-none shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 border border-[#3F2021]/20 bg-[#F2E9DB] flex items-center justify-center font-serif text-sm font-bold text-[#3F2021] rounded-none shrink-0 select-none">
+                        {(product.brand || 'B')[0].toUpperCase()}
+                      </div>
+                    )}
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5">
+                        {product.brand_slug ? (
+                          <Link
+                            to={`/brands/${product.brand_slug}`}
+                            className="font-serif text-sm font-bold uppercase tracking-wider text-[#3F2021] hover:underline underline-offset-2"
+                          >
+                            {product.brand}
+                          </Link>
+                        ) : (
+                          <span className="font-serif text-sm font-bold uppercase tracking-wider text-[#3F2021]">
+                            {product.brand}
+                          </span>
+                        )}
+                        {product.brand_is_verified && (
+                          <span
+                            className="w-4 h-4 rounded-full bg-[#3F2021] text-[#F2E9DB] inline-flex items-center justify-center text-[10px] font-bold select-none leading-none shrink-0"
+                            title="Бренд верифицирован"
+                          >
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-sans uppercase tracking-widest text-[#3F2021]/60">
+                        БРЕНД-ЭМИТЕНТ
+                      </span>
+                    </div>
+                  </div>
+
+                  {product.brand_his_url && (
+                    <a
+                      href={product.brand_his_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-sans uppercase tracking-wider text-[#3F2021] underline underline-offset-4 hover:opacity-70 whitespace-nowrap font-semibold"
+                    >
+                      HISURL ↗
+                    </a>
+                  )}
+                </div>
+              )}
+
               {/* Mandatory Field 2: Title */}
               <h1 className="font-serif text-3xl sm:text-4xl uppercase tracking-wider text-[#3F2021] leading-snug">
                 {product.title || 'НЕ УКАЗАНО'}
@@ -684,6 +741,7 @@ export function ProductDetailPage() {
                       const stock = v.stock_quantity ?? 0;
                       const stockLabel = stock > 0 ? `${stock} шт.` : '0 шт. — нет';
                       const noStock = stock === 0;
+                      const ordersLabel = (v.orders_count ?? 0) > 0 ? ` · ЗАКАЗАНО: ${v.orders_count} ШТ` : '';
 
                       return (
                         <button
@@ -698,7 +756,7 @@ export function ProductDetailPage() {
                               : 'border-[#3F2021]/30 text-[#3F2021] hover:border-[#3F2021] bg-[#F2E9DB]'
                           }`}
                         >
-                          {v.size} ({stockLabel})
+                          {v.size} ({stockLabel}{ordersLabel})
                         </button>
                       );
                     })}
@@ -789,6 +847,37 @@ export function ProductDetailPage() {
                       </strong>
                     </span>
                   </div>
+
+                  {/* Analytics: Views and Orders Counters */}
+                  <div className="grid grid-cols-2 gap-3 p-3 bg-[#FFFFFF] border border-[#3F2021]/20 text-xs font-mono uppercase">
+                    <div>
+                      <span className="text-[#3F2021]/60">ПРОСМОТРЫ: </span>
+                      <strong className="text-[#3F2021]">{product.views_count ?? 0}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[#3F2021]/60">ЗАКАЗОВ: </span>
+                      <strong className="text-[#3F2021]">{product.orders_count ?? 0}</strong>
+                    </div>
+                  </div>
+
+                  {/* Variant Orders breakdown if any orders exist */}
+                  {variants.some((v) => (v.orders_count ?? 0) > 0) && (
+                    <div className="p-3 bg-[#FFFFFF] border border-[#3F2021]/20 space-y-1.5 text-xs font-mono">
+                      <div className="font-sans font-semibold uppercase text-[10px] tracking-wider text-[#3F2021]">
+                        ЗАКАЗЫ ПО ВАРИАЦИЯМ:
+                      </div>
+                      {variants.filter((v) => (v.orders_count ?? 0) > 0).map((v) => (
+                        <div key={v.id} className="flex justify-between items-center text-[#3F2021]">
+                          <span className="uppercase text-[11px] truncate">
+                            {v.sku} ({v.color_name || v.color || 'ЦВЕТ'} / {v.size}):
+                          </span>
+                          <strong className="whitespace-nowrap font-bold text-xs ml-2">
+                            {v.orders_count} ШТ
+                          </strong>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {!showDeleteConfirm ? (
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">

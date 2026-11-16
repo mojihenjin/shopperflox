@@ -114,6 +114,9 @@ export interface ProductResponse {
   brand_id?: string | null;
   brand?: string | null;
   brand_slug?: string | null;
+  brand_logo_url?: string | null;
+  brand_his_url?: string | null;
+  brand_is_verified?: boolean;
   brand_is_deleted?: boolean;
   is_self_worked?: boolean;
   title: string;
@@ -131,9 +134,13 @@ export interface ProductResponse {
   is_published?: boolean;
   is_hidden?: 0 | 1 | 2;
   is_limited?: boolean;
+  views_count?: number;
+  orders_count?: number;
   moderation_status?: 'pending' | 'approved' | 'rejected';
   request_type?: 'CREATE' | 'EDIT';
   rejection_reason?: string | null;
+  variants?: ProductVariantResponse[];
+  images?: ProductImageResponse[];
   created_at: string;
   updated_at: string;
 }
@@ -223,6 +230,7 @@ export interface ProductVariantResponse {
   color_hex?: string | null;
   price_override?: string | null;
   stock_quantity?: number;
+  orders_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -286,6 +294,8 @@ export interface CartItemResponse {
   sku?: string | null;
   title?: string | null;
   product_id?: string | null;
+  product_slug?: string;
+  image_url?: string | null;
 }
 
 export interface CartResponse {
@@ -361,6 +371,23 @@ export interface RejectProductRequest {
   reason?: string | null;
 }
 
+export interface CreateAddressRequest {
+  city: string;
+  street: string;
+  postal_code: string;
+  is_default?: boolean;
+}
+
+export interface UserAddressResponse {
+  id: string;
+  user_id: string;
+  city: string;
+  street: string;
+  postal_code: string;
+  is_default: boolean;
+  created_at: string;
+}
+
 export interface BrandResponse {
   id: string;
   name: string;
@@ -368,7 +395,20 @@ export interface BrandResponse {
   his_url?: string | null;
   logo_url?: string | null;
   is_deleted?: boolean;
+  views_count?: number;
+  orders_count?: number;
+  moderation_status?: 'pending' | 'approved' | 'rejected' | string;
+  rejection_reason?: string | null;
+  is_verified?: boolean;
   created_at: string;
+}
+
+export interface BrandRejectRequest {
+  reason?: string | null;
+}
+
+export interface BrandVerifyRequest {
+  is_verified: boolean;
 }
 
 export interface MyBrandResponse {

@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { moderationApi, categoriesApi, productsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { formatImageUrl, formatPrice, formatDate } from '../utils/format';
-import type { ProductResponse, ModerationRequestType } from '../types/api';
+import type { ProductResponse, ModerationRequestType, BrandResponse } from '../types/api';
 import type { ApiError } from '../api/client';
 
 interface RequestCardProps {
@@ -370,8 +370,155 @@ function ModerationRequestCard({ product, categoryName, onActionSuccess }: Reque
   );
 }
 
+interface BrandCardProps {
+  brand: BrandResponse;
+  onActionSuccess: (msg: string) => void;
+}
+
+function BrandModerationCard({ brand, onActionSuccess }: BrandCardProps) {
+  const queryClient = useQueryClient();
+  const [isRejectOpen, setIsRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+
+  const approveMutation = useMutation({
+    mutationFn: () => moderationApi.approveBrand(brand.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['moderationBrands'] });
+      queryClient.invalidateQueries({ queryKey: ['moderationPendingBrandsCount'] });
+      queryClient.invalidateQueries({ queryKey: ['brands'] });
+      onActionSuccess(`БРЕНД «${brand.name}» ОДОБРЕН ✓`);
+    },
+    onError: (err: ApiError) => {
+      onActionSuccess(err.message || 'Ошибка при одобрении бренда');
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: () =>
+      moderationApi.rejectBrand(brand.id, { reason: rejectReason.trim() || null }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['moderationBrands'] });
+      queryClient.invalidateQueries({ queryKey: ['moderationPendingBrandsCount'] });
+      queryClient.invalidateQueries({ queryKey: ['brands'] });
+      setIsRejectOpen(false);
+      onActionSuccess(`ЗАЯВКА НА БРЕНД «${brand.name}» ОТКЛОНЕНА`);
+    },
+    onError: (err: ApiError) => {
+      onActionSuccess(err.message || 'Ошибка при отклонении бренда');
+    },
+  });
+
+  return (
+    <div className="border border-[#3F2021]/30 bg-[#F2E9DB] rounded-none p-5 sm:p-7 space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#3F2021]/15 pb-4">
+        <div className="flex items-center gap-4">
+          {brand.logo_url ? (
+            <img
+              src={formatImageUrl(brand.logo_url, brand.name)}
+              alt={brand.name}
+              className="w-16 h-16 object-cover border border-[#3F2021] rounded-none shrink-0"
+            />
+          ) : (
+            <div className="w-16 h-16 bg-[#FFFFFF] border border-[#3F2021] flex items-center justify-center font-serif text-xl font-bold text-[#3F2021] rounded-none shrink-0 select-none">
+              {brand.name.slice(0, 2).toUpperCase()}
+            </div>
+          )}
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="font-serif text-2xl uppercase tracking-wider text-[#3F2021]">
+                {brand.name}
+              </h2>
+              <span className="font-mono text-xs text-[#3F2021]/60">
+                /{brand.slug}
+              </span>
+            </div>
+            <div className="text-[11px] font-sans uppercase tracking-wider text-[#3F2021]/70 mt-1 flex items-center gap-3 flex-wrap">
+              <span>ID: {brand.id.slice(0, 8)}...</span>
+              <span>·</span>
+              <span>ДАТА: {brand.created_at ? formatDate(brand.created_at) : 'НЕДАВНО'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {brand.his_url && (
+            <a
+              href={brand.his_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="border border-[#3F2021] text-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] px-3.5 py-1.5 text-xs font-sans uppercase tracking-wider transition-colors rounded-none font-semibold"
+            >
+              HISURL ↗
+            </a>
+          )}
+          <span className="bg-[#3F2021] text-[#F2E9DB] px-2.5 py-1 text-[10px] font-sans uppercase tracking-widest font-semibold rounded-none">
+            PENDING
+          </span>
+        </div>
+      </div>
+
+      {/* Moderation Actions */}
+      <div className="pt-2 border-t border-[#3F2021]/15 space-y-4">
+        {!isRejectOpen ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={approveMutation.isPending}
+              onClick={() => approveMutation.mutate()}
+              className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-6 py-2.5 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none disabled:opacity-50 cursor-pointer"
+            >
+              {approveMutation.isPending ? 'ОДОБРЕНИЕ...' : 'ОДОБРИТЬ БРЕНД ✓'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsRejectOpen(true)}
+              className="border border-[#3F2021] text-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] px-5 py-2.5 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none cursor-pointer"
+            >
+              ОТКЛОНИТЬ ЗАЯВКУ ×
+            </button>
+          </div>
+        ) : (
+          <div className="p-4 bg-[#FFFFFF] border border-[#3F2021] space-y-3 rounded-none">
+            <div className="text-xs font-sans font-semibold uppercase tracking-wider text-[#3F2021]">
+              ( УКАЖИТЕ ПРИЧИНУ ОТКЛОНЕНИЯ БРЕНДА )
+            </div>
+            <textarea
+              rows={2}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Например: Некорректный логотип или недостоверный ресурс бренда..."
+              className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2.5 text-xs font-sans outline-none rounded-none uppercase text-[#3F2021]"
+            />
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                disabled={rejectMutation.isPending}
+                onClick={() => rejectMutation.mutate()}
+                className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-5 py-2 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none disabled:opacity-50 cursor-pointer"
+              >
+                {rejectMutation.isPending ? 'ОТКЛОНЕНИЕ...' : 'ПОДТВЕРДИТЬ ОТКЛОНЕНИЕ'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRejectOpen(false);
+                  setRejectReason('');
+                }}
+                className="border border-[#3F2021] text-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] px-4 py-2 text-xs font-sans uppercase tracking-wider transition-colors rounded-none cursor-pointer"
+              >
+                ОТМЕНА
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ModerationRequestsPage() {
   const { isAuthenticated, user: authUser } = useAuthStore();
+  const [mainSection, setMainSection] = useState<'PRODUCTS' | 'BRANDS'>('PRODUCTS');
   const [activeTab, setActiveTab] = useState<'ALL' | 'CREATE' | 'EDIT'>('ALL');
   const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
 
@@ -393,7 +540,7 @@ export function ModerationRequestsPage() {
     return map;
   }, [categoriesData]);
 
-  // Pending Count
+  // Pending Count for Products
   const { data: pendingCountData } = useQuery({
     queryKey: ['moderationPendingCount'],
     queryFn: () => moderationApi.getPendingCount(),
@@ -403,21 +550,44 @@ export function ModerationRequestsPage() {
 
   const totalPending = pendingCountData?.data?.pending_count ?? 0;
 
-  // Requests query
+  // Pending Count for Brands
+  const { data: pendingBrandsCountData } = useQuery({
+    queryKey: ['moderationPendingBrandsCount'],
+    queryFn: () => moderationApi.getPendingBrandsCount(),
+    enabled: isAuthenticated && canModerate,
+    refetchInterval: 30000,
+  });
+
+  const totalPendingBrands = pendingBrandsCountData?.data?.pending_count ?? 0;
+
+  // Requests query for Products
   const requestTypeFilter: ModerationRequestType | undefined =
     activeTab === 'ALL' ? undefined : activeTab;
 
   const {
     data: requestsData,
     isLoading: isRequestsLoading,
-    error,
+    error: productsError,
   } = useQuery({
     queryKey: ['moderationProducts', requestTypeFilter],
     queryFn: () => moderationApi.list({ request_type: requestTypeFilter, limit: 50 }),
-    enabled: isAuthenticated && canModerate,
+    enabled: isAuthenticated && canModerate && mainSection === 'PRODUCTS',
   });
 
   const products = requestsData?.data || [];
+
+  // Requests query for Brands
+  const {
+    data: brandsData,
+    isLoading: isBrandsLoading,
+    error: brandsError,
+  } = useQuery({
+    queryKey: ['moderationBrands'],
+    queryFn: () => moderationApi.listBrands({ limit: 50 }),
+    enabled: isAuthenticated && canModerate && mainSection === 'BRANDS',
+  });
+
+  const pendingBrands = brandsData?.data || [];
 
   if (!isAuthenticated) {
     return <Navigate to="/login?redirect=%2Fmoderation%2Frequests" replace />;
@@ -467,80 +637,150 @@ export function ModerationRequestsPage() {
           </div>
         )}
 
-        {/* Filter Tabs */}
-        <div className="flex border-b border-[#3F2021]/20 gap-2">
+        {/* Top-Level Section Switcher: Products vs Brands */}
+        <div className="flex border-b border-[#3F2021]/20 gap-4">
           <button
             type="button"
-            onClick={() => setActiveTab('ALL')}
-            className={`px-5 py-2.5 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none ${
-              activeTab === 'ALL'
-                ? 'bg-[#3F2021] text-[#F2E9DB] border-b-2 border-[#3F2021]'
-                : 'text-[#3F2021]/70 hover:text-[#3F2021] hover:bg-[#3F2021]/5'
+            onClick={() => setMainSection('PRODUCTS')}
+            className={`pb-3 px-1 text-sm sm:text-base font-serif uppercase tracking-wider transition-all border-b-2 ${
+              mainSection === 'PRODUCTS'
+                ? 'border-[#3F2021] text-[#3F2021] font-bold'
+                : 'border-transparent text-[#3F2021]/50 hover:text-[#3F2021]'
             }`}
           >
-            ВСЕ
+            ТОВАРЫ ({totalPending})
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('CREATE')}
-            className={`px-5 py-2.5 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none ${
-              activeTab === 'CREATE'
-                ? 'bg-[#3F2021] text-[#F2E9DB] border-b-2 border-[#3F2021]'
-                : 'text-[#3F2021]/70 hover:text-[#3F2021] hover:bg-[#3F2021]/5'
+            onClick={() => setMainSection('BRANDS')}
+            className={`pb-3 px-1 text-sm sm:text-base font-serif uppercase tracking-wider transition-all border-b-2 ${
+              mainSection === 'BRANDS'
+                ? 'border-[#3F2021] text-[#3F2021] font-bold'
+                : 'border-transparent text-[#3F2021]/50 hover:text-[#3F2021]'
             }`}
           >
-            CREATE (НОВЫЕ)
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('EDIT')}
-            className={`px-5 py-2.5 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none ${
-              activeTab === 'EDIT'
-                ? 'bg-[#3F2021] text-[#F2E9DB] border-b-2 border-[#3F2021]'
-                : 'text-[#3F2021]/70 hover:text-[#3F2021] hover:bg-[#3F2021]/5'
-            }`}
-          >
-            EDIT (ИЗМЕНЕНИЯ)
+            БРЕНДЫ ({totalPendingBrands})
           </button>
         </div>
 
-        {/* Content */}
-        {isRequestsLoading ? (
-          <div className="py-24 text-center text-xs font-sans uppercase tracking-widest text-[#3F2021]/60">
-            ( ЗАГРУЗКА ЗАЯВОК НА МОДЕРАЦИЮ... )
-          </div>
-        ) : error ? (
-          <div className="py-16 text-center border border-[#3F2021]/20 p-8 rounded-none">
-            <div className="font-serif text-2xl uppercase tracking-wider text-[#3F2021]">
-              НЕ УДАЛОСЬ ЗАГРУЗИТЬ СПИСОК ЗАЯВОК
+        {mainSection === 'PRODUCTS' ? (
+          <>
+            {/* Filter Tabs for Products */}
+            <div className="flex border-b border-[#3F2021]/20 gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('ALL')}
+                className={`px-5 py-2.5 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none ${
+                  activeTab === 'ALL'
+                    ? 'bg-[#3F2021] text-[#F2E9DB] border-b-2 border-[#3F2021]'
+                    : 'text-[#3F2021]/70 hover:text-[#3F2021] hover:bg-[#3F2021]/5'
+                }`}
+              >
+                ВСЕ
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('CREATE')}
+                className={`px-5 py-2.5 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none ${
+                  activeTab === 'CREATE'
+                    ? 'bg-[#3F2021] text-[#F2E9DB] border-b-2 border-[#3F2021]'
+                    : 'text-[#3F2021]/70 hover:text-[#3F2021] hover:bg-[#3F2021]/5'
+                }`}
+              >
+                CREATE (НОВЫЕ)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('EDIT')}
+                className={`px-5 py-2.5 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none ${
+                  activeTab === 'EDIT'
+                    ? 'bg-[#3F2021] text-[#F2E9DB] border-b-2 border-[#3F2021]'
+                    : 'text-[#3F2021]/70 hover:text-[#3F2021] hover:bg-[#3F2021]/5'
+                }`}
+              >
+                EDIT (ИЗМЕНЕНИЯ)
+              </button>
             </div>
-            <p className="mt-2 text-xs font-sans uppercase tracking-wider text-[#3F2021]/60">
-              Попробуйте обновить страницу или проверить соединение с сервером.
-            </p>
-          </div>
-        ) : products.length === 0 ? (
-          <div className="py-20 text-center border border-[#3F2021]/20 p-8 rounded-none bg-[#F2E9DB]">
-            <div className="font-serif text-2xl uppercase tracking-wider text-[#3F2021]">
-              НЕТ ОЖИДАЮЩИХ ЗАЯВОК
-            </div>
-            <p className="mt-2 text-xs font-sans uppercase tracking-wider text-[#3F2021]/60 max-w-md mx-auto">
-              Все заявки на добавление и редактирование товаров в выбранной категории обработаны.
-            </p>
-          </div>
+
+            {/* Products Content */}
+            {isRequestsLoading ? (
+              <div className="py-24 text-center text-xs font-sans uppercase tracking-widest text-[#3F2021]/60">
+                ( ЗАГРУЗКА ЗАЯВОК НА МОДЕРАЦИЮ... )
+              </div>
+            ) : productsError ? (
+              <div className="py-16 text-center border border-[#3F2021]/20 p-8 rounded-none">
+                <div className="font-serif text-2xl uppercase tracking-wider text-[#3F2021]">
+                  НЕ УДАЛОСЬ ЗАГРУЗИТЬ СПИСОК ЗАЯВОК
+                </div>
+                <p className="mt-2 text-xs font-sans uppercase tracking-wider text-[#3F2021]/60">
+                  Попробуйте обновить страницу или проверить соединение с сервером.
+                </p>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="py-20 text-center border border-[#3F2021]/20 p-8 rounded-none bg-[#F2E9DB]">
+                <div className="font-serif text-2xl uppercase tracking-wider text-[#3F2021]">
+                  НЕТ ОЖИДАЮЩИХ ЗАЯВОК НА ТОВАРЫ
+                </div>
+                <p className="mt-2 text-xs font-sans uppercase tracking-wider text-[#3F2021]/60 max-w-md mx-auto">
+                  Все заявки на добавление и редактирование товаров в выбранной категории обработаны.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {products.map((prod) => (
+                  <ModerationRequestCard
+                    key={prod.id}
+                    product={prod}
+                    categoryName={categoryMap.get(prod.category_id)}
+                    onActionSuccess={(msg) => {
+                      setFeedbackNotice(msg);
+                      setTimeout(() => setFeedbackNotice(null), 4000);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         ) : (
-          <div className="space-y-6">
-            {products.map((prod) => (
-              <ModerationRequestCard
-                key={prod.id}
-                product={prod}
-                categoryName={categoryMap.get(prod.category_id)}
-                onActionSuccess={(msg) => {
-                  setFeedbackNotice(msg);
-                  setTimeout(() => setFeedbackNotice(null), 4000);
-                }}
-              />
-            ))}
-          </div>
+          /* Brands Moderation Section */
+          <>
+            {isBrandsLoading ? (
+              <div className="py-24 text-center text-xs font-sans uppercase tracking-widest text-[#3F2021]/60">
+                ( ЗАГРУЗКА ЗАЯВОК НА БРЕНДЫ... )
+              </div>
+            ) : brandsError ? (
+              <div className="py-16 text-center border border-[#3F2021]/20 p-8 rounded-none">
+                <div className="font-serif text-2xl uppercase tracking-wider text-[#3F2021]">
+                  НЕ УДАЛОСЬ ЗАГРУЗИТЬ СПИСОК БРЕНДОВ
+                </div>
+                <p className="mt-2 text-xs font-sans uppercase tracking-wider text-[#3F2021]/60">
+                  Попробуйте обновить страницу или проверить соединение с сервером.
+                </p>
+              </div>
+            ) : pendingBrands.length === 0 ? (
+              <div className="py-20 text-center border border-[#3F2021]/20 p-8 rounded-none bg-[#F2E9DB]">
+                <div className="font-serif text-2xl uppercase tracking-wider text-[#3F2021]">
+                  НЕТ ОЖИДАЮЩИХ ЗАЯВОК НА БРЕНДЫ
+                </div>
+                <p className="mt-2 text-xs font-sans uppercase tracking-wider text-[#3F2021]/60 max-w-md mx-auto">
+                  Все заявки на регистрацию брендов успешно обработаны модераторами.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {pendingBrands.map((brand) => (
+                  <BrandModerationCard
+                    key={brand.id}
+                    brand={brand}
+                    onActionSuccess={(msg) => {
+                      setFeedbackNotice(msg);
+                      setTimeout(() => setFeedbackNotice(null), 4000);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

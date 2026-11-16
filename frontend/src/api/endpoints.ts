@@ -31,6 +31,8 @@ import type {
   UserResponse,
   VerificationInitResponse,
   VerifyCodeRequest,
+  CreateAddressRequest,
+  UserAddressResponse,
 } from '../types/api';
 
 export { notificationsApi, moderationApi, brandsApi };
@@ -85,6 +87,27 @@ export const usersApi = {
     }),
 };
 
+export const addressesApi = {
+  list: () =>
+    apiFetch<UserAddressResponse[]>('/api/v1/users/me/addresses', { method: 'GET' }),
+
+  create: (data: CreateAddressRequest) =>
+    apiFetch<UserAddressResponse>('/api/v1/users/me/addresses', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  setDefault: (addressId: string) =>
+    apiFetch<UserAddressResponse>(`/api/v1/users/me/addresses/${addressId}/default`, {
+      method: 'PATCH',
+    }),
+
+  delete: (addressId: string) =>
+    apiFetch<null>(`/api/v1/users/me/addresses/${addressId}`, {
+      method: 'DELETE',
+    }),
+};
+
 export const categoriesApi = {
   list: () => apiFetch<CategoryResponse[]>('/api/v1/categories', { method: 'GET' }),
 };
@@ -94,6 +117,9 @@ export interface ProductListParams {
   min_price?: number | string;
   max_price?: number | string;
   search?: string;
+  size?: string;
+  color?: string;
+  is_limited?: boolean;
   limit?: number;
   offset?: number;
 }
@@ -105,6 +131,9 @@ export const productsApi = {
     if (params.min_price !== undefined && params.min_price !== '') sp.set('min_price', String(params.min_price));
     if (params.max_price !== undefined && params.max_price !== '') sp.set('max_price', String(params.max_price));
     if (params.search) sp.set('search', params.search);
+    if (params.size) sp.set('size', params.size);
+    if (params.color) sp.set('color', params.color);
+    if (params.is_limited !== undefined) sp.set('is_limited', String(params.is_limited));
     if (params.limit !== undefined) sp.set('limit', String(params.limit));
     if (params.offset !== undefined) sp.set('offset', String(params.offset));
 
@@ -148,6 +177,11 @@ export const productsApi = {
     apiFetch<ProductImageResponse>(`/api/v1/products/${productId}/images/upload`, {
       method: 'POST',
       body: formData,
+    }),
+
+  deleteImage: (productId: string, imageId: string) =>
+    apiFetch<null>(`/api/v1/products/${productId}/images/${imageId}`, {
+      method: 'DELETE',
     }),
 
   createVariant: (productId: string, data: ProductVariantCreateRequest) =>

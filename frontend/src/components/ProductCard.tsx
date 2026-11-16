@@ -33,10 +33,15 @@ export function ProductCard({
   const [imageError, setImageError] = useState(false);
   const timerRef = useRef<number | null>(null);
 
-  // Gallery resolution: filter out missing or data:image placeholder strings
+  // Gallery resolution: prioritize explicit images prop, then product.images from API, then attributes.images
+  const apiImages = (product.images && Array.isArray(product.images))
+    ? product.images.map((img) => img.url)
+    : [];
   const rawImages: string[] =
     images.length > 0
       ? images
+      : apiImages.length > 0
+      ? apiImages
       : (product.attributes?.images as string[] | undefined) || [];
   const gallery = rawImages.filter(
     (img) => Boolean(img && typeof img === 'string' && !img.startsWith('data:image/svg+xml'))

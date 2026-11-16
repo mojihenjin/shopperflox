@@ -107,14 +107,62 @@ export function CartPage() {
           <div className="lg:col-span-8 divide-y divide-sf-dark/15 border-y border-sf-dark/15">
             {items.map((item) => (
               <div key={item.id} className="py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="font-serif text-lg uppercase text-sf-dark">
-                    {item.title || 'ТОВАР'}
-                  </div>
-                  <div className="text-xs font-sans uppercase text-sf-muted flex items-center gap-3">
-                    {item.sku && <span>SKU: {item.sku}</span>}
-                    {item.color_name && <span>ЦВЕТ: {item.color_name}</span>}
-                    {item.size && <span>РАЗМЕР: {item.size}</span>}
+                <div className="flex items-center gap-4">
+                  {/* Thumbnail aspect-[2/3] */}
+                  {item.product_slug ? (
+                    <Link
+                      to={`/products/${item.product_slug}`}
+                      className="shrink-0 group block"
+                    >
+                      {item.image_url ? (
+                        <img
+                          src={item.image_url}
+                          alt={item.title || 'Товар'}
+                          className="w-14 sm:w-16 aspect-[2/3] object-cover border border-[#3F2021]/20 group-hover:border-[#3F2021] transition-colors rounded-none"
+                        />
+                      ) : (
+                        <div className="w-14 sm:w-16 aspect-[2/3] bg-[#E8DEC9] border border-[#3F2021]/20 flex flex-col items-center justify-center p-1 text-center group-hover:border-[#3F2021] transition-colors rounded-none select-none">
+                          <span className="font-serif text-xs font-bold text-[#3F2021]">
+                            {(item.title || 'SF')[0].toUpperCase()}
+                          </span>
+                          <span className="text-[7px] font-sans tracking-widest text-[#5F5F5F] mt-0.5">
+                            SF
+                          </span>
+                        </div>
+                      )}
+                    </Link>
+                  ) : item.image_url ? (
+                    <img
+                      src={item.image_url}
+                      alt={item.title || 'Товар'}
+                      className="w-14 sm:w-16 aspect-[2/3] object-cover border border-[#3F2021]/20 shrink-0 rounded-none"
+                    />
+                  ) : (
+                    <div className="w-14 sm:w-16 aspect-[2/3] bg-[#E8DEC9] border border-[#3F2021]/20 flex flex-col items-center justify-center p-1 text-center shrink-0 rounded-none select-none">
+                      <span className="font-serif text-xs font-bold text-[#3F2021]">
+                        {(item.title || 'SF')[0].toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    {item.product_slug ? (
+                      <Link
+                        to={`/products/${item.product_slug}`}
+                        className="font-serif text-lg uppercase text-sf-dark hover:underline underline-offset-2 block"
+                      >
+                        {item.title || 'ТОВАР'}
+                      </Link>
+                    ) : (
+                      <div className="font-serif text-lg uppercase text-sf-dark">
+                        {item.title || 'ТОВАР'}
+                      </div>
+                    )}
+                    <div className="text-xs font-sans uppercase text-sf-muted flex items-center gap-3 flex-wrap">
+                      {item.sku && <span>SKU: {item.sku}</span>}
+                      {item.color_name && <span>ЦВЕТ: {item.color_name}</span>}
+                      {item.size && <span>РАЗМЕР: {item.size}</span>}
+                    </div>
                   </div>
                 </div>
 
