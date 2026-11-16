@@ -120,6 +120,8 @@ class SqlAlchemyProductRepository:
             description=model.description,
             attributes=dict(model.attributes) if model.attributes else {},
             is_published=model.is_published,
+            is_hidden=model.is_hidden,
+            is_limited=model.is_limited,
             created_at=model.created_at,
             updated_at=model.updated_at,
             deleted_at=model.deleted_at,
@@ -162,6 +164,7 @@ class SqlAlchemyProductRepository:
         base_filters = [
             ProductModel.is_published.is_(True),
             ProductModel.deleted_at.is_(None),
+            ProductModel.is_hidden == 0,
         ]
         if category_id is not None:
             base_filters.append(ProductModel.category_id == category_id)
@@ -213,6 +216,8 @@ class SqlAlchemyProductRepository:
             description=product.description,
             attributes=product.attributes,
             is_published=product.is_published,
+            is_hidden=product.is_hidden,
+            is_limited=product.is_limited,
             created_by=product.created_by,
             created_at=product.created_at,
             updated_at=product.updated_at,
@@ -247,6 +252,8 @@ class SqlAlchemyProductRepository:
         model.description = product.description
         model.attributes = product.attributes
         model.is_published = product.is_published
+        model.is_hidden = product.is_hidden
+        model.is_limited = product.is_limited
         model.updated_at = product.updated_at
         model.deleted_at = product.deleted_at
         try:
@@ -268,6 +275,7 @@ class SqlAlchemyProductRepository:
             .where(
                 ProductModel.is_published.is_(True),
                 ProductModel.deleted_at.is_(None),
+                ProductModel.is_hidden == 0,
                 or_(
                     ProductModel.title.ilike(pattern, escape="\\"),
                     ProductModel.description.ilike(pattern, escape="\\"),
@@ -295,6 +303,7 @@ class SqlAlchemyProductRepository:
             .where(
                 ProductModel.is_published.is_(True),
                 ProductModel.deleted_at.is_(None),
+                ProductModel.is_hidden == 0,
                 ProductModel.brand.isnot(None),
                 ProductModel.brand != "",
                 ProductModel.brand.ilike(pattern, escape="\\"),
@@ -376,6 +385,7 @@ class SqlAlchemyProductVariantRepository:
             .where(
                 ProductModel.is_published.is_(True),
                 ProductModel.deleted_at.is_(None),
+                ProductModel.is_hidden == 0,
                 or_(
                     ProductVariantModel.sku.ilike(pattern, escape="\\"),
                     ProductVariantModel.color_name.ilike(pattern, escape="\\"),

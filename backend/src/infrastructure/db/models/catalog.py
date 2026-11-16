@@ -10,6 +10,7 @@ from sqlalchemy import (
     Index,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
     text,
@@ -69,6 +70,12 @@ class ProductModel(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     attributes: Mapped[dict[str, Any]] = mapped_column(default=dict, nullable=False)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_hidden: Mapped[int] = mapped_column(
+        SmallInteger, default=0, server_default="0", nullable=False, index=True
+    )
+    is_limited: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
     created_by: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
@@ -85,6 +92,10 @@ class ProductModel(Base):
         CheckConstraint(
             "price_eur IS NULL OR price_eur >= 0",
             name="chk_products_price_eur_non_negative",
+        ),
+        CheckConstraint(
+            "is_hidden IN (0, 1, 2)",
+            name="chk_products_is_hidden_range",
         ),
         Index("ix_products_creator_id", "creator_id"),
         Index(

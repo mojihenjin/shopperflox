@@ -252,6 +252,33 @@ async def get_current_user(
     return await auth_service.verify_access(user_id=user_id)
 
 
+async def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    auth_service: AuthService = Depends(get_auth_service),
+    token_provider: TokenProviderProtocol = Depends(get_token_provider),
+    token_blacklist: TokenBlacklistProtocol = Depends(get_token_blacklist),
+) -> UserDomain | None:
+    if not credentials or not credentials.credentials:
+        return None
+
+    try:
+        payload = token_provider.decode_token(
+            credentials.credentials, expected_type="access"
+        )
+        jti = payload.get("jti")
+        if jti and await token_blacklist.is_revoked(jti):
+            return None
+
+        user_id_raw = payload.get("sub")
+        if not user_id_raw:
+            return None
+
+        user_id = UUID(str(user_id_raw))
+        return await auth_service.verify_access(user_id=user_id)
+    except Exception:
+        return None
+
+
 def require_permission(permission: str):
     async def permission_dependency(
         current_user: UserDomain = Depends(get_current_user),

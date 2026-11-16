@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -68,6 +68,8 @@ class ProductCreateRequest(BaseModel):
     description: str | None = None
     attributes: dict[str, Any] = Field(default_factory=dict)
     is_published: bool = False
+    is_hidden: Literal[0, 1, 2] = 0
+    is_limited: bool = False
     variants: list[VariantCreateItem] = Field(default_factory=list)
 
 
@@ -92,6 +94,8 @@ class ProductUpdateRequest(BaseModel):
     description: str | None = None
     attributes: dict[str, Any] | None = None
     is_published: bool | None = None
+    is_hidden: Literal[0, 1, 2] | None = None
+    is_limited: bool | None = None
 
 
 class ProductResponse(BaseModel):
@@ -117,6 +121,8 @@ class ProductResponse(BaseModel):
     description: str | None = None
     attributes: dict[str, Any] = Field(default_factory=dict)
     is_published: bool = False
+    is_hidden: int = 0
+    is_limited: bool = False
     created_at: datetime
     updated_at: datetime
 

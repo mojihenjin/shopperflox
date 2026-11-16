@@ -101,17 +101,36 @@ class CatalogService:
             )
 
     async def get_product_detail(
-        self, slug: str
+        self, slug: str, *, actor: UserDomain | None = None
     ) -> tuple[ProductDomain, list[ProductVariantDomain], list[ProductImageDomain]]:
         async with self.uow:
             product = await self.uow.products.get_by_slug(
                 slug, include_unpublished=False
             )
-            if product is None or not product.is_available:
+            if (
+                product is None
+                or product.deleted_at is not None
+                or not product.is_published
+            ):
                 raise EntityNotFoundError("Product not found")
+
+            if product.is_hidden == 2:
+                has_access = actor is not None and (
+                    actor.id == product.creator_id
+                    or actor.id == product.created_by
+                    or bool(
+                        {"*", "catalog:manage", "mod:update"}
+                        & set(actor.global_permissions)
+                    )
+                )
+                if not has_access:
+                    raise EntityNotFoundError("Product not found")
+
             variants = await self.uow.variants.list_by_product_id(product.id)
             images = await self.uow.images.list_by_product_id(product.id)
             return product, variants, images
+
+    get_product_by_slug = get_product_detail
 
     async def create_category(
         self,
@@ -220,6 +239,8 @@ class CatalogService:
         description: str | None = None,
         attributes: dict[str, Any] | None = None,
         is_published: bool = False,
+        is_hidden: int = 0,
+        is_limited: bool = False,
         variants: list[dict[str, Any]] | None = None,
     ) -> ProductDomain:
         self._check_creator_permission(actor)
@@ -228,6 +249,9 @@ class CatalogService:
         clean_brand = brand.strip() if brand else None
         if not title or not slug:
             raise DomainValidationError("Product title and slug cannot be empty")
+
+        if is_hidden not in (0, 1, 2):
+            raise DomainValidationError("is_hidden must be 0, 1, or 2")
 
         if is_self_worked and not clean_brand:
             clean_brand = "self-worked"
@@ -255,6 +279,8 @@ class CatalogService:
                 description=description,
                 attributes=attributes or {},
                 is_published=is_published,
+                is_hidden=is_hidden,
+                is_limited=is_limited,
                 created_by=actor.id,
             )
             await self.uow.products.add(product)
@@ -309,6 +335,8 @@ class CatalogService:
         description: str | None = None,
         attributes: dict[str, Any] | None = None,
         is_published: bool | None = None,
+        is_hidden: int | None = None,
+        is_limited: bool | None = None,
     ) -> ProductDomain:
         async with self.uow:
             product = await self.uow.products.get_by_id(
@@ -378,6 +406,14 @@ class CatalogService:
 
             if is_published is not None:
                 product.is_published = is_published
+
+            if is_hidden is not None:
+                if is_hidden not in (0, 1, 2):
+                    raise DomainValidationError("is_hidden must be 0, 1, or 2")
+                product.is_hidden = is_hidden
+
+            if is_limited is not None:
+                product.is_limited = is_limited
 
             product.updated_at = factory_now()
             await self.uow.products.update(product)

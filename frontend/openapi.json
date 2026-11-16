@@ -1125,6 +1125,11 @@
         ],
         "summary": "Get Product Detail",
         "operationId": "get_product_detail_api_v1_products__slug__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "slug",
@@ -4378,6 +4383,21 @@
             "title": "Is Published",
             "default": false
           },
+          "is_hidden": {
+            "type": "integer",
+            "enum": [
+              0,
+              1,
+              2
+            ],
+            "title": "Is Hidden",
+            "default": 0
+          },
+          "is_limited": {
+            "type": "boolean",
+            "title": "Is Limited",
+            "default": false
+          },
           "variants": {
             "items": {
               "$ref": "#/components/schemas/VariantCreateItem"
@@ -4709,6 +4729,16 @@
             "title": "Is Published",
             "default": false
           },
+          "is_hidden": {
+            "type": "integer",
+            "title": "Is Hidden",
+            "default": 0
+          },
+          "is_limited": {
+            "type": "boolean",
+            "title": "Is Limited",
+            "default": false
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -4932,6 +4962,33 @@
               }
             ],
             "title": "Is Published"
+          },
+          "is_hidden": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1,
+                  2
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Hidden"
+          },
+          "is_limited": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Limited"
           }
         },
         "additionalProperties": false,

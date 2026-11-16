@@ -335,7 +335,7 @@ class InMemoryProductRepository:
     ) -> tuple[list[ProductDomain], int]:
         matched = []
         for p in self.store.values():
-            if not p.is_published or p.deleted_at is not None:
+            if not p.is_published or p.deleted_at is not None or p.is_hidden != 0:
                 continue
             if category_id is not None and p.category_id != category_id:
                 continue

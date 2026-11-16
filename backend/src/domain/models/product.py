@@ -36,6 +36,8 @@ class ProductDomain(BaseDomain):
 
     attributes: dict[str, Any] = field(default_factory=dict)
     is_published: bool = field(default=False)
+    is_hidden: int = field(default=0)
+    is_limited: bool = field(default=False)
 
     created_at: datetime = field(default_factory=factory_now)
     updated_at: datetime = field(default_factory=factory_now)
@@ -48,10 +50,12 @@ class ProductDomain(BaseDomain):
             raise DomainValidationError("Product price_usd must be non-negative")
         if self.price_eur is not None and self.price_eur < 0:
             raise DomainValidationError("Product price_eur must be non-negative")
+        if self.is_hidden not in (0, 1, 2):
+            raise DomainValidationError("Product is_hidden must be 0, 1, or 2")
 
     @property
     def is_available(self) -> bool:
-        return self.is_published and self.deleted_at is None
+        return self.is_published and self.deleted_at is None and self.is_hidden != 2
 
     def resolve_price(self, variant: "ProductVariantDomain") -> Decimal:
         return variant.resolve_price(self.base_price)

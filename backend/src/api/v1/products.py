@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 
 from src.api.dependencies import (
     get_catalog_service,
+    get_optional_current_user,
     require_catalog_or_creator_permission,
 )
 from src.api.v1.schemas import (
@@ -53,9 +54,12 @@ async def list_products(
 @router.get("/products/{slug}", response_model=BaseResponse[ProductDetailResponse])
 async def get_product_detail(
     slug: str,
+    current_user: UserDomain | None = Depends(get_optional_current_user),
     catalog_service: CatalogService = Depends(get_catalog_service),
 ):
-    product, variants, images = await catalog_service.get_product_detail(slug)
+    product, variants, images = await catalog_service.get_product_detail(
+        slug, actor=current_user
+    )
     detail = ProductDetailResponse(
         product=ProductResponse.model_validate(product),
         variants=[ProductVariantResponse.model_validate(v) for v in variants],
@@ -92,6 +96,8 @@ async def create_product(
         description=req.description,
         attributes=req.attributes,
         is_published=req.is_published,
+        is_hidden=req.is_hidden,
+        is_limited=req.is_limited,
         variants=[v.model_dump() for v in req.variants] if req.variants else None,
     )
     return ResponseGenerator.answer(
@@ -128,6 +134,8 @@ async def update_product(
         description=req.description,
         attributes=req.attributes,
         is_published=req.is_published,
+        is_hidden=req.is_hidden if "is_hidden" in req.model_fields_set else None,
+        is_limited=req.is_limited if "is_limited" in req.model_fields_set else None,
     )
     return ResponseGenerator.answer(body=ProductResponse.model_validate(product))
 
