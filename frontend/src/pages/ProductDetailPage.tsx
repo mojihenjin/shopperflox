@@ -190,7 +190,7 @@ export function ProductDetailPage() {
       {/* Breadcrumbs */}
       <div className="border-b border-sf-dark/15 py-3">
         <div className="w-full max-w-none px-4 md:px-8 flex items-center gap-2 text-[11px] font-sans uppercase tracking-wider text-sf-muted">
-          <Link to="/" className="hover:text-sf-dark">
+          <Link to="/catalog" className="hover:text-sf-dark">
             КАТАЛОГ
           </Link>
           <span>/</span>

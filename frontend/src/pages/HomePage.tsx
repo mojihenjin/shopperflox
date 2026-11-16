@@ -1,14 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { productsApi, categoriesApi, favoritesApi } from '../api/endpoints';
-import { ProductCard, type GridColumns } from '../components/ProductCard';
+import { productsApi, favoritesApi } from '../api/endpoints';
+import { ProductCard } from '../components/ProductCard';
 import { useAuthStore } from '../store/auth';
 
-const PAGE_SIZE = 12;
-
 export function HomePage() {
-  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -17,63 +14,13 @@ export function HomePage() {
   const currentPath = `${location.pathname}${location.search}`;
   const loginRedirectUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
 
-  const categoryParam = searchParams.get('category') || searchParams.get('category_id') || '';
-  const searchParam = searchParams.get('search') || '';
-  const minPriceParam = searchParams.get('min_price') || '';
-  const maxPriceParam = searchParams.get('max_price') || '';
-  const pageParam = parseInt(searchParams.get('page') || '1', 10);
-  const offset = (Math.max(1, pageParam) - 1) * PAGE_SIZE;
-
-  // Local filter states for input forms
-  const [minPriceInput, setMinPriceInput] = useState(minPriceParam);
-  const [maxPriceInput, setMaxPriceInput] = useState(maxPriceParam);
-  const [columns, setColumns] = useState<GridColumns>(4);
-
-  useEffect(() => {
-    setMinPriceInput(minPriceParam);
-    setMaxPriceInput(maxPriceParam);
-  }, [minPriceParam, maxPriceParam]);
-
-  // Fetch categories
-  const { data: categoriesData } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => categoriesApi.list(),
-  });
-
-  const categories = useMemo(() => categoriesData?.data || [], [categoriesData]);
-
-  // Find selected category
-  const selectedCategory = useMemo(() => {
-    if (!categoryParam) return null;
-    return categories.find(
-      (c) => c.slug === categoryParam || c.id === categoryParam
-    ) || null;
-  }, [categories, categoryParam]);
-
-  // Resolve valid UUID for category_id parameter of GET /api/v1/products
-  const activeCategoryId = useMemo(() => {
-    if (selectedCategory) return selectedCategory.id;
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryParam)) {
-      return categoryParam;
-    }
-    return undefined;
-  }, [selectedCategory, categoryParam]);
-
-  const catalogTitle = selectedCategory ? selectedCategory.name.toUpperCase() : 'ВСЕ ТОВАРЫ';
-
-  // Fetch products
+  // Fetch trending products (limit 8)
   const { data: productsData, isLoading: isProductsLoading } = useQuery({
-    queryKey: ['products', activeCategoryId, searchParam, minPriceParam, maxPriceParam, offset],
-    queryFn: () =>
-      productsApi.list({
-        category_id: activeCategoryId || undefined,
-        search: searchParam || undefined,
-        min_price: minPriceParam || undefined,
-        max_price: maxPriceParam || undefined,
-        limit: PAGE_SIZE,
-        offset,
-      }),
+    queryKey: ['trending-products'],
+    queryFn: () => productsApi.list({ limit: 8 }),
   });
+
+  const trendingProducts = productsData?.data || [];
 
   // Fetch favorites
   const { data: favoritesData } = useQuery({
@@ -104,57 +51,11 @@ export function HomePage() {
     },
   });
 
-  const handleCategorySelect = (slugOrId: string) => {
-    const next = new URLSearchParams(searchParams);
-    if (slugOrId) {
-      next.set('category', slugOrId);
-      next.delete('category_id');
-    } else {
-      next.delete('category');
-      next.delete('category_id');
-    }
-    next.set('page', '1');
-    setSearchParams(next);
-  };
-
-  const handlePriceFilterApply = (e: React.FormEvent) => {
-    e.preventDefault();
-    const next = new URLSearchParams(searchParams);
-    if (minPriceInput) next.set('min_price', minPriceInput);
-    else next.delete('min_price');
-
-    if (maxPriceInput) next.set('max_price', maxPriceInput);
-    else next.delete('max_price');
-
-    next.set('page', '1');
-    setSearchParams(next);
-  };
-
-  const handleResetFilters = () => {
-    setMinPriceInput('');
-    setMaxPriceInput('');
-    setSearchParams({});
-  };
-
-  const totalProducts = productsData?.metadata?.total ?? (productsData?.data?.length || 0);
-  const totalPages = Math.ceil(totalProducts / PAGE_SIZE) || 1;
-  const products = productsData?.data || [];
-
-  const handlePageChange = (newPage: number) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('page', String(newPage));
-    setSearchParams(next);
-    const catalogElement = document.getElementById('catalog');
-    if (catalogElement) {
-      catalogElement.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
   return (
     <div className="w-full">
       {/* 1. HERO SECTION: Full Bleed #3F2021 (Dark Chocolate) */}
       <section className="relative w-full bg-sf-dark text-sf-cream overflow-hidden">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
+        <div className="w-full px-4 md:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[580px] lg:min-h-[680px]">
             {/* Left Column: Editorial Typography */}
             <div className="flex flex-col justify-between py-12 lg:py-20 pr-0 lg:pr-12">
@@ -181,22 +82,22 @@ export function HomePage() {
 
               <div className="pt-8 space-y-6">
                 <div>
-                  <a
-                    href="#catalog"
+                  <Link
+                    to="/catalog"
                     className="inline-block bg-sf-cream text-sf-dark hover:bg-sf-cream/90 px-8 py-3.5 text-xs font-sans font-semibold uppercase tracking-widest transition-colors"
                   >
                     ПЕРЕЙТИ В КАТАЛОГ ↗
-                  </a>
+                  </Link>
                 </div>
 
                 {/* Internal Navigation Shortcuts */}
                 <div className="flex items-center gap-6 text-xs font-semibold uppercase tracking-wider text-sf-denim pt-2">
-                  <a
-                    href="#catalog"
+                  <Link
+                    to="/catalog"
                     className="hover:text-sf-cream transition-colors"
                   >
                     КОЛЛЕКЦИИ ↗
-                  </a>
+                  </Link>
                   <Link
                     to="/favorites"
                     className="hover:text-sf-cream transition-colors"
@@ -213,60 +114,104 @@ export function HomePage() {
               </div>
             </div>
 
-            {/* Right Column: Hero Visual Full Bleed / Split */}
-            <div className="relative hidden lg:block h-full min-h-[500px]">
-              <div className="absolute inset-0 bg-[#2C1617] border-l border-sf-cream/15 overflow-hidden flex items-center justify-center">
-                <svg
-                  className="w-full h-full object-cover opacity-90"
-                  viewBox="0 0 600 800"
-                  fill="none"
-                  
-                >
-                  <rect width="600" height="800" fill="#2E1718" />
-                  <path
-                    d="M 100 150 L 500 150 L 450 650 L 150 650 Z"
-                    stroke="#F2E9DB"
-                    strokeWidth="1"
-                    strokeOpacity="0.3"
-                  />
-                  <line x1="300" y1="50" x2="300" y2="750" stroke="#7594B3" strokeWidth="1" strokeOpacity="0.4" />
-                  <circle cx="300" cy="400" r="180" stroke="#F2E9DB" strokeWidth="1" strokeOpacity="0.25" />
-                  <text
-                    x="300"
-                    y="390"
-                    fill="#F2E9DB"
-                    textAnchor="middle"
-                    fontFamily="serif"
-                    fontSize="54"
-                    letterSpacing="8"
-                    opacity="0.8"
+            {/* Right Column: Editorial Hero Visual */}
+            <div className="relative w-full h-full min-h-[400px] lg:min-h-full flex items-center justify-center p-6 lg:p-12 border-t lg:border-t-0 lg:border-l border-sf-cream/20">
+              <div className="relative w-full max-w-lg aspect-[2/3] bg-sf-cream/10 border border-sf-cream/30 overflow-hidden flex flex-col justify-between p-6">
+                <div className="flex justify-between items-start text-xs font-sans tracking-widest text-sf-cream/60">
+                  <span>LOOKBOOK // 2026</span>
+                  <span>( SHOPPERFLOX )</span>
+                </div>
+
+                <div className="text-center space-y-2">
+                  <div className="font-serif text-3xl sm:text-4xl uppercase tracking-wider text-sf-cream">
+                    АРХИТЕКТУРНЫЙ СИЛУЭТ
+                  </div>
+                  <div className="text-[11px] font-sans uppercase tracking-widest text-sf-denim">
+                    ПРЕМИАЛЬНЫЕ МАТЕРИАЛЫ &amp; ЧЁТКИЕ ЛИНИИ
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-end text-xs font-sans tracking-widest text-sf-cream/60">
+                  <span>01 / 08</span>
+                  <Link
+                    to="/catalog"
+                    className="text-sf-cream hover:underline uppercase text-[11px]"
                   >
-                    SHOPPERFLOX
-                  </text>
-                  <text
-                    x="300"
-                    y="430"
-                    fill="#7594B3"
-                    textAnchor="middle"
-                    fontFamily="sans-serif"
-                    fontSize="13"
-                    letterSpacing="4"
-                  >
-                    EDITORIAL COLLECTION 2026
-                  </text>
-                </svg>
+                    СМОТРЕТЬ КАТАЛОГ ↗
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2. DENIM SECTION: Philosophy / Standards (#7594B3) */}
-      <section className="w-full bg-sf-denim text-sf-cream py-14 md:py-20 border-b border-sf-cream/20">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
-          <div className="mb-10">
-            <span className="text-[11px] font-sans font-medium uppercase tracking-widest text-sf-cream/80">
-              ( ФИЛОСОФИЯ И ПРОЦЕСС )
+      {/* 2. TRENDING PRODUCTS SECTION: Immediately after Hero */}
+      <section className="w-full bg-[#F2E9DB] py-14 md:py-20 border-b border-sf-dark/15">
+        <div className="w-full px-4 md:px-8 space-y-8">
+          {/* Header of Section */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-sf-dark/20">
+            <div>
+              <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
+                ( СЕЗОННЫЙ ВЫБОР )
+              </span>
+              <h2 className="font-serif text-3xl md:text-5xl uppercase tracking-wider text-sf-dark mt-1">
+                ТРЕНДОВЫЕ ВЕЩИ
+              </h2>
+            </div>
+
+            <Link
+              to="/catalog"
+              className="inline-flex items-center gap-1.5 text-xs font-sans font-semibold uppercase tracking-widest text-sf-dark hover:opacity-70 transition-opacity whitespace-nowrap"
+            >
+              ВЕСЬ КАТАЛОГ ↗
+            </Link>
+          </div>
+
+          {/* Trending Products Grid */}
+          <div>
+            {isProductsLoading ? (
+              <div className="py-24 text-center text-xs font-sans uppercase tracking-widest text-sf-muted">
+                ( ЗАГРУЗКА ТРЕНДОВЫХ ВЕЩЕЙ... )
+              </div>
+            ) : trendingProducts.length === 0 ? (
+              <div className="py-14 text-center space-y-3">
+                <div className="font-serif text-xl uppercase tracking-wider text-sf-dark">
+                  ТРЕНДОВЫЕ МОДЕЛИ СКОРО ПОЯВЯТСЯ
+                </div>
+                <p className="text-xs font-sans uppercase tracking-wider text-sf-muted">
+                  Перейдите в каталог, чтобы ознакомиться с доступными коллекциями
+                </p>
+                <Link
+                  to="/catalog"
+                  className="mt-2 inline-block bg-sf-dark text-sf-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider hover:bg-sf-black transition-colors"
+                >
+                  ПЕРЕЙТИ В КАТАЛОГ ↗
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-10">
+                {trendingProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    columns={4}
+                    isFavorite={favoriteIds.has(product.id)}
+                    onToggleFavorite={(id) => toggleFavoriteMutation.mutate(id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* 3. PHILOSOPHY / PROCESS SECTION: Muted Denim (#7594B3) */}
+      <section className="w-full bg-sf-denim text-sf-cream py-16 md:py-24">
+        <div className="w-full px-4 md:px-8">
+          <div className="max-w-2xl mb-12">
+            <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-cream/70">
+              ( ТОТ САМЫЙ АКЦЕНТ )
             </span>
             <h2 className="font-serif text-3xl md:text-5xl uppercase tracking-wider text-sf-cream mt-2">
               ТОТ САМЫЙ АКЦЕНТ
@@ -301,201 +246,6 @@ export function HomePage() {
               </p>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* 3. CATALOG SECTION: Warm Cream (#F2E9DB) */}
-      <section id="catalog" className="w-full bg-[#F2E9DB] py-14 md:py-20">
-        <div className="w-full max-w-none px-4 md:px-8">
-          {/* Header of catalog & Active Filters */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-sf-dark/20">
-            <div>
-              <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
-                ( КАТАЛОГ КОЛЛЕКЦИЙ )
-              </span>
-              <h2 className="font-serif text-3xl md:text-5xl uppercase tracking-wider text-sf-dark mt-1">
-                {catalogTitle}
-              </h2>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-              {/* Density selector 2 / 4 / 6 / 8 */}
-              <div className="flex items-center border border-sf-dark/25 p-0.5 bg-[#FFFFFF]">
-                <span className="text-[10px] font-sans uppercase tracking-wider text-sf-muted px-2 select-none">
-                  СЕТКА:
-                </span>
-                {([2, 4, 6, 8] as GridColumns[]).map((cols) => (
-                  <button
-                    key={cols}
-                    type="button"
-                    onClick={() => setColumns(cols)}
-                    className={`px-2.5 py-1 text-xs font-sans font-semibold transition-colors ${
-                      columns === cols
-                        ? 'bg-[#3F2021] text-[#F2E9DB]'
-                        : 'text-[#3F2021]/60 hover:text-[#3F2021]'
-                    }`}
-                    title={`Сетка: ${cols} колонок`}
-                  >
-                    {cols}
-                  </button>
-                ))}
-              </div>
-
-              <div className="text-xs font-sans uppercase tracking-wider text-sf-muted">
-                ( ПОКАЗАНО: {products.length} ИЗ {totalProducts} МОДЕЛЕЙ )
-              </div>
-            </div>
-          </div>
-
-          {/* Filter Bar */}
-          <div className="py-6 space-y-4">
-            {/* Category tabs */}
-            {categories.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-sf-dark/10">
-                <button
-                  type="button"
-                  onClick={() => handleCategorySelect('')}
-                  className={`px-3.5 py-1.5 text-xs font-sans uppercase tracking-wider border transition-colors ${
-                    !categoryParam
-                      ? 'bg-sf-dark text-sf-cream border-sf-dark font-semibold'
-                      : 'border-sf-dark/30 hover:border-sf-dark text-sf-dark bg-transparent'
-                  }`}
-                >
-                  ВСЕ
-                </button>
-                {categories.map((cat) => {
-                  const isSelected =
-                    categoryParam === cat.slug || categoryParam === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => handleCategorySelect(cat.slug || cat.id)}
-                      className={`px-3.5 py-1.5 text-xs font-sans uppercase tracking-wider border transition-colors ${
-                        isSelected
-                          ? 'bg-sf-dark text-sf-cream border-sf-dark font-semibold'
-                          : 'border-sf-dark/30 hover:border-sf-dark text-sf-dark bg-transparent'
-                      }`}
-                    >
-                      {cat.name}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Price range & Search active state */}
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-              <form onSubmit={handlePriceFilterApply} className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-sans uppercase tracking-wider text-sf-muted mr-1">
-                  ЦЕНА, ₽:
-                </span>
-                <input
-                  type="number"
-                  placeholder="ОТ"
-                  value={minPriceInput}
-                  onChange={(e) => setMinPriceInput(e.target.value)}
-                  className="w-24 bg-[#F2E9DB] border border-sf-dark/30 focus:border-sf-dark px-2.5 py-1 text-xs font-sans outline-none"
-                />
-                <span className="text-sf-muted">—</span>
-                <input
-                  type="number"
-                  placeholder="ДО"
-                  value={maxPriceInput}
-                  onChange={(e) => setMaxPriceInput(e.target.value)}
-                  className="w-24 bg-[#F2E9DB] border border-sf-dark/30 focus:border-sf-dark px-2.5 py-1 text-xs font-sans outline-none"
-                />
-                <button
-                  type="submit"
-                  className="bg-sf-dark text-sf-cream hover:bg-sf-black px-3 py-1 text-xs font-sans uppercase tracking-wider"
-                >
-                  ПРИМЕНИТЬ
-                </button>
-              </form>
-
-              {(categoryParam || searchParam || minPriceParam || maxPriceParam) && (
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="text-xs font-sans uppercase tracking-wider text-sf-dark hover:opacity-60 underline underline-offset-4"
-                >
-                  ( СБРОСИТЬ ВСЕ ФИЛЬТРЫ × )
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Products Grid */}
-          {isProductsLoading ? (
-            <div className="py-24 text-center text-xs font-sans uppercase tracking-widest text-sf-muted">
-              ( ЗАГРУЗКА КАТАЛОГА... )
-            </div>
-          ) : products.length === 0 ? (
-            <div className="py-24 text-center border border-sf-dark/20 p-8">
-              <div className="font-serif text-2xl uppercase tracking-wider text-sf-dark">
-                МОДЕЛИ НЕ НАЙДЕНЫ
-              </div>
-              <p className="mt-2 text-xs font-sans uppercase tracking-wider text-sf-muted">
-                Попробуйте изменить параметры фильтрации или поисковый запрос
-              </p>
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="mt-6 inline-block bg-sf-dark text-sf-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider"
-              >
-                СБРОСИТЬ ФИЛЬТРЫ ↗
-              </button>
-            </div>
-          ) : (
-            <div
-              className={
-                columns === 2
-                  ? 'grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-10'
-                  : columns === 6
-                  ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-3 gap-y-6'
-                  : columns === 8
-                  ? 'grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-3 gap-y-6'
-                  : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-10'
-              }
-            >
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  columns={columns}
-                  isFavorite={favoriteIds.has(product.id)}
-                  onToggleFavorite={(id) => toggleFavoriteMutation.mutate(id)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-14 pt-8 border-t border-sf-dark/20 flex items-center justify-between">
-              <button
-                type="button"
-                disabled={pageParam <= 1}
-                onClick={() => handlePageChange(pageParam - 1)}
-                className="border border-sf-dark px-4 py-2 text-xs font-sans uppercase tracking-wider disabled:opacity-30 hover:bg-sf-dark hover:text-sf-cream transition-colors"
-              >
-                ← ПРЕДЫДУЩАЯ
-              </button>
-
-              <div className="text-xs font-sans uppercase tracking-widest text-sf-muted">
-                СТРАНИЦА {pageParam} ИЗ {totalPages}
-              </div>
-
-              <button
-                type="button"
-                disabled={pageParam >= totalPages}
-                onClick={() => handlePageChange(pageParam + 1)}
-                className="border border-sf-dark px-4 py-2 text-xs font-sans uppercase tracking-wider disabled:opacity-30 hover:bg-sf-dark hover:text-sf-cream transition-colors"
-              >
-                СЛЕДУЮЩАЯ →
-              </button>
-            </div>
-          )}
         </div>
       </section>
     </div>

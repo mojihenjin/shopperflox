@@ -26,7 +26,7 @@ export function Footer() {
             </div>
             <ul className="space-y-2 text-[13px] uppercase tracking-wider">
               <li>
-                <Link to="/" className="hover:text-sf-denim transition-colors">
+                <Link to="/catalog" className="hover:text-sf-denim transition-colors">
                   КАТАЛОГ ТОВАРОВ
                 </Link>
               </li>
@@ -55,7 +55,7 @@ export function Footer() {
             </div>
             <ul className="space-y-2 text-[13px] uppercase tracking-wider text-sf-cream/90">
               <li>
-                <Link to="/" className="hover:text-sf-denim transition-colors">
+                <Link to="/catalog" className="hover:text-sf-denim transition-colors">
                   НОВЫЕ ПОСТУПЛЕНИЯ
                 </Link>
               </li>

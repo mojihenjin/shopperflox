@@ -77,7 +77,7 @@ export function FavoritesPage() {
             Отмечайте значком «♡» понравившиеся товары в каталоге, чтобы вернуться к ним позже
           </p>
           <Link
-            to="/"
+            to="/catalog"
             className="mt-6 inline-block bg-sf-dark text-sf-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider"
           >
             ПЕРЕЙТИ В КАТАЛОГ ↗

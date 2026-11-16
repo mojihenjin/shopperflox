@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { categoriesApi, cartApi, searchApi, authApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
@@ -8,7 +8,6 @@ import { useDebounce } from '../hooks/useDebounce';
 export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [, setSearchParams] = useSearchParams();
   const { isAuthenticated, user, logout, setUser } = useAuthStore();
 
   const currentPath = `${location.pathname}${location.search}`;
@@ -103,14 +102,14 @@ export function Header() {
     e.preventDefault();
     if (debouncedQuery) {
       setIsSearchOpen(false);
-      navigate(`/?search=${encodeURIComponent(debouncedQuery)}`);
+      navigate(`/catalog?search=${encodeURIComponent(debouncedQuery)}`);
     }
   };
 
   const selectBrand = (brandName: string) => {
     setIsSearchOpen(false);
     setSearchQuery('');
-    navigate(`/?search=${encodeURIComponent(brandName)}`);
+    navigate(`/catalog?search=${encodeURIComponent(brandName)}`);
   };
 
   const selectProduct = (slug: string) => {
@@ -290,6 +289,13 @@ export function Header() {
           {/* User Links / Actions */}
           <nav className="flex items-center gap-4 md:gap-6 text-[12px] md:text-[13px] font-sans uppercase tracking-wider">
             <Link
+              to="/catalog"
+              className="hover:opacity-70 transition-opacity whitespace-nowrap font-medium"
+            >
+              КАТАЛОГ
+            </Link>
+
+            <Link
               to="/favorites"
               className="hover:opacity-70 transition-opacity whitespace-nowrap"
             >
@@ -352,20 +358,16 @@ export function Header() {
         {/* Categories Bar */}
         {rootCategories.length > 0 && (
           <div className="flex items-center gap-6 py-2.5 overflow-x-auto border-t border-sf-dark/10 scrollbar-none text-[12px] font-serif uppercase tracking-wider text-sf-dark">
-            <button
-              type="button"
-              onClick={() => {
-                setSearchParams({});
-                navigate('/');
-              }}
+            <Link
+              to="/catalog"
               className="hover:opacity-60 transition-opacity whitespace-nowrap"
             >
               ВСЕ ТОВАРЫ
-            </button>
+            </Link>
             {rootCategories.map((cat) => (
               <Link
                 key={cat.id}
-                to={`/?category=${cat.slug || cat.id}`}
+                to={`/catalog?category=${cat.slug || cat.id}`}
                 className="hover:opacity-60 transition-opacity whitespace-nowrap"
               >
                 {cat.name}

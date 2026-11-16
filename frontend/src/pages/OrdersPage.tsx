@@ -48,7 +48,7 @@ export function OrdersPage() {
           После оформления покупки здесь будут отображаться статус заказа и информация об отправлении
         </p>
         <Link
-          to="/"
+          to="/catalog"
           className="mt-6 inline-block bg-sf-dark text-sf-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider"
         >
           ПЕРЕЙТИ В КАТАЛОГ ↗
