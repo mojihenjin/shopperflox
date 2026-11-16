@@ -6,7 +6,7 @@ from uuid import UUID
 import pytest
 from uuid6 import uuid7
 
-from src.domain.exceptions import AuthenticationError
+from src.domain.exceptions import AuthenticationError, EntityAlreadyExistsError
 from src.domain.interfaces import (
     UserAddressRepositoryProtocol,
     UserBanRepositoryProtocol,
@@ -14,6 +14,9 @@ from src.domain.interfaces import (
     UserRepositoryProtocol,
 )
 from src.domain.models import (
+    BrandDomain,
+    BrandMemberDomain,
+    BrandMemberRole,
     CartDomain,
     CartItemDomain,
     CategoryDomain,
@@ -335,7 +338,12 @@ class InMemoryProductRepository:
     ) -> tuple[list[ProductDomain], int]:
         matched = []
         for p in self.store.values():
-            if not p.is_published or p.deleted_at is not None or p.is_hidden != 0:
+            if (
+                not p.is_published
+                or p.deleted_at is not None
+                or p.is_hidden != 0
+                or p.brand_is_deleted
+            ):
                 continue
             if category_id is not None and p.category_id != category_id:
                 continue
@@ -356,6 +364,13 @@ class InMemoryProductRepository:
 
     async def update(self, product: ProductDomain) -> None:
         self.store[product.id] = product
+
+    async def update_brand_name_for_products(
+        self, brand_id: UUID, brand_name: str
+    ) -> None:
+        for p in self.store.values():
+            if p.brand_id == brand_id:
+                p.brand = brand_name
 
     async def list_pending_products(
         self,
@@ -464,6 +479,84 @@ class InMemoryFavoriteRepository:
         self.store.pop((user_id, product_id), None)
 
 
+class InMemoryBrandRepository:
+    def __init__(self) -> None:
+        self.brands: dict[UUID, BrandDomain] = {}
+        self.members: dict[tuple[UUID, UUID], BrandMemberDomain] = {}
+
+    async def get_by_id(self, brand_id: UUID) -> BrandDomain | None:
+        return self.brands.get(brand_id)
+
+    async def get_by_slug(self, slug: str) -> BrandDomain | None:
+        for b in self.brands.values():
+            if b.slug == slug:
+                return b
+        return None
+
+    async def get_by_name(self, name: str) -> BrandDomain | None:
+        clean = name.strip().lower()
+        for b in self.brands.values():
+            if b.name.strip().lower() == clean:
+                return b
+        return None
+
+    async def list_active(self, limit: int = 100, offset: int = 0) -> list[BrandDomain]:
+        matched = [b for b in self.brands.values() if not b.is_deleted]
+        matched.sort(key=lambda x: x.name)
+        return matched[offset : offset + limit]
+
+    async def list_by_user_id(
+        self, user_id: UUID
+    ) -> list[tuple[BrandDomain, BrandMemberRole]]:
+        res = []
+        for (b_id, u_id), m in self.members.items():
+            if u_id == user_id:
+                brand = self.brands.get(b_id)
+                if brand:
+                    res.append((brand, m.role))
+        res.sort(key=lambda x: x[0].name)
+        return res
+
+    async def add(self, brand: BrandDomain) -> None:
+        for b in self.brands.values():
+            if b.slug == brand.slug or b.name.lower() == brand.name.lower():
+                raise EntityAlreadyExistsError("Brand already exists")
+        self.brands[brand.id] = brand
+
+    async def update(self, brand: BrandDomain) -> None:
+        self.brands[brand.id] = brand
+
+    async def add_member(self, member: BrandMemberDomain) -> None:
+        key = (member.brand_id, member.user_id)
+        if key in self.members:
+            raise EntityAlreadyExistsError("Member already exists")
+        self.members[key] = member
+
+    async def update_member(self, member: BrandMemberDomain) -> None:
+        key = (member.brand_id, member.user_id)
+        self.members[key] = member
+
+    async def remove_member(self, brand_id: UUID, user_id: UUID) -> None:
+        self.members.pop((brand_id, user_id), None)
+
+    async def get_member(
+        self, brand_id: UUID, user_id: UUID
+    ) -> BrandMemberDomain | None:
+        return self.members.get((brand_id, user_id))
+
+    async def list_members(self, brand_id: UUID) -> list[BrandMemberDomain]:
+        res = [m for (b_id, _), m in self.members.items() if b_id == brand_id]
+        res.sort(key=lambda x: x.created_at)
+        return res
+
+    async def count_representatives(self, brand_id: UUID) -> int:
+        return sum(
+            1
+            for (b_id, _), m in self.members.items()
+            if b_id == brand_id and m.role == BrandMemberRole.REPRESENTATIVE
+        )
+
+
 class FakeCatalogUnitOfWork:
     def __init__(self) -> None:
         self.categories = InMemoryCategoryRepository()
@@ -471,6 +564,7 @@ class FakeCatalogUnitOfWork:
         self.variants = InMemoryProductVariantRepository()
         self.images = InMemoryProductImageRepository()
         self.favorites = InMemoryFavoriteRepository(self.products)
+        self.brands = InMemoryBrandRepository()
         self.committed = False
         self.rolled_back = False
 
@@ -491,6 +585,43 @@ class FakeCatalogUnitOfWork:
 
     async def rollback(self) -> None:
         self.rolled_back = True
+
+
+class FakeBrandUnitOfWork:
+    def __init__(
+        self,
+        brands_repo: InMemoryBrandRepository | None = None,
+        users_repo: InMemoryUserRepository | None = None,
+        products_repo: InMemoryProductRepository | None = None,
+    ) -> None:
+        self.brands = brands_repo or InMemoryBrandRepository()
+        self.users = users_repo or InMemoryUserRepository()
+        self.products = products_repo or InMemoryProductRepository()
+        self.committed = False
+        self.rolled_back = False
+
+    async def commit(self) -> None:
+        self.committed = True
+
+    async def rollback(self) -> None:
+        self.rolled_back = True
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        if exc_type is not None:
+            await self.rollback()
+
+
+@pytest.fixture
+def brand_uow():
+    return FakeBrandUnitOfWork()
 
 
 @pytest.fixture

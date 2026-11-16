@@ -7,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 
 from main import app
 from src.api.dependencies import (
+    get_brand_uow,
     get_cart_uow,
     get_catalog_uow,
     get_email_verification_store,
@@ -22,6 +23,7 @@ from src.api.dependencies import (
 from src.infrastructure.db.models import Base
 from src.infrastructure.db.session import create_sessionmaker
 from src.infrastructure.db.uow import (
+    SqlAlchemyBrandUnitOfWork,
     SqlAlchemyCartUnitOfWork,
     SqlAlchemyCatalogUnitOfWork,
     SqlAlchemyNotificationUnitOfWork,
@@ -144,6 +146,9 @@ async def client(test_email_store, test_task_queue, test_file_storage):
     def _get_test_catalog_uow():
         return SqlAlchemyCatalogUnitOfWork(session_factory=factory)
 
+    def _get_test_brand_uow():
+        return SqlAlchemyBrandUnitOfWork(session_factory=factory)
+
     def _get_test_cart_uow():
         return SqlAlchemyCartUnitOfWork(session_factory=factory)
 
@@ -157,6 +162,7 @@ async def client(test_email_store, test_task_queue, test_file_storage):
         return SqlAlchemyReviewUnitOfWork(session_factory=factory)
 
     app.dependency_overrides[get_user_uow] = _get_test_uow
+    app.dependency_overrides[get_brand_uow] = _get_test_brand_uow
     app.dependency_overrides[get_catalog_uow] = _get_test_catalog_uow
     app.dependency_overrides[get_cart_uow] = _get_test_cart_uow
     app.dependency_overrides[get_notification_uow] = _get_test_notification_uow
@@ -174,6 +180,7 @@ async def client(test_email_store, test_task_queue, test_file_storage):
         yield ac
 
     app.dependency_overrides.pop(get_user_uow, None)
+    app.dependency_overrides.pop(get_brand_uow, None)
     app.dependency_overrides.pop(get_catalog_uow, None)
     app.dependency_overrides.pop(get_cart_uow, None)
     app.dependency_overrides.pop(get_notification_uow, None)
