@@ -15,6 +15,7 @@ import { CreatorEditProductPage } from './pages/CreatorEditProductPage';
 import { ModerationRequestsPage } from './pages/ModerationRequestsPage';
 import { BrandsManagePage } from './pages/BrandsManagePage';
 import { BrandDetailPage } from './pages/BrandDetailPage';
+import { BrandsListPage } from './pages/BrandsListPage';
 
 export function App() {
   return (
@@ -75,6 +76,7 @@ export function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="brands" element={<BrandsListPage />} />
             <Route path="brands/:slug" element={<BrandDetailPage />} />
             <Route
               path="brands/manage"

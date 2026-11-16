@@ -12,7 +12,21 @@ export function BrandsManagePage() {
   const { isAuthenticated, authUser: user } = useAuthStore();
 
   const permissions = user?.global_permissions || [];
-  const canCreateBrand = permissions.includes('*') || permissions.includes('creator:brand');
+  const isSuperAdmin = permissions.includes('*');
+  const isCreator =
+    isSuperAdmin ||
+    permissions.some((p) => p.startsWith('creator:') || p === 'creator');
+  const canCreateBrand =
+    isSuperAdmin ||
+    permissions.includes('creator:brand') ||
+    isCreator ||
+    permissions.includes('catalog:manage');
+  const isGlobalManager =
+    isSuperAdmin ||
+    permissions.includes('catalog:manage') ||
+    permissions.includes('mod:approve_manager');
+
+  const [activeTab, setActiveTab] = useState<'my' | 'all'>('my');
 
   // --- MY BRANDS QUERY ---
   const { data: myBrandsData, isLoading: isMyBrandsLoading } = useQuery({
@@ -22,6 +36,15 @@ export function BrandsManagePage() {
   });
 
   const myBrands = myBrandsData?.data || [];
+
+  // --- ALL BRANDS QUERY ---
+  const { data: allBrandsData, isLoading: isAllBrandsLoading } = useQuery({
+    queryKey: ['allBrands'],
+    queryFn: () => brandsApi.list({ limit: 100 }),
+    enabled: isAuthenticated,
+  });
+
+  const allBrands = allBrandsData?.data || [];
 
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
 
@@ -33,9 +56,11 @@ export function BrandsManagePage() {
   }, [myBrands, selectedBrandId]);
 
   const selectedMyBrand = myBrands.find((b) => b.brand.id === selectedBrandId);
-  const selectedBrand = selectedMyBrand?.brand;
-  const myRoleInSelectedBrand = selectedMyBrand?.role;
-  const isRepresentative = myRoleInSelectedBrand === 'representative';
+  const selectedBrand =
+    selectedMyBrand?.brand || (isSuperAdmin || isGlobalManager ? allBrands.find((b) => b.id === selectedBrandId) : undefined);
+  const myRoleInSelectedBrand =
+    selectedMyBrand?.role || (isSuperAdmin || isGlobalManager ? 'representative' : undefined);
+  const isRepresentative = myRoleInSelectedBrand === 'representative' || isSuperAdmin || isGlobalManager;
 
   // --- BRAND MEMBERS QUERY ---
   const { data: membersData, isLoading: isMembersLoading } = useQuery({
@@ -415,60 +440,212 @@ export function BrandsManagePage() {
           </div>
         )}
 
-        {/* 2. BRANDS SELECTION & MAIN MANAGEMENT VIEW */}
-        {isMyBrandsLoading ? (
-          <div className="w-full bg-[#FFFFFF] border border-[#3F2021] p-16 text-center text-xs font-sans uppercase tracking-widest text-[#3F2021]/60">
-            ( ЗАГРУЗКА СПИСКА БРЕНДОВ... )
-          </div>
-        ) : myBrands.length === 0 ? (
-          <div className="bg-[#FFFFFF] border border-[#3F2021] p-10 md:p-14 text-center space-y-4">
-            <div className="text-[10px] font-sans uppercase tracking-widest text-[#3F2021]/60">
-              ( СПИСОК ПУСТ )
-            </div>
-            <h2 className="font-serif text-2xl uppercase tracking-wider text-[#3F2021]">
-              ВЫ ПОКА НЕ СОСТОИТЕ НИ В ОДНОМ БРЕНДЕ
-            </h2>
-            <p className="text-xs font-sans uppercase tracking-wider text-[#3F2021]/70 max-w-md mx-auto">
-              {canCreateBrand
-                ? 'Создайте свой первый бренд с помощью кнопки выше, чтобы публиковать товары и добавлять модераторов.'
-                : 'Попросите представителя существующего бренда добавить ваш аккаунт по @login в команду.'}
-            </p>
-          </div>
-        ) : (
+        {/* Navigation Tabs: МОИ БРЕНДЫ / ВСЕ БРЕНДЫ */}
+        <div className="flex items-center gap-2 border-b border-[#3F2021]/20 pb-3">
+          <button
+            type="button"
+            onClick={() => setActiveTab('my')}
+            className={`px-4 py-2 text-xs font-sans uppercase tracking-wider border rounded-none transition-colors cursor-pointer ${
+              activeTab === 'my'
+                ? 'bg-[#3F2021] text-[#F2E9DB] border-[#3F2021] font-semibold'
+                : 'bg-[#FFFFFF] text-[#3F2021] border-[#3F2021]/30 hover:border-[#3F2021]'
+            }`}
+          >
+            МОИ БРЕНДЫ ({myBrands.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('all')}
+            className={`px-4 py-2 text-xs font-sans uppercase tracking-wider border rounded-none transition-colors cursor-pointer ${
+              activeTab === 'all'
+                ? 'bg-[#3F2021] text-[#F2E9DB] border-[#3F2021] font-semibold'
+                : 'bg-[#FFFFFF] text-[#3F2021] border-[#3F2021]/30 hover:border-[#3F2021]'
+            }`}
+          >
+            ВСЕ БРЕНДЫ ({allBrands.length})
+          </button>
+        </div>
+
+        {/* 2. ALL BRANDS TAB VIEW */}
+        {activeTab === 'all' && (
           <div className="space-y-6">
-            {/* Brands Tabs / Chips */}
-            <div className="flex flex-wrap gap-2 border-b border-[#3F2021]/20 pb-4">
-              {myBrands.map((b) => {
-                const isSelected = b.brand.id === selectedBrandId;
-                const isDeleted = Boolean(b.brand.is_deleted);
-                return (
-                  <button
-                    key={b.brand.id}
-                    type="button"
-                    onClick={() => setSelectedBrandId(b.brand.id)}
-                    className={`px-4 py-2.5 text-xs font-sans uppercase tracking-wider border transition-colors flex items-center gap-2 rounded-none cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#3F2021] text-[#F2E9DB] border-[#3F2021] font-semibold'
-                        : 'bg-[#FFFFFF] border-[#3F2021]/30 text-[#3F2021] hover:border-[#3F2021]'
-                    }`}
-                  >
-                    <span>{b.brand.name}</span>
-                    <span
-                      className={`text-[9px] px-1.5 py-0.2 font-mono font-bold tracking-wider ${
-                        isSelected ? 'bg-[#F2E9DB] text-[#3F2021]' : 'bg-[#3F2021] text-[#F2E9DB]'
-                      }`}
-                    >
-                      {b.role === 'representative' ? 'ПРЕДСТАВИТЕЛЬ' : 'МОДЕРАТОР'}
-                    </span>
-                    {isDeleted && (
-                      <span className="text-[9px] text-[#FF8562] font-semibold">
-                        [СНЯТ]
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="text-xs font-sans uppercase tracking-wider text-[#3F2021]/70 font-semibold">
+                ( КАТАЛОГ ВСЕХ АКТИВНЫХ БРЕНДОВ ПЛАТФОРМЫ )
+              </span>
+              <span className="text-xs font-mono text-[#3F2021]/60">
+                ВСЕГО: {allBrands.length}
+              </span>
             </div>
+
+            {isAllBrandsLoading ? (
+              <div className="w-full bg-[#FFFFFF] border border-[#3F2021] p-16 text-center text-xs font-sans uppercase tracking-widest text-[#3F2021]/60">
+                ( ЗАГРУЗКА СПИСКА ВСЕХ БРЕНДОВ... )
+              </div>
+            ) : allBrands.length === 0 ? (
+              <div className="bg-[#FFFFFF] border border-[#3F2021] p-12 text-center space-y-4">
+                <div className="text-[10px] font-sans uppercase tracking-widest text-[#3F2021]/60">
+                  ( НЕТ БРЕНДОВ )
+                </div>
+                <h3 className="font-serif text-xl uppercase tracking-wider text-[#3F2021]">
+                  В СИСТЕМЕ ПОКА НЕТ СОЗДАННЫХ БРЕНДОВ
+                </h3>
+                {canCreateBrand && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateOpen(true)}
+                    className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] border border-[#3F2021] px-5 py-2.5 text-xs font-sans uppercase tracking-widest font-semibold transition-colors rounded-none"
+                  >
+                    + СОЗДАТЬ ПЕРВЫЙ БРЕНД
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {allBrands.map((b) => {
+                  const isMyBrand = myBrands.some((mb) => mb.brand.id === b.id);
+                  return (
+                    <div
+                      key={b.id}
+                      className="bg-[#FFFFFF] border border-[#3F2021] p-5 flex flex-col justify-between space-y-4 rounded-none hover:border-[#3F2021] transition-all"
+                    >
+                      <div className="flex items-start gap-3.5">
+                        {b.logo_url ? (
+                          <img
+                            src={formatImageUrl(b.logo_url, b.name)}
+                            alt={b.name}
+                            className="w-12 h-12 object-cover border border-[#3F2021] rounded-none shrink-0"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-[#F2E9DB] border border-[#3F2021] flex items-center justify-center font-serif text-sm text-[#3F2021] font-bold rounded-none select-none shrink-0">
+                            {b.name.slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <h3 className="font-serif text-lg uppercase tracking-wider text-[#3F2021] truncate">
+                            {b.name}
+                          </h3>
+                          <div className="text-[11px] font-mono text-[#3F2021]/60 truncate">
+                            @{b.slug}
+                          </div>
+                          {b.his_url && (
+                            <a
+                              href={b.his_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[10px] font-sans text-[#3F2021] hover:underline underline-offset-2 flex items-center gap-1 mt-1 truncate"
+                            >
+                              <span>{b.his_url.replace(/^https?:\/\//, '')}</span>
+                              <span>↗</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-[#3F2021]/15 flex items-center justify-between gap-2">
+                        <Link
+                          to={`/brands/${b.slug}`}
+                          className="text-xs font-sans uppercase tracking-wider text-[#3F2021] hover:underline underline-offset-4 font-semibold"
+                        >
+                          КАТАЛОГ БРЕНДА ↗
+                        </Link>
+                        {(isMyBrand || isSuperAdmin || isGlobalManager) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedBrandId(b.id);
+                              setActiveTab('my');
+                            }}
+                            className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-2.5 py-1 text-[11px] font-sans uppercase tracking-wider transition-colors rounded-none"
+                          >
+                            УПРАВЛЯТЬ
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 3. MY BRANDS SELECTION & MAIN MANAGEMENT VIEW */}
+        {activeTab === 'my' && (
+          <>
+            {isMyBrandsLoading ? (
+              <div className="w-full bg-[#FFFFFF] border border-[#3F2021] p-16 text-center text-xs font-sans uppercase tracking-widest text-[#3F2021]/60">
+                ( ЗАГРУЗКА СПИСКА БРЕНДОВ... )
+              </div>
+            ) : myBrands.length === 0 ? (
+              <div className="bg-[#FFFFFF] border border-[#3F2021] p-10 md:p-14 text-center space-y-5">
+                <div className="text-[10px] font-sans uppercase tracking-widest text-[#3F2021]/60">
+                  ( СПИСОК ПУСТ )
+                </div>
+                <h2 className="font-serif text-2xl uppercase tracking-wider text-[#3F2021]">
+                  ВЫ ПОКА НЕ СОСТОИТЕ НИ В ОДНОМ БРЕНДЕ
+                </h2>
+                <p className="text-xs font-sans uppercase tracking-wider text-[#3F2021]/70 max-w-md mx-auto leading-relaxed">
+                  {canCreateBrand
+                    ? 'Создайте свой собственный бренд, чтобы выпускать фирменные товары, загружать логотип и управлять командой представителей.'
+                    : 'Попросите представителя существующего бренда добавить ваш аккаунт по @login в команду.'}
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  {canCreateBrand && (
+                    <button
+                      type="button"
+                      onClick={() => setIsCreateOpen(true)}
+                      className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] border border-[#3F2021] px-5 py-2.5 text-xs font-sans uppercase tracking-widest font-semibold transition-colors rounded-none cursor-pointer"
+                    >
+                      + СОЗДАТЬ СВОЙ БРЕНД
+                    </button>
+                  )}
+                  {allBrands.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('all')}
+                      className="bg-[#FFFFFF] text-[#3F2021] hover:bg-[#F2E9DB] border border-[#3F2021] px-5 py-2.5 text-xs font-sans uppercase tracking-widest font-semibold transition-colors rounded-none cursor-pointer"
+                    >
+                      СМОТРЕТЬ ВСЕ БРЕНДЫ ({allBrands.length}) ↗
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Brands Tabs / Chips */}
+                <div className="flex flex-wrap gap-2 border-b border-[#3F2021]/20 pb-4">
+                  {myBrands.map((b) => {
+                    const isSelected = b.brand.id === selectedBrandId;
+                    const isDeleted = Boolean(b.brand.is_deleted);
+                    return (
+                      <button
+                        key={b.brand.id}
+                        type="button"
+                        onClick={() => setSelectedBrandId(b.brand.id)}
+                        className={`px-4 py-2.5 text-xs font-sans uppercase tracking-wider border transition-colors flex items-center gap-2 rounded-none cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#3F2021] text-[#F2E9DB] border-[#3F2021] font-semibold'
+                            : 'bg-[#FFFFFF] border-[#3F2021]/30 text-[#3F2021] hover:border-[#3F2021]'
+                        }`}
+                      >
+                        <span>{b.brand.name}</span>
+                        <span
+                          className={`text-[9px] px-1.5 py-0.2 font-mono font-bold tracking-wider ${
+                            isSelected ? 'bg-[#F2E9DB] text-[#3F2021]' : 'bg-[#3F2021] text-[#F2E9DB]'
+                          }`}
+                        >
+                          {b.role === 'representative' ? 'ПРЕДСТАВИТЕЛЬ' : 'МОДЕРАТОР'}
+                        </span>
+                        {isDeleted && (
+                          <span className="text-[9px] text-[#FF8562] font-semibold">
+                            [СНЯТ]
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
 
             {selectedBrand && (
               <div className="space-y-8">
@@ -839,6 +1016,8 @@ export function BrandsManagePage() {
             )}
           </div>
         )}
+      </>
+    )}
       </div>
     </div>
   );
