@@ -1,13 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { favoritesApi } from '../api/endpoints';
 import { ProductCard } from '../components/ProductCard';
 import { useAuthStore } from '../store/auth';
 
 export function FavoritesPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
+
+  const currentPath = `${location.pathname}${location.search}`;
+  const loginRedirectUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
 
   const { data, isLoading } = useQuery({
     queryKey: ['favorites'],
@@ -33,7 +37,7 @@ export function FavoritesPage() {
         </p>
         <button
           type="button"
-          onClick={() => navigate('/login')}
+          onClick={() => navigate(loginRedirectUrl, { state: { from: location } })}
           className="mt-6 inline-block bg-amov-dark text-amov-cream px-8 py-3 text-xs font-sans uppercase tracking-widest"
         >
           ВОЙТИ В АККАУНТ ↗

@@ -1,9 +1,13 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 
 export function OrdersPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated } = useAuthStore();
+
+  const currentPath = `${location.pathname}${location.search}`;
+  const loginRedirectUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
 
   if (!isAuthenticated) {
     return (
@@ -16,7 +20,7 @@ export function OrdersPage() {
         </p>
         <button
           type="button"
-          onClick={() => navigate('/login')}
+          onClick={() => navigate(loginRedirectUrl, { state: { from: location } })}
           className="mt-6 inline-block bg-amov-dark text-amov-cream px-8 py-3 text-xs font-sans uppercase tracking-widest"
         >
           ВОЙТИ В АККАУНТ ↗

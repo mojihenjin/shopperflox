@@ -1,12 +1,17 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { authApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
+import { getReturnTo } from '../utils/navigation';
 import type { ApiError } from '../api/client';
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { setTokens, setUser } = useAuthStore();
+
+  const returnTo = getReturnTo(location.state, searchParams, '/');
 
   const [step, setStep] = useState<'FORM' | 'VERIFY'>('FORM');
   const [login, setLogin] = useState('');
@@ -64,9 +69,9 @@ export function RegisterPage() {
           setTokens(loginRes.data.access_token, loginRes.data.refresh_token);
           const meRes = await authApi.getMe();
           if (meRes.data) setUser(meRes.data);
-          navigate('/', { replace: true });
+          navigate(returnTo, { replace: true });
         } else {
-          navigate('/login');
+          navigate(returnTo !== '/' ? `/login?redirect=${encodeURIComponent(returnTo)}` : '/login');
         }
       }
     } catch (err) {
@@ -106,9 +111,9 @@ export function RegisterPage() {
         setTokens(loginRes.data.access_token, loginRes.data.refresh_token);
         const meRes = await authApi.getMe();
         if (meRes.data) setUser(meRes.data);
-        navigate('/', { replace: true });
+        navigate(returnTo, { replace: true });
       } else {
-        navigate('/login');
+        navigate(returnTo !== '/' ? `/login?redirect=${encodeURIComponent(returnTo)}` : '/login');
       }
     } catch (err) {
       const apiErr = err as ApiError;
@@ -256,7 +261,7 @@ export function RegisterPage() {
 
         <div className="mt-8 pt-6 border-t border-amov-dark/15 text-center">
           <Link
-            to="/login"
+            to={returnTo !== '/' ? `/login?redirect=${encodeURIComponent(returnTo)}` : '/login'}
             className="text-[11px] font-sans uppercase tracking-wider text-amov-dark hover:opacity-70 transition-opacity"
           >
             УЖЕ ЕСТЬ АККАУНТ? ВОЙТИ ↗

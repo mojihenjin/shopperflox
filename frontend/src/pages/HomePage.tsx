@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi, categoriesApi, favoritesApi } from '../api/endpoints';
 import { ProductCard } from '../components/ProductCard';
@@ -10,8 +10,12 @@ const PAGE_SIZE = 12;
 export function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
+
+  const currentPath = `${location.pathname}${location.search}`;
+  const loginRedirectUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
 
   const categoryIdParam = searchParams.get('category_id') || '';
   const searchParam = searchParams.get('search') || '';
@@ -23,6 +27,11 @@ export function HomePage() {
   // Local filter states for input forms
   const [minPriceInput, setMinPriceInput] = useState(minPriceParam);
   const [maxPriceInput, setMaxPriceInput] = useState(maxPriceParam);
+
+  useEffect(() => {
+    setMinPriceInput(minPriceParam);
+    setMaxPriceInput(maxPriceParam);
+  }, [minPriceParam, maxPriceParam]);
 
   // Fetch categories
   const { data: categoriesData } = useQuery({
@@ -59,7 +68,7 @@ export function HomePage() {
   const toggleFavoriteMutation = useMutation({
     mutationFn: async (productId: string) => {
       if (!isAuthenticated) {
-        navigate('/login');
+        navigate(loginRedirectUrl, { state: { from: location } });
         return;
       }
       if (favoriteIds.has(productId)) {

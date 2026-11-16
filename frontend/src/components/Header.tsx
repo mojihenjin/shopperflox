@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { categoriesApi, cartApi, searchApi, authApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
@@ -7,8 +7,15 @@ import { useDebounce } from '../hooks/useDebounce';
 
 export function Header() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [, setSearchParams] = useSearchParams();
   const { isAuthenticated, user, logout, setUser } = useAuthStore();
+
+  const currentPath = `${location.pathname}${location.search}`;
+  const loginUrl =
+    location.pathname !== '/login' && location.pathname !== '/register' && currentPath !== '/'
+      ? `/login?redirect=${encodeURIComponent(currentPath)}`
+      : '/login';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -311,7 +318,8 @@ export function Header() {
               </div>
             ) : (
               <Link
-                to="/login"
+                to={loginUrl}
+                state={{ from: location }}
                 className="border border-amov-dark px-2.5 py-1 hover:bg-amov-dark hover:text-amov-cream transition-colors text-[11px] whitespace-nowrap"
               >
                 ACCOUNT / LOGIN

@@ -20,10 +20,13 @@ let refreshPromise: Promise<string | null> | null = null;
 
 async function executeTokenRefresh(): Promise<string | null> {
   const currentRefreshToken = useAuthStore.getState().refreshToken;
+  const currentPath = `${window.location.pathname}${window.location.search}`;
+  const redirectTarget = `/login?redirect=${encodeURIComponent(currentPath)}`;
+
   if (!currentRefreshToken) {
     useAuthStore.getState().logout();
     if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-      window.location.href = '/login';
+      window.location.href = redirectTarget;
     }
     return null;
   }
@@ -49,7 +52,7 @@ async function executeTokenRefresh(): Promise<string | null> {
   } catch (err) {
     useAuthStore.getState().logout();
     if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-      window.location.href = '/login';
+      window.location.href = redirectTarget;
     }
     return null;
   } finally {

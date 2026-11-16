@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi, cartApi, favoritesApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
@@ -10,8 +10,12 @@ import type { ApiError } from '../api/client';
 export function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
+
+  const currentPath = `${location.pathname}${location.search}`;
+  const loginRedirectUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariantResponse | null>(null);
@@ -73,7 +77,7 @@ export function ProductDetailPage() {
   const toggleFavoriteMutation = useMutation({
     mutationFn: async () => {
       if (!isAuthenticated) {
-        navigate('/login');
+        navigate(loginRedirectUrl, { state: { from: location } });
         return;
       }
       if (!product?.id) return;
@@ -92,7 +96,7 @@ export function ProductDetailPage() {
   const addToCartMutation = useMutation({
     mutationFn: async () => {
       if (!isAuthenticated) {
-        navigate('/login');
+        navigate(loginRedirectUrl, { state: { from: location } });
         return;
       }
       if (!selectedVariant) return;
@@ -113,7 +117,7 @@ export function ProductDetailPage() {
   const createReviewMutation = useMutation({
     mutationFn: async () => {
       if (!isAuthenticated) {
-        navigate('/login');
+        navigate(loginRedirectUrl, { state: { from: location } });
         return;
       }
       if (!product?.id) return;
@@ -452,7 +456,8 @@ export function ProductDetailPage() {
                       Чтобы поделиться впечатлениями о покупке, необходимо войти в аккаунт
                     </p>
                     <Link
-                      to="/login"
+                      to={loginRedirectUrl}
+                      state={{ from: location }}
                       className="inline-block bg-amov-dark text-amov-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider hover:bg-amov-black transition-colors"
                     >
                       ВОЙТИ В АККАУНТ ↗

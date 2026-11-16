@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { authApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
+import { getReturnTo } from '../utils/navigation';
 import type { ApiError } from '../api/client';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { setTokens, setUser } = useAuthStore();
 
   const [identifier, setIdentifier] = useState('');
@@ -14,7 +16,7 @@ export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+  const returnTo = getReturnTo(location.state, searchParams, '/');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +44,7 @@ export function LoginPage() {
         } catch {
           // Non-critical, user will reload on next request
         }
-        navigate(from, { replace: true });
+        navigate(returnTo, { replace: true });
       }
     } catch (err) {
       const apiErr = err as ApiError;
@@ -120,7 +122,7 @@ export function LoginPage() {
 
         <div className="mt-8 pt-6 border-t border-amov-dark/15 text-center">
           <Link
-            to="/register"
+            to={returnTo !== '/' ? `/register?redirect=${encodeURIComponent(returnTo)}` : '/register'}
             className="text-[11px] font-sans uppercase tracking-wider text-amov-dark hover:opacity-70 transition-opacity"
           >
             НЕТ АККАУНТА? ЗАРЕГИСТРИРОВАТЬСЯ ↗
