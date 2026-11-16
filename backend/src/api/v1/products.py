@@ -81,6 +81,7 @@ async def create_product(
     product = await catalog_service.create_product(
         actor=current_user,
         category_id=req.category_id,
+        brand_id=req.brand_id,
         title=req.title,
         slug=req.slug,
         brand=req.brand,
@@ -117,6 +118,7 @@ async def update_product(
         actor=current_user,
         product_id=product_id,
         category_id=req.category_id,
+        brand_id=req.brand_id if "brand_id" in req.model_fields_set else ...,
         title=req.title,
         slug=req.slug,
         brand=req.brand if "brand" in req.model_fields_set else ...,

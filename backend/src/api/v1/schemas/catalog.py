@@ -51,6 +51,7 @@ class ProductCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     category_id: UUID
+    brand_id: UUID | None = None
     title: str = Field(min_length=1, max_length=255)
     slug: str = Field(min_length=1, max_length=255)
     brand: str | None = Field(default=None, max_length=128)
@@ -77,6 +78,7 @@ class ProductUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     category_id: UUID | None = None
+    brand_id: UUID | None = None
     title: str | None = Field(default=None, min_length=1, max_length=255)
     slug: str | None = Field(default=None, min_length=1, max_length=255)
     brand: str | None = Field(default=None, max_length=128)
@@ -104,9 +106,12 @@ class ProductResponse(BaseModel):
     id: UUID
     category_id: UUID
     creator_id: UUID | None = None
+    brand_id: UUID | None = None
     title: str
     slug: str
     brand: str | None = None
+    brand_slug: str | None = None
+    brand_is_deleted: bool = False
     is_self_worked: bool = False
     base_price: Decimal
     price_usd: Decimal | None = None

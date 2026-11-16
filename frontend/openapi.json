@@ -261,6 +261,498 @@
         ]
       }
     },
+    "/api/v1/brands": {
+      "get": {
+        "tags": [
+          "Brands"
+        ],
+        "summary": "List Active Brands",
+        "operationId": "list_active_brands_api_v1_brands_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_list_BrandResponse__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Brands"
+        ],
+        "summary": "Create Brand",
+        "operationId": "create_brand_api_v1_brands_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_BrandResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brands/my": {
+      "get": {
+        "tags": [
+          "Brands"
+        ],
+        "summary": "List My Brands",
+        "operationId": "list_my_brands_api_v1_brands_my_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_list_MyBrandResponse__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/brands/{slug}": {
+      "get": {
+        "tags": [
+          "Brands"
+        ],
+        "summary": "Get Brand By Slug",
+        "operationId": "get_brand_by_slug_api_v1_brands__slug__get",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_BrandResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brands/{brand_id}": {
+      "patch": {
+        "tags": [
+          "Brands"
+        ],
+        "summary": "Update Brand",
+        "operationId": "update_brand_api_v1_brands__brand_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brand_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Brand Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_BrandResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Brands"
+        ],
+        "summary": "Delete Brand",
+        "operationId": "delete_brand_api_v1_brands__brand_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brand_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Brand Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_BrandResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brands/{brand_id}/logo": {
+      "post": {
+        "tags": [
+          "Brands"
+        ],
+        "summary": "Upload Brand Logo",
+        "operationId": "upload_brand_logo_api_v1_brands__brand_id__logo_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brand_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Brand Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_brand_logo_api_v1_brands__brand_id__logo_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_BrandResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brands/{brand_id}/members": {
+      "get": {
+        "tags": [
+          "Brands"
+        ],
+        "summary": "List Brand Members",
+        "operationId": "list_brand_members_api_v1_brands__brand_id__members_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brand_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Brand Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_list_BrandMemberResponse__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Brands"
+        ],
+        "summary": "Add Or Update Brand Member",
+        "operationId": "add_or_update_brand_member_api_v1_brands__brand_id__members_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brand_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Brand Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddBrandMemberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_BrandMemberResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brands/{brand_id}/members/{user_id}": {
+      "delete": {
+        "tags": [
+          "Brands"
+        ],
+        "summary": "Remove Brand Member",
+        "operationId": "remove_brand_member_api_v1_brands__brand_id__members__user_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brand_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Brand Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_RemoveMemberResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/me": {
       "get": {
         "tags": [
@@ -2636,6 +3128,31 @@
   },
   "components": {
     "schemas": {
+      "AddBrandMemberRequest": {
+        "properties": {
+          "login": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 1,
+            "title": "Login"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "representative",
+              "moderator"
+            ],
+            "title": "Role"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "login",
+          "role"
+        ],
+        "title": "AddBrandMemberRequest"
+      },
       "BanUserRequest": {
         "properties": {
           "reason": {
@@ -2663,6 +3180,74 @@
           "reason"
         ],
         "title": "BanUserRequest"
+      },
+      "BaseResponse_BrandMemberResponse_": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BrandMemberResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "default": 200
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "title": "BaseResponse[BrandMemberResponse]"
+      },
+      "BaseResponse_BrandResponse_": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BrandResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "default": 200
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "title": "BaseResponse[BrandResponse]"
       },
       "BaseResponse_CartResponse_": {
         "properties": {
@@ -3134,6 +3719,40 @@
         "type": "object",
         "title": "BaseResponse[RegisterResponse]"
       },
+      "BaseResponse_RemoveMemberResponse_": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoveMemberResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "default": 200
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "title": "BaseResponse[RemoveMemberResponse]"
+      },
       "BaseResponse_ReviewResponse_": {
         "properties": {
           "body": {
@@ -3512,6 +4131,82 @@
         "type": "object",
         "title": "BaseResponse[dict[str, bool]]"
       },
+      "BaseResponse_list_BrandMemberResponse__": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/BrandMemberResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "default": 200
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "title": "BaseResponse[list[BrandMemberResponse]]"
+      },
+      "BaseResponse_list_BrandResponse__": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/BrandResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "default": 200
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "title": "BaseResponse[list[BrandResponse]]"
+      },
       "BaseResponse_list_CategoryResponse__": {
         "properties": {
           "body": {
@@ -3549,6 +4244,44 @@
         },
         "type": "object",
         "title": "BaseResponse[list[CategoryResponse]]"
+      },
+      "BaseResponse_list_MyBrandResponse__": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MyBrandResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "default": 200
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "title": "BaseResponse[list[MyBrandResponse]]"
       },
       "BaseResponse_list_NotificationResponse__": {
         "properties": {
@@ -3740,6 +4473,20 @@
         "type": "object",
         "title": "BaseResponse[list[UserAddressResponse]]"
       },
+      "Body_upload_brand_logo_api_v1_brands__brand_id__logo_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_brand_logo_api_v1_brands__brand_id__logo_post"
+      },
       "Body_upload_product_image_api_v1_products__product_id__images_upload_post": {
         "properties": {
           "file": {
@@ -3786,6 +4533,133 @@
         ],
         "title": "Body_upload_product_image_api_v1_products__product_id__images_upload_post"
       },
+      "BrandCreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "his_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "His Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "BrandCreateRequest"
+      },
+      "BrandMemberResponse": {
+        "properties": {
+          "brand_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Brand Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "user_login": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Login"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "brand_id",
+          "user_id",
+          "role",
+          "created_at"
+        ],
+        "title": "BrandMemberResponse"
+      },
+      "BrandResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "his_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "His Url"
+          },
+          "logo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Url"
+          },
+          "is_deleted": {
+            "type": "boolean",
+            "title": "Is Deleted",
+            "default": false
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "created_at"
+        ],
+        "title": "BrandResponse"
+      },
       "BrandSearchResponse": {
         "properties": {
           "name": {
@@ -3803,6 +4677,38 @@
           "products_count"
         ],
         "title": "BrandSearchResponse"
+      },
+      "BrandUpdateRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 150,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "his_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "His Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "BrandUpdateRequest"
       },
       "CartItemRequest": {
         "properties": {
@@ -4186,6 +5092,23 @@
         ],
         "title": "LoginRequest"
       },
+      "MyBrandResponse": {
+        "properties": {
+          "brand": {
+            "$ref": "#/components/schemas/BrandResponse"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "brand",
+          "role"
+        ],
+        "title": "MyBrandResponse"
+      },
       "NotificationResponse": {
         "properties": {
           "id": {
@@ -4549,6 +5472,18 @@
             "type": "string",
             "format": "uuid",
             "title": "Category Id"
+          },
+          "brand_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Id"
           },
           "title": {
             "type": "string",
@@ -4921,6 +5856,18 @@
             ],
             "title": "Creator Id"
           },
+          "brand_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Id"
+          },
           "title": {
             "type": "string",
             "title": "Title"
@@ -4939,6 +5886,22 @@
               }
             ],
             "title": "Brand"
+          },
+          "brand_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Slug"
+          },
+          "brand_is_deleted": {
+            "type": "boolean",
+            "title": "Brand Is Deleted",
+            "default": false
           },
           "is_self_worked": {
             "type": "boolean",
@@ -5114,6 +6077,18 @@
               }
             ],
             "title": "Category Id"
+          },
+          "brand_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Id"
           },
           "title": {
             "anyOf": [
@@ -5727,6 +6702,22 @@
         "additionalProperties": false,
         "type": "object",
         "title": "RejectProductRequest"
+      },
+      "RemoveMemberResponse": {
+        "properties": {
+          "removed": {
+            "type": "boolean",
+            "title": "Removed",
+            "default": true
+          },
+          "brand_deleted": {
+            "type": "boolean",
+            "title": "Brand Deleted",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "RemoveMemberResponse"
       },
       "ReviewResponse": {
         "properties": {

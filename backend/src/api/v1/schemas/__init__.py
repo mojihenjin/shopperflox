@@ -9,6 +9,15 @@ from .auth import (
     VerifyCodeRequest,
     VerifyEmailRequest,
 )
+from .brand import (
+    AddBrandMemberRequest,
+    BrandCreateRequest,
+    BrandMemberResponse,
+    BrandResponse,
+    BrandUpdateRequest,
+    MyBrandResponse,
+    RemoveMemberResponse,
+)
 from .cart import (
     CartItemRequest,
     CartItemResponse,
@@ -70,8 +79,13 @@ from .users import (
 )
 
 __all__ = [
+    "AddBrandMemberRequest",
     "BanUserRequest",
+    "BrandCreateRequest",
+    "BrandMemberResponse",
+    "BrandResponse",
     "BrandSearchResponse",
+    "BrandUpdateRequest",
     "CartItemRequest",
     "CartItemResponse",
     "CartResponse",
@@ -82,6 +96,7 @@ __all__ = [
     "CreateAddressRequest",
     "CreateReviewRequest",
     "LoginRequest",
+    "MyBrandResponse",
     "NotificationResponse",
     "OrderCheckoutResponse",
     "OrderItemResponse",
@@ -104,6 +119,7 @@ __all__ = [
     "RegisterRequest",
     "RegisterResponse",
     "RejectProductRequest",
+    "RemoveMemberResponse",
     "ReviewResponse",
     "SearchResultResponse",
     "SendEmailCodeRequest",

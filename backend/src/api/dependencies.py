@@ -5,6 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.application.services import (
     AuthService,
+    BrandService,
     CartService,
     CatalogService,
     FavoriteService,
@@ -18,6 +19,7 @@ from src.application.services import (
 from src.core import settings
 from src.domain.exceptions import AuthenticationError, PermissionDeniedError
 from src.domain.interfaces import (
+    BrandUnitOfWorkProtocol,
     CartUnitOfWorkProtocol,
     CatalogUnitOfWorkProtocol,
     EmailVerificationStoreProtocol,
@@ -34,6 +36,7 @@ from src.domain.interfaces import (
 )
 from src.domain.models import UserDomain
 from src.infrastructure.db import (
+    SqlAlchemyBrandUnitOfWork,
     SqlAlchemyCartUnitOfWork,
     SqlAlchemyCatalogUnitOfWork,
     SqlAlchemyNotificationUnitOfWork,
@@ -159,6 +162,18 @@ def get_notification_service(
     task_queue: TaskQueueProtocol = Depends(get_task_queue),
 ) -> NotificationService:
     return NotificationService(uow=uow, task_queue=task_queue)
+
+
+def get_brand_uow(request: Request) -> BrandUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyBrandUnitOfWork(session_factory=factory)
+
+
+def get_brand_service(
+    uow: BrandUnitOfWorkProtocol = Depends(get_brand_uow),
+    storage: FileStorageProtocol = Depends(get_file_storage),
+) -> BrandService:
+    return BrandService(uow=uow, storage=storage)
 
 
 def get_catalog_uow(request: Request) -> CatalogUnitOfWorkProtocol:

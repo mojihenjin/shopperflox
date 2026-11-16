@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from .auth import router as auth_router
+from .brands import router as brands_router
 from .cart import router as cart_router
 from .categories import router as categories_router
 from .favorites import router as favorites_router
@@ -15,6 +16,7 @@ from .users import router as users_router
 
 v1_router = APIRouter(prefix="/api/v1")
 v1_router.include_router(auth_router)
+v1_router.include_router(brands_router)
 v1_router.include_router(users_router)
 v1_router.include_router(moderation_router)
 v1_router.include_router(notifications_router)
@@ -29,6 +31,7 @@ v1_router.include_router(search_router)
 
 __all__ = [
     "auth_router",
+    "brands_router",
     "cart_router",
     "categories_router",
     "favorites_router",

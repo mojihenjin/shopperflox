@@ -1,6 +1,8 @@
 from . import dependencies, health, metrics, v1
 from .dependencies import (
     get_auth_service,
+    get_brand_service,
+    get_brand_uow,
     get_cart_service,
     get_cart_uow,
     get_catalog_service,
@@ -32,6 +34,8 @@ from .dependencies import (
 __all__ = [
     "dependencies",
     "get_auth_service",
+    "get_brand_service",
+    "get_brand_uow",
     "get_cart_service",
     "get_cart_uow",
     "get_catalog_service",
