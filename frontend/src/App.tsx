@@ -13,6 +13,8 @@ import { ProfilePage } from './pages/ProfilePage';
 import { CreatorNewProductPage } from './pages/CreatorNewProductPage';
 import { CreatorEditProductPage } from './pages/CreatorEditProductPage';
 import { ModerationRequestsPage } from './pages/ModerationRequestsPage';
+import { BrandsManagePage } from './pages/BrandsManagePage';
+import { BrandDetailPage } from './pages/BrandDetailPage';
 
 export function App() {
   return (
@@ -70,6 +72,15 @@ export function App() {
               element={
                 <ProtectedRoute>
                   <ModerationRequestsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="brands/:slug" element={<BrandDetailPage />} />
+            <Route
+              path="brands/manage"
+              element={
+                <ProtectedRoute>
+                  <BrandsManagePage />
                 </ProtectedRoute>
               }
             />

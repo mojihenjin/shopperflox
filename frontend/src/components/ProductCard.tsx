@@ -169,7 +169,17 @@ export function ProductCard({
               isCompact ? 'text-[9px] tracking-wider' : 'text-[11px] tracking-widest'
             }`}
           >
-            <span className="truncate">{product.brand || 'ShopperFlox'}</span>
+            {product.brand_slug ? (
+              <Link
+                to={`/brands/${product.brand_slug}`}
+                onClick={(e) => e.stopPropagation()}
+                className="truncate hover:underline hover:text-[#3F2021]"
+              >
+                {product.brand || 'ShopperFlox'}
+              </Link>
+            ) : (
+              <span className="truncate">{product.brand || 'ShopperFlox'}</span>
+            )}
             {product.is_limited && (
               <span className="bg-[#3F2021] text-[#F2E9DB] px-1.5 py-0.5 text-[9px] font-sans font-bold uppercase tracking-wider rounded-none whitespace-nowrap">
                 LIMITED
