@@ -62,10 +62,13 @@ export function Header() {
   const permissions = user?.global_permissions || [];
   const isCreator =
     permissions.includes('*') ||
-    permissions.some((p) => p.startsWith('creator:'));
+    permissions.some((p) => p.startsWith('creator:') || p === 'creator');
   const canModerate =
     permissions.includes('*') ||
     permissions.includes('mod:approve_manager');
+  const canManageCatalog =
+    permissions.includes('*') ||
+    permissions.includes('catalog:manage');
 
   // Brands query for current user
   const { data: myBrandsData } = useQuery({
@@ -75,9 +78,14 @@ export function Header() {
   });
 
   const myBrands = myBrandsData?.data || [];
-  const hasBrandAccess =
+  const canCreateBrand =
     permissions.includes('*') ||
     permissions.includes('creator:brand') ||
+    isCreator ||
+    canManageCatalog;
+  const hasBrandAccess =
+    canCreateBrand ||
+    canModerate ||
     myBrands.length > 0;
   const isBrandActiveManager = myBrands.some(
     (b) => !b.brand.is_deleted && (b.role === 'representative' || b.role === 'moderator')

@@ -39,7 +39,11 @@ export function ProfilePage() {
   const permissions = user?.global_permissions || [];
   const isCreator =
     permissions.includes('*') ||
-    permissions.some((p) => p.startsWith('creator:'));
+    permissions.some((p) => p.startsWith('creator:') || p === 'creator');
+  const canManageCatalog =
+    permissions.includes('*') ||
+    permissions.includes('catalog:manage') ||
+    permissions.includes('mod:approve_manager');
 
   const { data: myBrandsData } = useQuery({
     queryKey: ['myBrands'],
@@ -48,9 +52,14 @@ export function ProfilePage() {
   });
 
   const myBrands = myBrandsData?.data || [];
-  const hasBrandAccess =
+  const canCreateBrand =
     permissions.includes('*') ||
     permissions.includes('creator:brand') ||
+    isCreator ||
+    canManageCatalog;
+  const hasBrandAccess =
+    canCreateBrand ||
+    canManageCatalog ||
     myBrands.length > 0;
   const isBrandActiveManager = myBrands.some(
     (b) => !b.brand.is_deleted && (b.role === 'representative' || b.role === 'moderator')
