@@ -125,24 +125,24 @@ export function RegisterPage() {
 
   return (
     <div className="max-w-[480px] mx-auto px-4 py-16 md:py-24">
-      <div className="bg-[#F2E9DB] border border-amov-dark p-6 sm:p-10">
+      <div className="bg-[#F2E9DB] border border-sf-dark p-6 sm:p-10">
         <div className="mb-8 text-center">
-          <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-amov-muted">
+          <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
             {step === 'FORM' ? '( РЕГИСТРАЦИЯ )' : '( ВЕРИФИКАЦИЯ )'}
           </span>
-          <h1 className="font-serif text-3xl md:text-4xl uppercase tracking-wider text-amov-dark mt-2">
+          <h1 className="font-serif text-3xl md:text-4xl uppercase tracking-wider text-sf-dark mt-2">
             {step === 'FORM' ? 'СОЗДАНИЕ АККАУНТА' : 'ПОДТВЕРЖДЕНИЕ EMAIL'}
           </h1>
         </div>
 
         {successNotice && (
-          <div className="mb-6 p-3 border border-amov-dark bg-amov-dark text-amov-cream text-xs uppercase tracking-wider">
+          <div className="mb-6 p-3 border border-sf-dark bg-sf-dark text-sf-cream text-xs uppercase tracking-wider">
             {successNotice}
           </div>
         )}
 
         {errorMessage && (
-          <div className="mb-6 p-3 border border-amov-dark bg-amov-dark/5 text-amov-dark text-xs uppercase tracking-wider">
+          <div className="mb-6 p-3 border border-sf-dark bg-sf-dark/5 text-sf-dark text-xs uppercase tracking-wider">
             {errorMessage}
           </div>
         )}
@@ -152,7 +152,7 @@ export function RegisterPage() {
             <div>
               <label
                 htmlFor="reg-login"
-                className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-amov-dark mb-1.5"
+                className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-sf-dark mb-1.5"
               >
                 ЛОГИН *
               </label>
@@ -163,14 +163,14 @@ export function RegisterPage() {
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
                 placeholder="USER_LOGIN"
-                className="w-full bg-[#F2E9DB] border border-amov-dark/40 focus:border-amov-dark px-3.5 py-2.5 text-xs font-sans uppercase tracking-wider outline-none text-amov-black transition-colors"
+                className="w-full bg-[#F2E9DB] border border-sf-dark/40 focus:border-sf-dark px-3.5 py-2.5 text-xs font-sans uppercase tracking-wider outline-none text-sf-black transition-colors"
               />
             </div>
 
             <div>
               <label
                 htmlFor="reg-email"
-                className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-amov-dark mb-1.5"
+                className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-sf-dark mb-1.5"
               >
                 EMAIL (НЕОБЯЗАТЕЛЬНО)
               </label>
@@ -180,9 +180,9 @@ export function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="NAME@EXAMPLE.COM"
-                className="w-full bg-[#F2E9DB] border border-amov-dark/40 focus:border-amov-dark px-3.5 py-2.5 text-xs font-sans tracking-wider outline-none text-amov-black transition-colors"
+                className="w-full bg-[#F2E9DB] border border-sf-dark/40 focus:border-sf-dark px-3.5 py-2.5 text-xs font-sans tracking-wider outline-none text-sf-black transition-colors"
               />
-              <p className="mt-1 text-[10px] text-amov-muted uppercase tracking-wider">
+              <p className="mt-1 text-[10px] text-sf-muted uppercase tracking-wider">
                 При указании почты потребуется подтверждение кодом XXX-XXX
               </p>
             </div>
@@ -190,7 +190,7 @@ export function RegisterPage() {
             <div>
               <label
                 htmlFor="reg-password"
-                className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-amov-dark mb-1.5"
+                className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-sf-dark mb-1.5"
               >
                 ПАРОЛЬ *
               </label>
@@ -201,28 +201,28 @@ export function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-[#F2E9DB] border border-amov-dark/40 focus:border-amov-dark px-3.5 py-2.5 text-xs font-sans tracking-wider outline-none text-amov-black transition-colors"
+                className="w-full bg-[#F2E9DB] border border-sf-dark/40 focus:border-sf-dark px-3.5 py-2.5 text-xs font-sans tracking-wider outline-none text-sf-black transition-colors"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-amov-dark text-amov-cream hover:bg-amov-black py-3 text-xs font-sans font-semibold uppercase tracking-widest transition-colors disabled:opacity-50"
+              className="w-full bg-sf-dark text-sf-cream hover:bg-sf-black py-3 text-xs font-sans font-semibold uppercase tracking-widest transition-colors disabled:opacity-50"
             >
               {isLoading ? 'РЕГИСТРАЦИЯ...' : 'СОЗДАТЬ АККАУНТ ↗'}
             </button>
           </form>
         ) : (
           <form onSubmit={handleVerifySubmit} className="space-y-5">
-            <p className="text-xs uppercase tracking-wider text-amov-muted leading-relaxed">
+            <p className="text-xs uppercase tracking-wider text-sf-muted leading-relaxed">
               Введите 6-значный код подтверждения, отправленный на указанный email:
             </p>
 
             <div>
               <label
                 htmlFor="verify-code"
-                className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-amov-dark mb-1.5"
+                className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-sf-dark mb-1.5"
               >
                 КОД ПОДТВЕРЖДЕНИЯ (XXX-XXX) *
               </label>
@@ -234,14 +234,14 @@ export function RegisterPage() {
                 value={code}
                 onChange={(e) => handleCodeChange(e.target.value)}
                 placeholder="123-456"
-                className="w-full bg-[#F2E9DB] border border-amov-dark text-center tracking-widest text-lg font-mono py-2.5 uppercase outline-none text-amov-black transition-colors"
+                className="w-full bg-[#F2E9DB] border border-sf-dark text-center tracking-widest text-lg font-mono py-2.5 uppercase outline-none text-sf-black transition-colors"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-amov-dark text-amov-cream hover:bg-amov-black py-3 text-xs font-sans font-semibold uppercase tracking-widest transition-colors disabled:opacity-50"
+              className="w-full bg-sf-dark text-sf-cream hover:bg-sf-black py-3 text-xs font-sans font-semibold uppercase tracking-widest transition-colors disabled:opacity-50"
             >
               {isLoading ? 'ПРОВЕРКА...' : 'ПОДТВЕРДИТЬ КОД ↗'}
             </button>
@@ -252,17 +252,17 @@ export function RegisterPage() {
                 setStep('FORM');
                 setErrorMessage(null);
               }}
-              className="w-full border border-amov-dark py-2 text-[11px] font-sans uppercase tracking-wider text-amov-dark hover:bg-amov-dark hover:text-amov-cream transition-colors"
+              className="w-full border border-sf-dark py-2 text-[11px] font-sans uppercase tracking-wider text-sf-dark hover:bg-sf-dark hover:text-sf-cream transition-colors"
             >
               ( ВЕРНУТЬСЯ К ФОРМЕ )
             </button>
           </form>
         )}
 
-        <div className="mt-8 pt-6 border-t border-amov-dark/15 text-center">
+        <div className="mt-8 pt-6 border-t border-sf-dark/15 text-center">
           <Link
             to={returnTo !== '/' ? `/login?redirect=${encodeURIComponent(returnTo)}` : '/login'}
-            className="text-[11px] font-sans uppercase tracking-wider text-amov-dark hover:opacity-70 transition-opacity"
+            className="text-[11px] font-sans uppercase tracking-wider text-sf-dark hover:opacity-70 transition-opacity"
           >
             УЖЕ ЕСТЬ АККАУНТ? ВОЙТИ ↗
           </Link>

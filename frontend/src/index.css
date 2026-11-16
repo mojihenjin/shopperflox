@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --font-serif: 'ArsenicaText', 'Cormorant Garamond', 'Times New Roman', Georgia, serif;
+    --font-serif: 'Times New Roman', Georgia, serif;
     --font-sans: 'Golos Text', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
   }
 
@@ -32,7 +32,6 @@
   }
 }
 
-/* Custom scrollbar matching Quiet Luxury */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

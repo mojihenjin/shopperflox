@@ -141,7 +141,7 @@ export function ProductDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-[1280px] mx-auto px-4 py-32 text-center text-xs font-sans uppercase tracking-widest text-amov-muted">
+      <div className="max-w-[1280px] mx-auto px-4 py-32 text-center text-xs font-sans uppercase tracking-widest text-sf-muted">
         ( ЗАГРУЗКА ИНФОРМАЦИИ О МОДЕЛИ... )
       </div>
     );
@@ -150,15 +150,21 @@ export function ProductDetailPage() {
   if (error || !product) {
     return (
       <div className="max-w-[600px] mx-auto px-4 py-24 text-center">
-        <h1 className="font-serif text-3xl uppercase tracking-wider text-amov-dark">
+        <h1 className="font-serif text-3xl uppercase tracking-wider text-sf-dark">
           МОДЕЛЬ НЕ НАЙДЕНА
         </h1>
-        <p className="mt-2 text-xs font-sans uppercase tracking-wider text-amov-muted">
+        <p className="mt-2 text-xs font-sans uppercase tracking-wider text-sf-muted">
           Возможно, товар был перемещён в архив или ссылка устарела.
         </p>
+        <div className="mt-3 text-xs font-sans uppercase tracking-wider text-sf-muted">
+          СЛУЖБА ПОДДЕРЖКИ:{' '}
+          <a href="mailto:support@shopper.flox" className="text-sf-dark underline underline-offset-4">
+            support@shopper.flox
+          </a>
+        </div>
         <Link
           to="/"
-          className="mt-6 inline-block bg-amov-dark text-amov-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider"
+          className="mt-6 inline-block bg-sf-dark text-sf-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider"
         >
           ВЕРНУТЬСЯ В КАТАЛОГ ↗
         </Link>
@@ -182,9 +188,9 @@ export function ProductDetailPage() {
   return (
     <div className="w-full bg-[#F2E9DB]">
       {/* Breadcrumbs */}
-      <div className="border-b border-amov-dark/15 py-3">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 flex items-center gap-2 text-[11px] font-sans uppercase tracking-wider text-amov-muted">
-          <Link to="/" className="hover:text-amov-dark">
+      <div className="border-b border-sf-dark/15 py-3">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 flex items-center gap-2 text-[11px] font-sans uppercase tracking-wider text-sf-muted">
+          <Link to="/" className="hover:text-sf-dark">
             КАТАЛОГ
           </Link>
           <span>/</span>
@@ -194,13 +200,13 @@ export function ProductDetailPage() {
               <span>/</span>
             </>
           )}
-          <span className="text-amov-dark font-medium truncate">{product.title}</span>
+          <span className="text-sf-dark font-medium truncate">{product.title}</span>
         </div>
       </div>
 
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-10 md:py-16">
         {feedbackNotice && (
-          <div className="mb-8 p-3.5 bg-amov-dark text-amov-cream text-xs font-sans uppercase tracking-widest text-center">
+          <div className="mb-8 p-3.5 bg-sf-dark text-sf-cream text-xs font-sans uppercase tracking-widest text-center">
             {feedbackNotice}
           </div>
         )}
@@ -218,8 +224,8 @@ export function ProductDetailPage() {
                     onClick={() => setSelectedImageIndex(idx)}
                     className={`relative w-16 h-24 md:w-20 md:h-28 flex-shrink-0 border transition-all ${
                       selectedImageIndex === idx
-                        ? 'border-amov-dark ring-1 ring-amov-dark'
-                        : 'border-amov-dark/25 opacity-70 hover:opacity-100'
+                        ? 'border-sf-dark ring-1 ring-sf-dark'
+                        : 'border-sf-dark/25 opacity-70 hover:opacity-100'
                     }`}
                   >
                     <img
@@ -234,7 +240,7 @@ export function ProductDetailPage() {
 
             {/* Main Stage Image (2:3 aspect ratio) */}
             <div className="flex-1 order-1 md:order-2">
-              <div className="relative aspect-[2/3] w-full bg-[#E5DBCB] border border-amov-dark/20 overflow-hidden">
+              <div className="relative aspect-[2/3] w-full bg-[#E5DBCB] border border-sf-dark/20 overflow-hidden">
                 <img
                   src={formatImageUrl(activeImage, product.title)}
                   alt={product.title}
@@ -248,30 +254,30 @@ export function ProductDetailPage() {
           <div className="lg:col-span-5 flex flex-col justify-between space-y-8">
             <div className="space-y-6">
               {product.brand && (
-                <div className="text-[12px] font-sans font-semibold uppercase tracking-widest text-amov-muted">
+                <div className="text-[12px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
                   [ {product.brand} ]
                 </div>
               )}
 
-              <h1 className="font-serif text-3xl sm:text-4xl uppercase tracking-wider text-amov-dark leading-snug">
+              <h1 className="font-serif text-3xl sm:text-4xl uppercase tracking-wider text-sf-dark leading-snug">
                 {product.title}
               </h1>
 
               <div className="flex items-baseline gap-4">
-                <span className="font-sans text-2xl font-bold text-amov-black">
+                <span className="font-sans text-2xl font-bold text-sf-black">
                   {formatPrice(currentPrice)}
                 </span>
                 {selectedVariant?.price_override && (
-                  <span className="text-xs font-sans uppercase tracking-wider text-amov-muted line-through">
+                  <span className="text-xs font-sans uppercase tracking-wider text-sf-muted line-through">
                     {formatPrice(product.base_price)}
                   </span>
                 )}
               </div>
 
               {/* SKU & Availability Badge */}
-              <div className="flex items-center gap-3 text-xs font-sans uppercase tracking-wider border-y border-amov-dark/15 py-3">
-                <span className="text-amov-muted">АРТИКУЛ / SKU:</span>
-                <span className="font-mono font-semibold text-amov-dark">
+              <div className="flex items-center gap-3 text-xs font-sans uppercase tracking-wider border-y border-sf-dark/15 py-3">
+                <span className="text-sf-muted">АРТИКУЛ / SKU:</span>
+                <span className="font-mono font-semibold text-sf-dark">
                   {selectedVariant?.sku || 'НЕ ВЫБРАН'}
                 </span>
                 <span className="ml-auto">
@@ -280,14 +286,14 @@ export function ProductDetailPage() {
                       В НАЛИЧИИ ({selectedVariant?.stock_quantity ?? 'МНОГО'})
                     </span>
                   ) : (
-                    <span className="text-amov-coral font-semibold">НЕТ В НАЛИЧИИ</span>
+                    <span className="text-sf-coral font-semibold">НЕТ В НАЛИЧИИ</span>
                   )}
                 </span>
               </div>
 
               {/* Description */}
               {product.description && (
-                <div className="text-xs font-sans uppercase tracking-wider text-amov-dark/80 leading-relaxed">
+                <div className="text-xs font-sans uppercase tracking-wider text-sf-dark/80 leading-relaxed">
                   {product.description}
                 </div>
               )}
@@ -295,7 +301,7 @@ export function ProductDetailPage() {
               {/* Variant Picker (Color & Size) */}
               {variants.length > 0 && (
                 <div className="space-y-4 pt-2">
-                  <div className="text-xs font-sans font-semibold uppercase tracking-wider text-amov-dark">
+                  <div className="text-xs font-sans font-semibold uppercase tracking-wider text-sf-dark">
                     ВЫБЕРИТЕ ВАРИАНТ МОДЕЛИ:
                   </div>
 
@@ -309,15 +315,15 @@ export function ProductDetailPage() {
                           onClick={() => setSelectedVariant(v)}
                           className={`p-3 text-left border transition-colors flex flex-col justify-between ${
                             isSelected
-                              ? 'bg-amov-dark text-amov-cream border-amov-dark'
-                              : 'bg-[#F2E9DB] text-amov-dark border-amov-dark/30 hover:border-amov-dark'
+                              ? 'bg-sf-dark text-sf-cream border-sf-dark'
+                              : 'bg-[#F2E9DB] text-sf-dark border-sf-dark/30 hover:border-sf-dark'
                           }`}
                         >
                           <div className="flex items-center justify-between text-xs font-semibold uppercase">
                             <span>{v.color_name}</span>
                             {v.color_hex && (
                               <span
-                                className="w-3.5 h-3.5 border border-amov-cream/40 inline-block"
+                                className="w-3.5 h-3.5 border border-sf-cream/40 inline-block"
                                 style={{ backgroundColor: v.color_hex }}
                               />
                             )}
@@ -336,25 +342,25 @@ export function ProductDetailPage() {
               {/* Quantity selector & Actions */}
               <div className="space-y-3 pt-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-sans uppercase tracking-wider text-amov-dark">
+                  <span className="text-xs font-sans uppercase tracking-wider text-sf-dark">
                     КОЛИЧЕСТВО:
                   </span>
-                  <div className="flex items-center border border-amov-dark">
+                  <div className="flex items-center border border-sf-dark">
                     <button
                       type="button"
                       onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                       disabled={quantity <= 1}
-                      className="px-3 py-1 text-sm font-sans hover:bg-amov-dark hover:text-amov-cream transition-colors disabled:opacity-40"
+                      className="px-3 py-1 text-sm font-sans hover:bg-sf-dark hover:text-sf-cream transition-colors disabled:opacity-40"
                     >
                       −
                     </button>
-                    <span className="px-4 py-1 text-xs font-mono font-bold text-amov-dark">
+                    <span className="px-4 py-1 text-xs font-mono font-bold text-sf-dark">
                       {quantity}
                     </span>
                     <button
                       type="button"
                       onClick={() => setQuantity((q) => q + 1)}
-                      className="px-3 py-1 text-sm font-sans hover:bg-amov-dark hover:text-amov-cream transition-colors"
+                      className="px-3 py-1 text-sm font-sans hover:bg-sf-dark hover:text-sf-cream transition-colors"
                     >
                       +
                     </button>
@@ -366,7 +372,7 @@ export function ProductDetailPage() {
                     type="button"
                     disabled={!inStock || addToCartMutation.isPending}
                     onClick={() => addToCartMutation.mutate()}
-                    className="flex-1 bg-amov-dark text-amov-cream hover:bg-amov-black py-3.5 px-6 text-xs font-sans font-semibold uppercase tracking-widest transition-colors disabled:opacity-40"
+                    className="flex-1 bg-sf-dark text-sf-cream hover:bg-sf-black py-3.5 px-6 text-xs font-sans font-semibold uppercase tracking-widest transition-colors disabled:opacity-40"
                   >
                     {addToCartMutation.isPending ? 'ДОБАВЛЕНИЕ...' : 'ДОБАВИТЬ В КОРЗИНУ ↗'}
                   </button>
@@ -374,7 +380,7 @@ export function ProductDetailPage() {
                   <button
                     type="button"
                     onClick={() => toggleFavoriteMutation.mutate()}
-                    className="border border-amov-dark hover:bg-amov-dark hover:text-amov-cream py-3.5 px-6 text-xs font-sans font-semibold uppercase tracking-wider transition-colors"
+                    className="border border-sf-dark hover:bg-sf-dark hover:text-sf-cream py-3.5 px-6 text-xs font-sans font-semibold uppercase tracking-wider transition-colors"
                   >
                     {isFavorite ? '♥ В ИЗБРАННОМ' : '♡ В ИЗБРАННОЕ'}
                   </button>
@@ -383,26 +389,26 @@ export function ProductDetailPage() {
             </div>
 
             {/* Editorial Features Guarantee */}
-            <div className="border-t border-amov-dark/20 pt-6 space-y-2 text-[11px] font-sans uppercase tracking-wider text-amov-muted">
+            <div className="border-t border-sf-dark/20 pt-6 space-y-2 text-[11px] font-sans uppercase tracking-wider text-sf-muted">
               <div>✓ ОРИГИНАЛЬНАЯ КОМПЛЕКТАЦИЯ: ФУТЛЯР + САЛФЕТКА ИЗ МИКРОФИБРЫ</div>
               <div>✓ БЕСПЛАТНАЯ ПРИМЕРКА ПРИ ДОСТАВКЕ КУРЬЕРОМ</div>
-              <div>✓ ГАРАНТИЯ КАЧЕСТВА AMÓV — 12 МЕСЯЦЕВ</div>
+              <div>✓ ГАРАНТИЯ КАЧЕСТВА SHOPPERFLOX — 12 МЕСЯЦЕВ</div>
             </div>
           </div>
         </div>
 
         {/* REVIEWS SECTION */}
-        <section className="mt-20 pt-12 border-t border-amov-dark/20">
+        <section className="mt-20 pt-12 border-t border-sf-dark/20">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
             <div>
-              <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-amov-muted">
+              <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
                 ( ОТЗЫВЫ И ВПЕЧАТЛЕНИЯ )
               </span>
-              <h2 className="font-serif text-3xl uppercase tracking-wider text-amov-dark mt-1">
+              <h2 className="font-serif text-3xl uppercase tracking-wider text-sf-dark mt-1">
                 ОТЗЫВЫ ПОКУПАТЕЛЕЙ
               </h2>
             </div>
-            <div className="text-xs font-sans uppercase tracking-wider text-amov-muted">
+            <div className="text-xs font-sans uppercase tracking-wider text-sf-muted">
               ВСЕГО ОТЗЫВОВ: {reviews.length}
             </div>
           </div>
@@ -411,30 +417,30 @@ export function ProductDetailPage() {
             {/* Reviews List (7 cols) */}
             <div className="lg:col-span-7 space-y-6">
               {reviews.length === 0 ? (
-                <div className="p-8 border border-amov-dark/20 text-center text-xs font-sans uppercase tracking-widest text-amov-muted">
+                <div className="p-8 border border-sf-dark/20 text-center text-xs font-sans uppercase tracking-widest text-sf-muted">
                   ( У ЭТОЙ МОДЕЛИ ЕЩЕ НЕТ ОТЗЫВОВ. СТАНЬТЕ ПЕРВЫМ! )
                 </div>
               ) : (
                 reviews.map((rev) => (
-                  <div key={rev.id} className="p-5 border border-amov-dark/20 bg-amov-cream/40 space-y-3">
+                  <div key={rev.id} className="p-5 border border-sf-dark/20 bg-sf-cream/40 space-y-3">
                     <div className="flex items-center justify-between text-xs font-sans">
                       <div className="flex items-center gap-2">
-                        <span className="font-serif font-bold text-amov-dark tracking-wider">
+                        <span className="font-serif font-bold text-sf-dark tracking-wider">
                           {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
                         </span>
-                        <span className="font-semibold text-amov-dark">({rev.rating}/5)</span>
+                        <span className="font-semibold text-sf-dark">({rev.rating}/5)</span>
                       </div>
-                      <span className="text-amov-muted text-[11px]">{formatDate(rev.created_at)}</span>
+                      <span className="text-sf-muted text-[11px]">{formatDate(rev.created_at)}</span>
                     </div>
 
                     {rev.fit_feedback && (
-                      <div className="inline-block bg-amov-dark/10 text-amov-dark px-2 py-0.5 text-[10px] font-sans uppercase tracking-widest">
+                      <div className="inline-block bg-sf-dark/10 text-sf-dark px-2 py-0.5 text-[10px] font-sans uppercase tracking-widest">
                         ПОСАДКА: {rev.fit_feedback === 'true_to_size' ? 'В РАЗМЕР' : rev.fit_feedback === 'runs_small' ? 'МАЛОМЕРИТ' : 'БОЛЬШЕМЕРИТ'}
                       </div>
                     )}
 
                     {rev.comment && (
-                      <p className="text-xs font-sans uppercase tracking-wider text-amov-dark leading-relaxed">
+                      <p className="text-xs font-sans uppercase tracking-wider text-sf-dark leading-relaxed">
                         {rev.comment}
                       </p>
                     )}
@@ -445,20 +451,20 @@ export function ProductDetailPage() {
 
             {/* Review Form (5 cols) */}
             <div className="lg:col-span-5">
-              <div className="border border-amov-dark p-6 bg-[#F2E9DB]">
-                <h3 className="font-serif text-xl uppercase tracking-wider text-amov-dark mb-4">
+              <div className="border border-sf-dark p-6 bg-[#F2E9DB]">
+                <h3 className="font-serif text-xl uppercase tracking-wider text-sf-dark mb-4">
                   ОСТАВИТЬ ОТЗЫВ
                 </h3>
 
                 {!isAuthenticated ? (
                   <div className="space-y-4 text-center py-6">
-                    <p className="text-xs font-sans uppercase tracking-wider text-amov-muted">
+                    <p className="text-xs font-sans uppercase tracking-wider text-sf-muted">
                       Чтобы поделиться впечатлениями о покупке, необходимо войти в аккаунт
                     </p>
                     <Link
                       to={loginRedirectUrl}
                       state={{ from: location }}
-                      className="inline-block bg-amov-dark text-amov-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider hover:bg-amov-black transition-colors"
+                      className="inline-block bg-sf-dark text-sf-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider hover:bg-sf-black transition-colors"
                     >
                       ВОЙТИ В АККАУНТ ↗
                     </Link>
@@ -466,20 +472,20 @@ export function ProductDetailPage() {
                 ) : (
                   <form onSubmit={handleReviewSubmit} className="space-y-4">
                     {reviewSuccess && (
-                      <div className="p-3 bg-amov-dark text-amov-cream text-xs uppercase tracking-wider">
+                      <div className="p-3 bg-sf-dark text-sf-cream text-xs uppercase tracking-wider">
                         {reviewSuccess}
                       </div>
                     )}
 
                     {reviewError && (
-                      <div className="p-3 border border-amov-dark bg-amov-dark/5 text-amov-dark text-xs uppercase tracking-wider">
+                      <div className="p-3 border border-sf-dark bg-sf-dark/5 text-sf-dark text-xs uppercase tracking-wider">
                         {reviewError}
                       </div>
                     )}
 
                     {/* Rating Selector */}
                     <div>
-                      <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-amov-dark mb-1.5">
+                      <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-sf-dark mb-1.5">
                         ОЦЕНКА *
                       </label>
                       <div className="flex gap-2">
@@ -490,8 +496,8 @@ export function ProductDetailPage() {
                             onClick={() => setReviewRating(val)}
                             className={`flex-1 py-1.5 border text-xs font-sans font-semibold transition-colors ${
                               reviewRating >= val
-                                ? 'bg-amov-dark text-amov-cream border-amov-dark'
-                                : 'border-amov-dark/30 text-amov-dark'
+                                ? 'bg-sf-dark text-sf-cream border-sf-dark'
+                                : 'border-sf-dark/30 text-sf-dark'
                             }`}
                           >
                             ★ {val}
@@ -502,7 +508,7 @@ export function ProductDetailPage() {
 
                     {/* Fit Feedback */}
                     <div>
-                      <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-amov-dark mb-1.5">
+                      <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-sf-dark mb-1.5">
                         СООТВЕТСТВИЕ РАЗМЕРУ
                       </label>
                       <div className="grid grid-cols-3 gap-2">
@@ -513,8 +519,8 @@ export function ProductDetailPage() {
                             onClick={() => setReviewFit(fit)}
                             className={`py-1.5 px-1 border text-[10px] font-sans uppercase tracking-wider transition-colors ${
                               reviewFit === fit
-                                ? 'bg-amov-dark text-amov-cream border-amov-dark font-semibold'
-                                : 'border-amov-dark/30 text-amov-dark hover:border-amov-dark'
+                                ? 'bg-sf-dark text-sf-cream border-sf-dark font-semibold'
+                                : 'border-sf-dark/30 text-sf-dark hover:border-sf-dark'
                             }`}
                           >
                             {fit === 'runs_small' ? 'МАЛОМЕРИТ' : fit === 'true_to_size' ? 'В РАЗМЕР' : 'БОЛЬШЕМЕРИТ'}
@@ -527,7 +533,7 @@ export function ProductDetailPage() {
                     <div>
                       <label
                         htmlFor="rev-comment"
-                        className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-amov-dark mb-1.5"
+                        className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-sf-dark mb-1.5"
                       >
                         КОММЕНТАРИЙ
                       </label>
@@ -537,14 +543,14 @@ export function ProductDetailPage() {
                         value={reviewComment}
                         onChange={(e) => setReviewComment(e.target.value)}
                         placeholder="ПОДЕЛИТЕСЬ ВАШИМИ ВПЕЧАТЛЕНИЯМИ О ПОСАДКЕ И МАТЕРИАЛАХ..."
-                        className="w-full bg-[#F2E9DB] border border-amov-dark/30 focus:border-amov-dark p-2.5 text-xs font-sans uppercase tracking-wider outline-none text-amov-black resize-none"
+                        className="w-full bg-[#F2E9DB] border border-sf-dark/30 focus:border-sf-dark p-2.5 text-xs font-sans uppercase tracking-wider outline-none text-sf-black resize-none"
                       />
                     </div>
 
                     <button
                       type="submit"
                       disabled={createReviewMutation.isPending}
-                      className="w-full bg-amov-dark text-amov-cream hover:bg-amov-black py-3 text-xs font-sans font-semibold uppercase tracking-widest transition-colors disabled:opacity-50"
+                      className="w-full bg-sf-dark text-sf-cream hover:bg-sf-black py-3 text-xs font-sans font-semibold uppercase tracking-widest transition-colors disabled:opacity-50"
                     >
                       {createReviewMutation.isPending ? 'ОТПРАВКА...' : 'ОПУБЛИКОВАТЬ ОТЗЫВ ↗'}
                     </button>

@@ -29,16 +29,16 @@ export function FavoritesPage() {
   if (!isAuthenticated) {
     return (
       <div className="max-w-[500px] mx-auto px-4 py-24 text-center">
-        <h1 className="font-serif text-3xl uppercase tracking-wider text-amov-dark">
+        <h1 className="font-serif text-3xl uppercase tracking-wider text-sf-dark">
           ИЗБРАННОЕ
         </h1>
-        <p className="mt-3 text-xs font-sans uppercase tracking-wider text-amov-muted">
+        <p className="mt-3 text-xs font-sans uppercase tracking-wider text-sf-muted">
           Войдите в аккаунт, чтобы сохранять понравившиеся модели солнцезащитных очков.
         </p>
         <button
           type="button"
           onClick={() => navigate(loginRedirectUrl, { state: { from: location } })}
-          className="mt-6 inline-block bg-amov-dark text-amov-cream px-8 py-3 text-xs font-sans uppercase tracking-widest"
+          className="mt-6 inline-block bg-sf-dark text-sf-cream px-8 py-3 text-xs font-sans uppercase tracking-widest"
         >
           ВОЙТИ В АККАУНТ ↗
         </button>
@@ -50,35 +50,35 @@ export function FavoritesPage() {
 
   return (
     <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-12 md:py-16">
-      <div className="border-b border-amov-dark/20 pb-6 mb-10 flex items-end justify-between">
+      <div className="border-b border-sf-dark/20 pb-6 mb-10 flex items-end justify-between">
         <div>
-          <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-amov-muted">
+          <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
             ( ПЕРСОНАЛЬНЫЙ ВИШЛИСТ )
           </span>
-          <h1 className="font-serif text-3xl md:text-5xl uppercase tracking-wider text-amov-dark mt-1">
+          <h1 className="font-serif text-3xl md:text-5xl uppercase tracking-wider text-sf-dark mt-1">
             ИЗБРАННЫЕ МОДЕЛИ
           </h1>
         </div>
-        <div className="text-xs font-sans uppercase tracking-wider text-amov-muted">
+        <div className="text-xs font-sans uppercase tracking-wider text-sf-muted">
           ВСЕГО: {products.length}
         </div>
       </div>
 
       {isLoading ? (
-        <div className="py-24 text-center text-xs font-sans uppercase tracking-widest text-amov-muted">
+        <div className="py-24 text-center text-xs font-sans uppercase tracking-widest text-sf-muted">
           ( ЗАГРУЗКА ИЗБРАННОГО... )
         </div>
       ) : products.length === 0 ? (
-        <div className="py-20 text-center border border-amov-dark/20 p-8">
-          <div className="font-serif text-2xl uppercase tracking-wider text-amov-dark">
+        <div className="py-20 text-center border border-sf-dark/20 p-8">
+          <div className="font-serif text-2xl uppercase tracking-wider text-sf-dark">
             ВАШ СПИСОК ИЗБРАННОГО ПУСТ
           </div>
-          <p className="mt-2 text-xs font-sans uppercase tracking-wider text-amov-muted">
+          <p className="mt-2 text-xs font-sans uppercase tracking-wider text-sf-muted">
             Отмечайте значком «♡» понравившиеся очки в каталоге, чтобы вернуться к ним позже
           </p>
           <Link
             to="/"
-            className="mt-6 inline-block bg-amov-dark text-amov-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider"
+            className="mt-6 inline-block bg-sf-dark text-sf-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider"
           >
             ПЕРЕЙТИ В КАТАЛОГ ↗
           </Link>

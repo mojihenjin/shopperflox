@@ -124,10 +124,10 @@ export function Header() {
   const hasSearchResults = brands.length > 0 || products.length > 0 || variants.length > 0;
 
   return (
-    <header className="sticky top-0 z-50 bg-[#F2E9DB] border-b border-amov-dark/15 text-amov-dark">
+    <header className="sticky top-0 z-50 bg-[#F2E9DB] border-b border-sf-dark/15 text-sf-dark">
       {/* Top Banner / Philosophy slogan */}
-      <div className="bg-amov-dark text-amov-cream text-[11px] font-sans tracking-widest uppercase py-1.5 px-4 text-center border-b border-amov-cream/20">
-        <span>AMÓV — СТИЛЬ В ДЕТАЛЯХ &nbsp;|&nbsp; БЕСПЛАТНАЯ ДОСТАВКА ОТ 10 000 ₽</span>
+      <div className="bg-sf-dark text-sf-cream text-[11px] font-sans tracking-widest uppercase py-1.5 px-4 text-center border-b border-sf-cream/20">
+        <span>SHOPPERFLOX — СТИЛЬ В ДЕТАЛЯХ &nbsp;|&nbsp; БЕСПЛАТНАЯ ДОСТАВКА ОТ 10 000 ₽</span>
       </div>
 
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
@@ -136,9 +136,9 @@ export function Header() {
           {/* Logo */}
           <Link
             to="/"
-            className="font-serif text-2xl md:text-3xl font-normal tracking-wider text-amov-dark hover:opacity-80 transition-opacity whitespace-nowrap"
+            className="font-serif text-2xl md:text-3xl font-normal tracking-wider text-sf-dark hover:opacity-80 transition-opacity whitespace-nowrap"
           >
-            AMÓV
+            SHOPPERFLOX
           </Link>
 
           {/* Search bar 3-in-1 */}
@@ -153,7 +153,7 @@ export function Header() {
                 }}
                 onFocus={() => setIsSearchOpen(true)}
                 placeholder="ПОИСК: БРЕНД, МОДЕЛЬ, АРТИКУЛ..."
-                className="w-full bg-[#F2E9DB] border border-amov-dark/30 focus:border-amov-dark px-3 py-2 text-[12px] md:text-[13px] tracking-wider uppercase font-sans placeholder:text-amov-muted/70 text-amov-black outline-none transition-colors"
+                className="w-full bg-[#F2E9DB] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-[12px] md:text-[13px] tracking-wider uppercase font-sans placeholder:text-sf-muted/70 text-sf-black outline-none transition-colors"
               />
               {searchQuery ? (
                 <button
@@ -162,7 +162,7 @@ export function Header() {
                     setSearchQuery('');
                     setIsSearchOpen(false);
                   }}
-                  className="absolute right-8 text-amov-muted hover:text-amov-black px-1 text-sm font-sans"
+                  className="absolute right-8 text-sf-muted hover:text-sf-black px-1 text-sm font-sans"
                   title="Очистить"
                 >
                   ×
@@ -170,7 +170,7 @@ export function Header() {
               ) : null}
               <button
                 type="submit"
-                className="absolute right-2 text-amov-dark hover:opacity-70 text-xs font-semibold px-1"
+                className="absolute right-2 text-sf-dark hover:opacity-70 text-xs font-semibold px-1"
                 title="Искать"
               >
                 ↗
@@ -179,21 +179,21 @@ export function Header() {
 
             {/* Dropdown 3-in-1: Brands, Products, Variants */}
             {isSearchOpen && debouncedQuery.length >= 2 && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-[#F2E9DB] border border-amov-dark shadow-none z-50 max-h-[460px] overflow-y-auto">
+              <div className="absolute left-0 right-0 top-full mt-1 bg-[#F2E9DB] border border-sf-dark shadow-none z-50 max-h-[460px] overflow-y-auto">
                 {isSearching ? (
-                  <div className="p-4 text-xs font-sans uppercase tracking-wider text-amov-muted">
+                  <div className="p-4 text-xs font-sans uppercase tracking-wider text-sf-muted">
                     ( ПОИСК В КАТАЛОГЕ... )
                   </div>
                 ) : !hasSearchResults ? (
-                  <div className="p-4 text-xs font-sans uppercase tracking-wider text-amov-muted">
+                  <div className="p-4 text-xs font-sans uppercase tracking-wider text-sf-muted">
                     ( ПО ЗАПРОСУ «{debouncedQuery}» НИЧЕГО НЕ НАЙДЕНО )
                   </div>
                 ) : (
-                  <div className="divide-y divide-amov-dark/15 text-xs font-sans">
+                  <div className="divide-y divide-sf-dark/15 text-xs font-sans">
                     {/* Brands Section */}
                     {brands.length > 0 && (
                       <div className="p-3">
-                        <div className="text-[11px] font-semibold uppercase tracking-wider text-amov-muted mb-2">
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-sf-muted mb-2">
                           ( БРЕНДЫ )
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -202,7 +202,7 @@ export function Header() {
                               key={brand.name}
                               type="button"
                               onClick={() => selectBrand(brand.name)}
-                              className="px-2.5 py-1 border border-amov-dark/25 hover:border-amov-dark hover:bg-amov-dark hover:text-amov-cream text-[11px] uppercase tracking-wider transition-colors"
+                              className="px-2.5 py-1 border border-sf-dark/25 hover:border-sf-dark hover:bg-sf-dark hover:text-sf-cream text-[11px] uppercase tracking-wider transition-colors"
                             >
                               {brand.name} ({brand.products_count})
                             </button>
@@ -214,7 +214,7 @@ export function Header() {
                     {/* Products Section */}
                     {products.length > 0 && (
                       <div className="p-3">
-                        <div className="text-[11px] font-semibold uppercase tracking-wider text-amov-muted mb-2">
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-sf-muted mb-2">
                           ( МОДЕЛИ И ТОВАРЫ )
                         </div>
                         <div className="space-y-1.5">
@@ -223,19 +223,19 @@ export function Header() {
                               key={prod.id}
                               type="button"
                               onClick={() => selectProduct(prod.slug)}
-                              className="w-full text-left flex items-baseline justify-between p-1.5 hover:bg-amov-dark/5 transition-colors group"
+                              className="w-full text-left flex items-baseline justify-between p-1.5 hover:bg-sf-dark/5 transition-colors group"
                             >
                               <div className="truncate pr-2">
-                                <span className="font-serif text-sm text-amov-black group-hover:text-amov-dark">
+                                <span className="font-serif text-sm text-sf-black group-hover:text-sf-dark">
                                   {prod.title}
                                 </span>
                                 {prod.brand && (
-                                  <span className="text-[10px] text-amov-muted ml-2 uppercase">
+                                  <span className="text-[10px] text-sf-muted ml-2 uppercase">
                                     [{prod.brand}]
                                   </span>
                                 )}
                               </div>
-                              <span className="font-sans font-semibold text-amov-dark whitespace-nowrap">
+                              <span className="font-sans font-semibold text-sf-dark whitespace-nowrap">
                                 {Number(prod.base_price).toLocaleString('ru-RU')} ₽ ↗
                               </span>
                             </button>
@@ -247,7 +247,7 @@ export function Header() {
                     {/* Variants Section */}
                     {variants.length > 0 && (
                       <div className="p-3">
-                        <div className="text-[11px] font-semibold uppercase tracking-wider text-amov-muted mb-2">
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-sf-muted mb-2">
                           ( ВАРИАЦИИ / SKU )
                         </div>
                         <div className="space-y-1.5">
@@ -256,17 +256,17 @@ export function Header() {
                               key={v.id}
                               type="button"
                               onClick={() => selectVariant(v.product_id, v.sku)}
-                              className="w-full text-left flex items-baseline justify-between p-1.5 hover:bg-amov-dark/5 transition-colors"
+                              className="w-full text-left flex items-baseline justify-between p-1.5 hover:bg-sf-dark/5 transition-colors"
                             >
                               <div>
-                                <span className="font-mono text-[11px] font-semibold text-amov-dark">
+                                <span className="font-mono text-[11px] font-semibold text-sf-dark">
                                   {v.sku}
                                 </span>
-                                <span className="text-amov-muted text-[11px] ml-2">
+                                <span className="text-sf-muted text-[11px] ml-2">
                                   {v.color_name} {v.size ? `/ РАЗМЕР: ${v.size}` : ''}
                                 </span>
                               </div>
-                              <span className="text-[10px] text-amov-muted">
+                              <span className="text-[10px] text-sf-muted">
                                 {v.stock_quantity !== undefined && `В НАЛИЧИИ: ${v.stock_quantity}`} ↗
                               </span>
                             </button>
@@ -305,13 +305,13 @@ export function Header() {
 
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
-                <span className="text-amov-muted hidden lg:inline">
+                <span className="text-sf-muted hidden lg:inline">
                   {user?.login ? `(${user.login})` : ''}
                 </span>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="border border-amov-dark px-2.5 py-1 hover:bg-amov-dark hover:text-amov-cream transition-colors text-[11px]"
+                  className="border border-sf-dark px-2.5 py-1 hover:bg-sf-dark hover:text-sf-cream transition-colors text-[11px]"
                 >
                   ВЫХОД
                 </button>
@@ -320,7 +320,7 @@ export function Header() {
               <Link
                 to={loginUrl}
                 state={{ from: location }}
-                className="border border-amov-dark px-2.5 py-1 hover:bg-amov-dark hover:text-amov-cream transition-colors text-[11px] whitespace-nowrap"
+                className="border border-sf-dark px-2.5 py-1 hover:bg-sf-dark hover:text-sf-cream transition-colors text-[11px] whitespace-nowrap"
               >
                 ACCOUNT / LOGIN
               </Link>
@@ -330,7 +330,7 @@ export function Header() {
 
         {/* Categories Bar */}
         {rootCategories.length > 0 && (
-          <div className="flex items-center gap-6 py-2.5 overflow-x-auto border-t border-amov-dark/10 scrollbar-none text-[12px] font-serif uppercase tracking-wider text-amov-dark">
+          <div className="flex items-center gap-6 py-2.5 overflow-x-auto border-t border-sf-dark/10 scrollbar-none text-[12px] font-serif uppercase tracking-wider text-sf-dark">
             <button
               type="button"
               onClick={() => {

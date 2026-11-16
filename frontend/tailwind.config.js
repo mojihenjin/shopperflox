@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        amov: {
+        sf: {
           dark: '#3F2021',      // Шоколадно-бордовый (Espresso/Burgundy)
           cream: '#F2E9DB',     // Сливочный лен (Warm Cream)
           denim: '#7594B3',     // Серо-голубой деним (Slate Denim)
@@ -18,7 +18,7 @@ export default {
         }
       },
       fontFamily: {
-        serif: ['ArsenicaText', '"Cormorant Garamond"', '"Times New Roman"', 'Georgia', 'serif'],
+        serif: ['"Times New Roman"', 'Georgia', 'serif'],
         sans: ['"Golos Text"', '-apple-system', 'BlinkMacSystemFont', 'Arial', 'sans-serif'],
       },
       borderRadius: {

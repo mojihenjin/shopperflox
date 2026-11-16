@@ -40,16 +40,16 @@ export function CartPage() {
   if (!isAuthenticated) {
     return (
       <div className="max-w-[500px] mx-auto px-4 py-24 text-center">
-        <h1 className="font-serif text-3xl uppercase tracking-wider text-amov-dark">
+        <h1 className="font-serif text-3xl uppercase tracking-wider text-sf-dark">
           КОРЗИНА
         </h1>
-        <p className="mt-3 text-xs font-sans uppercase tracking-wider text-amov-muted">
+        <p className="mt-3 text-xs font-sans uppercase tracking-wider text-sf-muted">
           Для оформления заказа и просмотра корзины необходимо авторизоваться
         </p>
         <button
           type="button"
           onClick={() => navigate('/login')}
-          className="mt-6 inline-block bg-amov-dark text-amov-cream px-8 py-3 text-xs font-sans uppercase tracking-widest"
+          className="mt-6 inline-block bg-sf-dark text-sf-cream px-8 py-3 text-xs font-sans uppercase tracking-widest"
         >
           ВОЙТИ В АККАУНТ ↗
         </button>
@@ -62,12 +62,12 @@ export function CartPage() {
 
   return (
     <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-12 md:py-16">
-      <div className="border-b border-amov-dark/20 pb-6 mb-10 flex items-end justify-between">
+      <div className="border-b border-sf-dark/20 pb-6 mb-10 flex items-end justify-between">
         <div>
-          <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-amov-muted">
+          <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
             ( ВАШ ЗАКАЗ )
           </span>
-          <h1 className="font-serif text-3xl md:text-5xl uppercase tracking-wider text-amov-dark mt-1">
+          <h1 className="font-serif text-3xl md:text-5xl uppercase tracking-wider text-sf-dark mt-1">
             КОРЗИНА ПОКУПОК
           </h1>
         </div>
@@ -75,7 +75,7 @@ export function CartPage() {
           <button
             type="button"
             onClick={() => clearCartMutation.mutate()}
-            className="text-xs font-sans uppercase tracking-wider text-amov-muted hover:text-amov-dark underline underline-offset-4"
+            className="text-xs font-sans uppercase tracking-wider text-sf-muted hover:text-sf-dark underline underline-offset-4"
           >
             ОЧИСТИТЬ КОРЗИНУ ×
           </button>
@@ -83,20 +83,20 @@ export function CartPage() {
       </div>
 
       {isLoading ? (
-        <div className="py-24 text-center text-xs font-sans uppercase tracking-widest text-amov-muted">
+        <div className="py-24 text-center text-xs font-sans uppercase tracking-widest text-sf-muted">
           ( ЗАГРУЗКА КОРЗИНЫ... )
         </div>
       ) : items.length === 0 ? (
-        <div className="py-20 text-center border border-amov-dark/20 p-8">
-          <div className="font-serif text-2xl uppercase tracking-wider text-amov-dark">
+        <div className="py-20 text-center border border-sf-dark/20 p-8">
+          <div className="font-serif text-2xl uppercase tracking-wider text-sf-dark">
             ВАША КОРЗИНА ПУСТА
           </div>
-          <p className="mt-2 text-xs font-sans uppercase tracking-wider text-amov-muted">
+          <p className="mt-2 text-xs font-sans uppercase tracking-wider text-sf-muted">
             Выберите понравившиеся модели солнцезащитных очков в нашем каталоге
           </p>
           <Link
             to="/"
-            className="mt-6 inline-block bg-amov-dark text-amov-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider"
+            className="mt-6 inline-block bg-sf-dark text-sf-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider"
           >
             ПЕРЕЙТИ В КАТАЛОГ ↗
           </Link>
@@ -104,14 +104,14 @@ export function CartPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* Items list */}
-          <div className="lg:col-span-8 divide-y divide-amov-dark/15 border-y border-amov-dark/15">
+          <div className="lg:col-span-8 divide-y divide-sf-dark/15 border-y border-sf-dark/15">
             {items.map((item) => (
               <div key={item.id} className="py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="space-y-1">
-                  <div className="font-serif text-lg uppercase text-amov-dark">
+                  <div className="font-serif text-lg uppercase text-sf-dark">
                     {item.title || 'СОЛНЦЕЗАЩИТНЫЕ ОЧКИ'}
                   </div>
-                  <div className="text-xs font-sans uppercase text-amov-muted flex items-center gap-3">
+                  <div className="text-xs font-sans uppercase text-sf-muted flex items-center gap-3">
                     {item.sku && <span>SKU: {item.sku}</span>}
                     {item.color_name && <span>ЦВЕТ: {item.color_name}</span>}
                     {item.size && <span>РАЗМЕР: {item.size}</span>}
@@ -120,7 +120,7 @@ export function CartPage() {
 
                 <div className="flex items-center justify-between w-full sm:w-auto gap-6">
                   {/* Quantity controls */}
-                  <div className="flex items-center border border-amov-dark">
+                  <div className="flex items-center border border-sf-dark">
                     <button
                       type="button"
                       disabled={item.quantity <= 1}
@@ -130,7 +130,7 @@ export function CartPage() {
                           quantity: item.quantity - 1,
                         })
                       }
-                      className="px-2.5 py-0.5 text-xs font-sans hover:bg-amov-dark hover:text-amov-cream transition-colors disabled:opacity-30"
+                      className="px-2.5 py-0.5 text-xs font-sans hover:bg-sf-dark hover:text-sf-cream transition-colors disabled:opacity-30"
                     >
                       −
                     </button>
@@ -145,17 +145,17 @@ export function CartPage() {
                           quantity: item.quantity + 1,
                         })
                       }
-                      className="px-2.5 py-0.5 text-xs font-sans hover:bg-amov-dark hover:text-amov-cream transition-colors"
+                      className="px-2.5 py-0.5 text-xs font-sans hover:bg-sf-dark hover:text-sf-cream transition-colors"
                     >
                       +
                     </button>
                   </div>
 
                   <div className="text-right">
-                    <div className="font-sans font-bold text-sm text-amov-black">
+                    <div className="font-sans font-bold text-sm text-sf-black">
                       {formatPrice(item.total_price)}
                     </div>
-                    <div className="text-[10px] text-amov-muted">
+                    <div className="text-[10px] text-sf-muted">
                       {formatPrice(item.unit_price)} / шт.
                     </div>
                   </div>
@@ -163,7 +163,7 @@ export function CartPage() {
                   <button
                     type="button"
                     onClick={() => removeItemMutation.mutate(item.variant_id)}
-                    className="text-amov-muted hover:text-amov-dark text-sm px-1"
+                    className="text-sf-muted hover:text-sf-dark text-sm px-1"
                     title="Удалить"
                   >
                     ×
@@ -175,12 +175,12 @@ export function CartPage() {
 
           {/* Checkout summary */}
           <div className="lg:col-span-4">
-            <div className="border border-amov-dark p-6 bg-amov-cream/50 space-y-5">
-              <h2 className="font-serif text-xl uppercase tracking-wider text-amov-dark">
+            <div className="border border-sf-dark p-6 bg-sf-cream/50 space-y-5">
+              <h2 className="font-serif text-xl uppercase tracking-wider text-sf-dark">
                 СУММА ЗАКАЗА
               </h2>
 
-              <div className="space-y-2 text-xs font-sans uppercase tracking-wider text-amov-dark border-b border-amov-dark/15 pb-4">
+              <div className="space-y-2 text-xs font-sans uppercase tracking-wider text-sf-dark border-b border-sf-dark/15 pb-4">
                 <div className="flex justify-between">
                   <span>ТОВАРЫ ({items.reduce((s, i) => s + i.quantity, 0)}):</span>
                   <span>{formatPrice(totalAmount)}</span>
@@ -191,7 +191,7 @@ export function CartPage() {
                 </div>
               </div>
 
-              <div className="flex justify-between items-baseline text-amov-dark">
+              <div className="flex justify-between items-baseline text-sf-dark">
                 <span className="font-sans font-bold text-xs uppercase tracking-wider">
                   ИТОГО К ОПЛАТЕ:
                 </span>
@@ -203,12 +203,12 @@ export function CartPage() {
               <button
                 type="button"
                 onClick={() => alert('Переход к выбору адреса и оплате (Следующий этап)')}
-                className="w-full bg-amov-dark text-amov-cream hover:bg-amov-black py-3.5 text-xs font-sans font-semibold uppercase tracking-widest transition-colors"
+                className="w-full bg-sf-dark text-sf-cream hover:bg-sf-black py-3.5 text-xs font-sans font-semibold uppercase tracking-widest transition-colors"
               >
                 ПЕРЕЙТИ К ОФОРМЛЕНИЮ ↗
               </button>
 
-              <div className="text-[10px] uppercase tracking-wider text-amov-muted text-center pt-1">
+              <div className="text-[10px] uppercase tracking-wider text-sf-muted text-center pt-1">
                 ОПЛАТА ОНЛАЙН ИЛИ ПРИ ПОЛУЧЕНИИ ПОСЛЕ ПРИМЕРКИ
               </div>
             </div>

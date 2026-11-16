@@ -31,7 +31,7 @@ export function ProductCard({
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* 2:3 Portrait image container */}
-      <div className="relative aspect-[2/3] w-full bg-[#E5DBCB] overflow-hidden border border-amov-dark/15">
+      <div className="relative aspect-[2/3] w-full bg-[#E5DBCB] overflow-hidden border border-sf-dark/15">
         <Link to={`/products/${product.slug}`} className="block w-full h-full">
           <img
             src={formatImageUrl(isHovered && secondaryImg ? secondaryImg : primaryImg, product.title)}
@@ -50,7 +50,7 @@ export function ProductCard({
               e.stopPropagation();
               onToggleFavorite(product.id);
             }}
-            className="absolute top-2 right-2 bg-amov-cream/90 hover:bg-amov-cream text-amov-dark px-2 py-1 text-[11px] font-sans font-semibold border border-amov-dark/30 transition-colors uppercase"
+            className="absolute top-2 right-2 bg-sf-cream/90 hover:bg-sf-cream text-sf-dark px-2 py-1 text-[11px] font-sans font-semibold border border-sf-dark/30 transition-colors uppercase"
             title={isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}
           >
             {isFavorite ? '♥ (СОХРАНЕНО)' : '♡ (В ИЗБРАННОЕ)'}
@@ -59,7 +59,7 @@ export function ProductCard({
 
         {/* Stock / New tag */}
         {product.brand && (
-          <div className="absolute bottom-2 left-2 bg-amov-dark/80 text-amov-cream px-2 py-0.5 text-[10px] font-sans uppercase tracking-widest">
+          <div className="absolute bottom-2 left-2 bg-sf-dark/80 text-sf-cream px-2 py-0.5 text-[10px] font-sans uppercase tracking-widest">
             {product.brand}
           </div>
         )}
@@ -69,16 +69,16 @@ export function ProductCard({
       <div className="pt-3 pb-1 flex flex-col">
         <Link
           to={`/products/${product.slug}`}
-          className="font-serif text-[15px] sm:text-[16px] uppercase tracking-wide text-amov-dark group-hover:opacity-75 transition-opacity line-clamp-1"
+          className="font-serif text-[15px] sm:text-[16px] uppercase tracking-wide text-sf-dark group-hover:opacity-75 transition-opacity line-clamp-1"
         >
           {product.title}
         </Link>
 
         <div className="mt-1 flex items-baseline justify-between text-[13px] font-sans">
-          <span className="font-semibold text-amov-black">
+          <span className="font-semibold text-sf-black">
             {formatPrice(product.base_price)}
           </span>
-          <span className="text-[11px] text-amov-muted uppercase tracking-wider group-hover:text-amov-dark transition-colors">
+          <span className="text-[11px] text-sf-muted uppercase tracking-wider group-hover:text-sf-dark transition-colors">
             СМОТРЕТЬ ↗
           </span>
         </div>

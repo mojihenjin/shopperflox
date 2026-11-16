@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi, categoriesApi, favoritesApi } from '../api/endpoints';
 import { ProductCard } from '../components/ProductCard';
@@ -130,28 +130,28 @@ export function HomePage() {
   return (
     <div className="w-full">
       {/* 1. HERO SECTION: Full Bleed #3F2021 (Dark Chocolate) */}
-      <section className="relative w-full bg-amov-dark text-amov-cream overflow-hidden">
+      <section className="relative w-full bg-sf-dark text-sf-cream overflow-hidden">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[580px] lg:min-h-[680px]">
             {/* Left Column: Editorial Typography */}
             <div className="flex flex-col justify-between py-12 lg:py-20 pr-0 lg:pr-12">
               <div className="space-y-6">
-                <div className="text-[12px] font-sans font-medium uppercase tracking-widest text-amov-cream/80">
-                  AMOV — БРЕНД СОЛНЦЕЗАЩИТНЫХ ОЧКОВ
+                <div className="text-[12px] font-sans font-medium uppercase tracking-widest text-sf-cream/80">
+                  SHOPPERFLOX — БРЕНД СОЛНЦЕЗАЩИТНЫХ ОЧКОВ
                 </div>
 
                 <div className="relative">
-                  <h1 className="font-serif text-5xl sm:text-7xl lg:text-8xl font-normal uppercase leading-[0.9] tracking-tight text-amov-cream">
+                  <h1 className="font-serif text-5xl sm:text-7xl lg:text-8xl font-normal uppercase leading-[0.9] tracking-tight text-sf-cream">
                     СТИЛЬ
                     <br />
                     В ДЕТАЛЯХ
                   </h1>
-                  <span className="font-serif text-7xl sm:text-9xl text-amov-denim/60 leading-none select-none">
+                  <span className="font-serif text-7xl sm:text-9xl text-sf-denim/60 leading-none select-none">
                     ”
                   </span>
                 </div>
 
-                <p className="max-w-md text-xs sm:text-sm font-sans uppercase tracking-wider text-amov-cream/70 leading-relaxed">
+                <p className="max-w-md text-xs sm:text-sm font-sans uppercase tracking-wider text-sf-cream/70 leading-relaxed">
                   Коллекции солнцезащитных очков вне времени. Бескомпромиссная геометрия, премиальный итальянский ацетат и полная защита UV400.
                 </p>
               </div>
@@ -160,50 +160,44 @@ export function HomePage() {
                 <div>
                   <a
                     href="#catalog"
-                    className="inline-block bg-amov-cream text-amov-dark hover:bg-amov-cream/90 px-8 py-3.5 text-xs font-sans font-semibold uppercase tracking-widest transition-colors"
+                    className="inline-block bg-sf-cream text-sf-dark hover:bg-sf-cream/90 px-8 py-3.5 text-xs font-sans font-semibold uppercase tracking-widest transition-colors"
                   >
                     ПЕРЕЙТИ В КАТАЛОГ ↗
                   </a>
                 </div>
 
-                {/* Marketplace CTAs */}
-                <div className="flex items-center gap-6 text-xs font-semibold uppercase tracking-wider text-amov-denim pt-2">
+                {/* Internal Navigation Shortcuts */}
+                <div className="flex items-center gap-6 text-xs font-semibold uppercase tracking-wider text-sf-denim pt-2">
                   <a
-                    href="https://wildberries.ru"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-amov-cream transition-colors"
+                    href="#catalog"
+                    className="hover:text-sf-cream transition-colors"
                   >
-                    WB ↗
+                    КОЛЛЕКЦИИ ↗
                   </a>
-                  <a
-                    href="https://ozon.ru"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-amov-cream transition-colors"
+                  <Link
+                    to="/favorites"
+                    className="hover:text-sf-cream transition-colors"
                   >
-                    OZON ↗
-                  </a>
-                  <a
-                    href="https://lamoda.ru"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-amov-cream transition-colors"
+                    ИЗБРАННОЕ ↗
+                  </Link>
+                  <Link
+                    to="/cart"
+                    className="hover:text-sf-cream transition-colors"
                   >
-                    LAMODA ↗
-                  </a>
+                    КОРЗИНА ↗
+                  </Link>
                 </div>
               </div>
             </div>
 
             {/* Right Column: Hero Visual Full Bleed / Split */}
             <div className="relative hidden lg:block h-full min-h-[500px]">
-              <div className="absolute inset-0 bg-[#2C1617] border-l border-amov-cream/15 overflow-hidden flex items-center justify-center">
+              <div className="absolute inset-0 bg-[#2C1617] border-l border-sf-cream/15 overflow-hidden flex items-center justify-center">
                 <svg
                   className="w-full h-full object-cover opacity-90"
                   viewBox="0 0 600 800"
                   fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
+                  
                 >
                   <rect width="600" height="800" fill="#2E1718" />
                   <path
@@ -224,7 +218,7 @@ export function HomePage() {
                     letterSpacing="8"
                     opacity="0.8"
                   >
-                    AMÓV
+                    SHOPPERFLOX
                   </text>
                   <text
                     x="300"
@@ -245,41 +239,41 @@ export function HomePage() {
       </section>
 
       {/* 2. DENIM SECTION: Philosophy / Standards (#7594B3) */}
-      <section className="w-full bg-amov-denim text-amov-cream py-14 md:py-20 border-b border-amov-cream/20">
+      <section className="w-full bg-sf-denim text-sf-cream py-14 md:py-20 border-b border-sf-cream/20">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
           <div className="mb-10">
-            <span className="text-[11px] font-sans font-medium uppercase tracking-widest text-amov-cream/80">
+            <span className="text-[11px] font-sans font-medium uppercase tracking-widest text-sf-cream/80">
               ( ФИЛОСОФИЯ И ПРОЦЕСС )
             </span>
-            <h2 className="font-serif text-3xl md:text-5xl uppercase tracking-wider text-amov-cream mt-2">
+            <h2 className="font-serif text-3xl md:text-5xl uppercase tracking-wider text-sf-cream mt-2">
               ТОТ САМЫЙ АКЦЕНТ
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 divide-y md:divide-y-0 md:divide-x divide-amov-cream/30">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 divide-y md:divide-y-0 md:divide-x divide-sf-cream/30">
             <div className="pt-6 md:pt-0 md:pr-8 space-y-3">
-              <div className="text-[13px] font-sans font-bold uppercase tracking-wider text-amov-cream">
+              <div className="text-[13px] font-sans font-bold uppercase tracking-wider text-sf-cream">
                 (1) АНАЛИЗИРУЕМ ТРЕНДЫ
               </div>
-              <p className="text-xs font-sans uppercase tracking-wider text-amov-cream/85 leading-relaxed">
+              <p className="text-xs font-sans uppercase tracking-wider text-sf-cream/85 leading-relaxed">
                 Отбираем вневременные силуэты мировых подиумов. Никаких быстротечных микротрендов — только выверенная классика.
               </p>
             </div>
 
             <div className="pt-6 md:pt-0 md:px-8 space-y-3">
-              <div className="text-[13px] font-sans font-bold uppercase tracking-wider text-amov-cream">
+              <div className="text-[13px] font-sans font-bold uppercase tracking-wider text-sf-cream">
                 (2) ВЫБИРАЕМ МАТЕРИАЛЫ
               </div>
-              <p className="text-xs font-sans uppercase tracking-wider text-amov-cream/85 leading-relaxed">
+              <p className="text-xs font-sans uppercase tracking-wider text-sf-cream/85 leading-relaxed">
                 Высококачественный ацетат ручной полировки, надежные шарнирные крепления и стойкое антибликовое покрытие.
               </p>
             </div>
 
             <div className="pt-6 md:pt-0 md:pl-8 space-y-3">
-              <div className="text-[13px] font-sans font-bold uppercase tracking-wider text-amov-cream">
+              <div className="text-[13px] font-sans font-bold uppercase tracking-wider text-sf-cream">
                 (3) ЗАЩИТА UV400
               </div>
-              <p className="text-xs font-sans uppercase tracking-wider text-amov-cream/85 leading-relaxed">
+              <p className="text-xs font-sans uppercase tracking-wider text-sf-cream/85 leading-relaxed">
                 Каждая модель проходит лабораторный контроль категории светопропускания и блокирует 100% спектра UVA/UVB лучей.
               </p>
             </div>
@@ -291,17 +285,17 @@ export function HomePage() {
       <section id="catalog" className="w-full bg-[#F2E9DB] py-14 md:py-20">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
           {/* Header of catalog & Active Filters */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-amov-dark/20">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-sf-dark/20">
             <div>
-              <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-amov-muted">
+              <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
                 ( КАТАЛОГ КОЛЛЕКЦИЙ )
               </span>
-              <h2 className="font-serif text-3xl md:text-5xl uppercase tracking-wider text-amov-dark mt-1">
+              <h2 className="font-serif text-3xl md:text-5xl uppercase tracking-wider text-sf-dark mt-1">
                 СОЛНЦЕЗАЩИТНЫЕ ОЧКИ
               </h2>
             </div>
 
-            <div className="text-xs font-sans uppercase tracking-wider text-amov-muted">
+            <div className="text-xs font-sans uppercase tracking-wider text-sf-muted">
               ( ПОКАЗАНО: {products.length} ИЗ {totalProducts} МОДЕЛЕЙ )
             </div>
           </div>
@@ -316,8 +310,8 @@ export function HomePage() {
                   onClick={() => handleCategorySelect('')}
                   className={`px-3 py-1.5 text-xs font-sans uppercase tracking-wider border transition-colors ${
                     !categoryIdParam
-                      ? 'bg-amov-dark text-amov-cream border-amov-dark font-semibold'
-                      : 'border-amov-dark/30 hover:border-amov-dark text-amov-dark'
+                      ? 'bg-sf-dark text-sf-cream border-sf-dark font-semibold'
+                      : 'border-sf-dark/30 hover:border-sf-dark text-sf-dark'
                   }`}
                 >
                   ВСЕ КАТЕГОРИИ
@@ -329,8 +323,8 @@ export function HomePage() {
                     onClick={() => handleCategorySelect(cat.id)}
                     className={`px-3 py-1.5 text-xs font-sans uppercase tracking-wider border transition-colors ${
                       categoryIdParam === cat.id
-                        ? 'bg-amov-dark text-amov-cream border-amov-dark font-semibold'
-                        : 'border-amov-dark/30 hover:border-amov-dark text-amov-dark'
+                        ? 'bg-sf-dark text-sf-cream border-sf-dark font-semibold'
+                        : 'border-sf-dark/30 hover:border-sf-dark text-sf-dark'
                     }`}
                   >
                     {cat.name}
@@ -342,7 +336,7 @@ export function HomePage() {
             {/* Price range & Search active state */}
             <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
               <form onSubmit={handlePriceFilterApply} className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-sans uppercase tracking-wider text-amov-muted mr-1">
+                <span className="text-xs font-sans uppercase tracking-wider text-sf-muted mr-1">
                   ЦЕНА, ₽:
                 </span>
                 <input
@@ -350,19 +344,19 @@ export function HomePage() {
                   placeholder="ОТ"
                   value={minPriceInput}
                   onChange={(e) => setMinPriceInput(e.target.value)}
-                  className="w-24 bg-[#F2E9DB] border border-amov-dark/30 focus:border-amov-dark px-2.5 py-1 text-xs font-sans outline-none"
+                  className="w-24 bg-[#F2E9DB] border border-sf-dark/30 focus:border-sf-dark px-2.5 py-1 text-xs font-sans outline-none"
                 />
-                <span className="text-amov-muted">—</span>
+                <span className="text-sf-muted">—</span>
                 <input
                   type="number"
                   placeholder="ДО"
                   value={maxPriceInput}
                   onChange={(e) => setMaxPriceInput(e.target.value)}
-                  className="w-24 bg-[#F2E9DB] border border-amov-dark/30 focus:border-amov-dark px-2.5 py-1 text-xs font-sans outline-none"
+                  className="w-24 bg-[#F2E9DB] border border-sf-dark/30 focus:border-sf-dark px-2.5 py-1 text-xs font-sans outline-none"
                 />
                 <button
                   type="submit"
-                  className="bg-amov-dark text-amov-cream hover:bg-amov-black px-3 py-1 text-xs font-sans uppercase tracking-wider"
+                  className="bg-sf-dark text-sf-cream hover:bg-sf-black px-3 py-1 text-xs font-sans uppercase tracking-wider"
                 >
                   ПРИМЕНИТЬ
                 </button>
@@ -372,7 +366,7 @@ export function HomePage() {
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="text-xs font-sans uppercase tracking-wider text-amov-dark hover:opacity-60 underline underline-offset-4"
+                  className="text-xs font-sans uppercase tracking-wider text-sf-dark hover:opacity-60 underline underline-offset-4"
                 >
                   ( СБРОСИТЬ ВСЕ ФИЛЬТРЫ × )
                 </button>
@@ -382,21 +376,21 @@ export function HomePage() {
 
           {/* Products Grid */}
           {isProductsLoading ? (
-            <div className="py-24 text-center text-xs font-sans uppercase tracking-widest text-amov-muted">
+            <div className="py-24 text-center text-xs font-sans uppercase tracking-widest text-sf-muted">
               ( ЗАГРУЗКА КАТАЛОГА... )
             </div>
           ) : products.length === 0 ? (
-            <div className="py-24 text-center border border-amov-dark/20 p-8">
-              <div className="font-serif text-2xl uppercase tracking-wider text-amov-dark">
+            <div className="py-24 text-center border border-sf-dark/20 p-8">
+              <div className="font-serif text-2xl uppercase tracking-wider text-sf-dark">
                 МОДЕЛИ НЕ НАЙДЕНЫ
               </div>
-              <p className="mt-2 text-xs font-sans uppercase tracking-wider text-amov-muted">
+              <p className="mt-2 text-xs font-sans uppercase tracking-wider text-sf-muted">
                 Попробуйте изменить параметры фильтрации или поисковый запрос
               </p>
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="mt-6 inline-block bg-amov-dark text-amov-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider"
+                className="mt-6 inline-block bg-sf-dark text-sf-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider"
               >
                 СБРОСИТЬ ФИЛЬТРЫ ↗
               </button>
@@ -416,17 +410,17 @@ export function HomePage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-14 pt-8 border-t border-amov-dark/20 flex items-center justify-between">
+            <div className="mt-14 pt-8 border-t border-sf-dark/20 flex items-center justify-between">
               <button
                 type="button"
                 disabled={pageParam <= 1}
                 onClick={() => handlePageChange(pageParam - 1)}
-                className="border border-amov-dark px-4 py-2 text-xs font-sans uppercase tracking-wider disabled:opacity-30 hover:bg-amov-dark hover:text-amov-cream transition-colors"
+                className="border border-sf-dark px-4 py-2 text-xs font-sans uppercase tracking-wider disabled:opacity-30 hover:bg-sf-dark hover:text-sf-cream transition-colors"
               >
                 ← ПРЕДЫДУЩАЯ
               </button>
 
-              <div className="text-xs font-sans uppercase tracking-widest text-amov-muted">
+              <div className="text-xs font-sans uppercase tracking-widest text-sf-muted">
                 СТРАНИЦА {pageParam} ИЗ {totalPages}
               </div>
 
@@ -434,7 +428,7 @@ export function HomePage() {
                 type="button"
                 disabled={pageParam >= totalPages}
                 onClick={() => handlePageChange(pageParam + 1)}
-                className="border border-amov-dark px-4 py-2 text-xs font-sans uppercase tracking-wider disabled:opacity-30 hover:bg-amov-dark hover:text-amov-cream transition-colors"
+                className="border border-sf-dark px-4 py-2 text-xs font-sans uppercase tracking-wider disabled:opacity-30 hover:bg-sf-dark hover:text-sf-cream transition-colors"
               >
                 СЛЕДУЮЩАЯ →
               </button>
