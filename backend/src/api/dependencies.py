@@ -269,7 +269,15 @@ async def get_current_user(
     except (ValueError, TypeError) as exc:
         raise AuthenticationError(f"Invalid token user id: {exc}") from exc
 
-    return await auth_service.verify_access(user_id=user_id)
+    user = await auth_service.verify_access(user_id=user_id)
+    token_perms = payload.get("global_permissions")
+    if token_perms is None:
+        token_perms = payload.get("permissions")
+    if token_perms and isinstance(token_perms, list):
+        user.global_permissions = list(
+            dict.fromkeys(user.global_permissions + token_perms)
+        )
+    return user
 
 
 async def get_optional_current_user(
@@ -294,7 +302,15 @@ async def get_optional_current_user(
             return None
 
         user_id = UUID(str(user_id_raw))
-        return await auth_service.verify_access(user_id=user_id)
+        user = await auth_service.verify_access(user_id=user_id)
+        token_perms = payload.get("global_permissions")
+        if token_perms is None:
+            token_perms = payload.get("permissions")
+        if token_perms and isinstance(token_perms, list):
+            user.global_permissions = list(
+                dict.fromkeys(user.global_permissions + token_perms)
+            )
+        return user
     except Exception:
         return None
 

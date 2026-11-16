@@ -1,4 +1,9 @@
+from uuid import UUID
+
 import pytest
+
+from src.api.dependencies import get_user_uow
+from src.infrastructure.security import JwtTokenProvider
 
 
 @pytest.mark.anyio
@@ -45,6 +50,14 @@ async def test_full_auth_flow(client, test_task_queue):
     assert access_token
     assert refresh_token
     assert login_data["body"]["token_type"] == "bearer"
+
+    # Verify access_token payload claims
+    jwt_provider = JwtTokenProvider()
+    token_claims = jwt_provider.decode_token(access_token)
+    assert token_claims["login"] == "alice_flow"
+    assert token_claims["global_permissions"] == []
+    assert token_claims["verified_profile"] is False
+    assert token_claims["verified_email"] is True
 
     # Also login with case-insensitive login
     login_case_resp = await client.post(
@@ -96,6 +109,13 @@ async def test_full_auth_flow(client, test_task_queue):
     assert new_access_token
     assert new_refresh_token
 
+    # Verify refreshed access_token payload claims
+    refreshed_claims = jwt_provider.decode_token(new_access_token)
+    assert refreshed_claims["login"] == "alice_flow"
+    assert refreshed_claims["global_permissions"] == []
+    assert refreshed_claims["verified_profile"] is False
+    assert refreshed_claims["verified_email"] is True
+
     # 6. Verify newly refreshed access token works on /users/me
     new_headers = {"Authorization": f"Bearer {new_access_token}"}
     new_me_resp = await client.get("/api/v1/users/me", headers=new_headers)
@@ -134,3 +154,76 @@ async def test_full_auth_flow(client, test_task_queue):
     post_logout_me = await client.get("/api/v1/users/me", headers=new_headers)
     assert post_logout_me.status_code == 401
     assert "revoked" in post_logout_me.json()["errors"][0]["detail"].lower()
+
+
+@pytest.mark.anyio
+async def test_access_token_claims_and_permission_update_on_refresh(
+    client, test_task_queue
+):
+    token_provider = JwtTokenProvider()
+
+    # 1. Register and verify user
+    reg_resp = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "login": "bob_claims",
+            "password": "Password123!",
+            "email": "bob_claims@example.com",
+        },
+    )
+    token = reg_resp.json()["body"]["verification_token"]
+    code = test_task_queue.sent_emails[-1][2]
+    await client.post(
+        "/api/v1/auth/verification-code",
+        json={"verification_token": token, "code": code},
+    )
+
+    # 2. Login
+    login_resp = await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": "bob_claims", "password": "Password123!"},
+    )
+    body = login_resp.json()["body"]
+    access_token = body["access_token"]
+    refresh_token = body["refresh_token"]
+
+    claims = token_provider.decode_token(access_token)
+    assert claims["login"] == "bob_claims"
+    assert claims["global_permissions"] == []
+    assert claims["verified_profile"] is False
+    assert claims["verified_email"] is True
+
+    # 3. Update permissions and verified_profile in DB
+    user_id = UUID(claims["sub"])
+    uow_fn = client._transport.app.dependency_overrides[get_user_uow]
+    uow = uow_fn()
+    async with uow:
+        user = await uow.users.get_by_id(user_id)
+        assert user is not None
+        user.global_permissions = ["catalog:manage", "creator:brand"]
+        user.verified_profile = True
+        await uow.users.update(user)
+        await uow.commit()
+
+    # 4. Refresh tokens
+    ref_resp = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+    assert ref_resp.status_code == 200
+    new_access_token = ref_resp.json()["body"]["access_token"]
+
+    # 5. Verify updated claims in new access token
+    new_claims = token_provider.decode_token(new_access_token)
+    assert new_claims["login"] == "bob_claims"
+    assert new_claims["global_permissions"] == ["catalog:manage", "creator:brand"]
+    assert new_claims["verified_profile"] is True
+    assert new_claims["verified_email"] is True
+
+    # 6. Verify permission works with new access token
+    cat_resp = await client.post(
+        "/api/v1/categories",
+        headers={"Authorization": f"Bearer {new_access_token}"},
+        json={"name": "Bob Category", "slug": "bob-category"},
+    )
+    assert cat_resp.status_code == 201
