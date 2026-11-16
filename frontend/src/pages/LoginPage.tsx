@@ -9,7 +9,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { setTokens, setUser } = useAuthStore();
+  const { setTokens } = useAuthStore();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -36,14 +36,6 @@ export function LoginPage() {
 
       if (res.data.access_token && res.data.refresh_token) {
         setTokens(res.data.access_token, res.data.refresh_token);
-        try {
-          const meRes = await authApi.getMe();
-          if (meRes.data?.user) {
-            setUser(meRes.data.user);
-          }
-        } catch {
-          // Non-critical, user will reload on next request
-        }
         navigate(returnTo, { replace: true });
       }
     } catch (err) {

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { productsApi, cartApi, favoritesApi, authApi } from '../api/endpoints';
+import { productsApi, cartApi, favoritesApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { formatImageUrl, formatPrice, formatDate } from '../utils/format';
 import type { FitFeedback, ProductVariantResponse } from '../types/api';
@@ -50,13 +50,7 @@ export function ProductDetailPage() {
   const images = useMemo(() => detail?.images || [], [detail?.images]);
 
   // 2. Current User Profile (for role and permissions check)
-  const { data: userProfileData } = useQuery({
-    queryKey: ['userProfile'],
-    queryFn: () => authApi.getMe(),
-    enabled: isAuthenticated,
-  });
-
-  const currentUser = userProfileData?.data?.user ?? authUser;
+  const currentUser = authUser;
 
   // 3. Product Reviews
   const { data: reviewsData } = useQuery({

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { moderationApi, categoriesApi, authApi, productsApi } from '../api/endpoints';
+import { moderationApi, categoriesApi, productsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { formatImageUrl, formatPrice, formatDate } from '../utils/format';
 import type { ProductResponse, ModerationRequestType } from '../types/api';
@@ -375,14 +375,7 @@ export function ModerationRequestsPage() {
   const [activeTab, setActiveTab] = useState<'ALL' | 'CREATE' | 'EDIT'>('ALL');
   const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
 
-  // User Profile
-  const { data: userProfileData, isLoading: isProfileLoading } = useQuery({
-    queryKey: ['userProfile'],
-    queryFn: () => authApi.getMe(),
-    enabled: isAuthenticated,
-  });
-
-  const currentUser = userProfileData?.data?.user ?? authUser;
+  const currentUser = authUser;
   const permissions = currentUser?.global_permissions || [];
   const canModerate = permissions.includes('*') || permissions.includes('mod:approve_manager');
 
@@ -428,16 +421,6 @@ export function ModerationRequestsPage() {
 
   if (!isAuthenticated) {
     return <Navigate to="/login?redirect=%2Fmoderation%2Frequests" replace />;
-  }
-
-  if (isProfileLoading) {
-    return (
-      <div className="w-full bg-[#F2E9DB] min-h-[60vh] flex items-center justify-center py-20 px-4">
-        <div className="text-xs font-sans uppercase tracking-widest text-[#3F2021]/60">
-          ( ПРОВЕРКА ПРАВ ДОСТУПА... )
-        </div>
-      </div>
-    );
   }
 
   if (!canModerate) {

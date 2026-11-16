@@ -9,7 +9,7 @@ import { NotificationsDrawer } from './NotificationsDrawer';
 export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, user, logout, setUser } = useAuthStore();
+  const { isAuthenticated, user, logout } = useAuthStore();
 
   const currentPath = `${location.pathname}${location.search}`;
   const loginUrl =
@@ -59,28 +59,13 @@ export function Header() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // User profile query via TanStack Query when authenticated
-  const { data: userProfileData } = useQuery({
-    queryKey: ['userProfile'],
-    queryFn: () => authApi.getMe(),
-    enabled: isAuthenticated,
-    staleTime: 60 * 1000,
-  });
-
-  const currentUser = userProfileData?.data?.user || user;
-  const permissions = currentUser?.global_permissions || [];
+  const permissions = user?.global_permissions || [];
   const isCreator =
     permissions.includes('*') ||
     permissions.some((p) => p.startsWith('creator:'));
   const canModerate =
     permissions.includes('*') ||
     permissions.includes('mod:approve_manager');
-
-  useEffect(() => {
-    if (userProfileData?.data?.user) {
-      setUser(userProfileData.data.user);
-    }
-  }, [userProfileData, setUser]);
 
   const rootCategories = (categoriesData?.data || []).filter(
     (c) => c.parent_id === null || c.parent_id === undefined
@@ -446,7 +431,7 @@ export function Header() {
                   }`}
                   title="Личный кабинет"
                 >
-                  @{currentUser?.login || user?.login || 'профиль'}
+                  @{user?.login || 'профиль'}
                 </Link>
 
                 <button

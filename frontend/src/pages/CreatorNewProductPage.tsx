@@ -1,7 +1,7 @@
 import { useState, useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { authApi, categoriesApi, productsApi } from '../api/endpoints';
+import { categoriesApi, productsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import type { VariantCreateItem } from '../types/api';
 
@@ -47,15 +47,8 @@ function generateSlug(text: string): string {
 
 export function CreatorNewProductPage() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, authUser: user } = useAuthStore();
   const baseId = useId();
-
-  // 1. Authorization & Profile
-  const { data: profileData, isLoading: isProfileLoading } = useQuery({
-    queryKey: ['userProfile'],
-    queryFn: () => authApi.getMe(),
-    enabled: isAuthenticated,
-  });
 
   // Categories query
   const { data: categoriesData } = useQuery({
@@ -111,17 +104,6 @@ export function CreatorNewProductPage() {
     return <Navigate to="/login?redirect=%2Fcreator%2Fproducts%2Fnew" replace />;
   }
 
-  if (isProfileLoading) {
-    return (
-      <div className="w-full bg-[#F2E9DB] min-h-[60vh] flex items-center justify-center py-20 px-4">
-        <div className="text-xs font-sans uppercase tracking-widest text-[#3F2021]/60">
-          ( ПРОВЕРКА ПРИВИЛЕГИЙ КРИЭЙТОРА... )
-        </div>
-      </div>
-    );
-  }
-
-  const user = profileData?.data?.user;
   const permissions = user?.global_permissions || [];
   const isAuthorized =
     permissions.includes('*') ||

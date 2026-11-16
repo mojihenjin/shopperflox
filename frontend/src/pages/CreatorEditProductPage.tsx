@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { productsApi, categoriesApi, authApi } from '../api/endpoints';
+import { productsApi, categoriesApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import type { ProductUpdateRequest } from '../types/api';
 import type { ApiError } from '../api/client';
@@ -10,7 +10,7 @@ export function CreatorEditProductPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { isAuthenticated, user: authUser } = useAuthStore();
+  const { user: authUser } = useAuthStore();
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -47,14 +47,8 @@ export function CreatorEditProductPage() {
 
   const product = productData?.data?.product;
 
-  // Fetch current user
-  const { data: userProfileData, isLoading: isProfileLoading } = useQuery({
-    queryKey: ['userProfile'],
-    queryFn: () => authApi.getMe(),
-    enabled: isAuthenticated,
-  });
-
-  const currentUser = userProfileData?.data?.user ?? authUser;
+  // Current user
+  const currentUser = authUser;
 
   // Fetch categories
   const { data: categoriesData } = useQuery({
@@ -165,7 +159,7 @@ export function CreatorEditProductPage() {
     updateMutation.mutate(payload);
   };
 
-  if (isProductLoading || isProfileLoading) {
+  if (isProductLoading) {
     return (
       <div className="w-full min-h-[60vh] bg-[#F2E9DB] flex items-center justify-center py-32 px-4 text-center">
         <div className="text-xs font-sans uppercase tracking-widest text-[#3F2021]/60">
