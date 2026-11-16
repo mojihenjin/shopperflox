@@ -103,10 +103,19 @@ class SqlAlchemyProductRepository:
         return ProductDomain(
             id=model.id,
             category_id=model.category_id,
+            creator_id=model.creator_id,
             title=model.title,
             slug=model.slug,
             brand=model.brand,
+            is_self_worked=model.is_self_worked,
             base_price=model.base_price,
+            price_usd=model.price_usd,
+            price_eur=model.price_eur,
+            material=model.material,
+            density=model.density,
+            composition=model.composition,
+            print_method=model.print_method,
+            note=model.note,
             created_by=model.created_by,
             description=model.description,
             attributes=dict(model.attributes) if model.attributes else {},
@@ -188,10 +197,19 @@ class SqlAlchemyProductRepository:
         model = ProductModel(
             id=product.id,
             category_id=product.category_id,
+            creator_id=product.creator_id,
             title=product.title,
             slug=product.slug,
             brand=product.brand,
+            is_self_worked=product.is_self_worked,
             base_price=product.base_price,
+            price_usd=product.price_usd,
+            price_eur=product.price_eur,
+            material=product.material,
+            density=product.density,
+            composition=product.composition,
+            print_method=product.print_method,
+            note=product.note,
             description=product.description,
             attributes=product.attributes,
             is_published=product.is_published,
@@ -213,10 +231,19 @@ class SqlAlchemyProductRepository:
         if model is None or model.deleted_at is not None:
             raise EntityNotFoundError("Product not found")
         model.category_id = product.category_id
+        model.creator_id = product.creator_id
         model.title = product.title
         model.slug = product.slug
         model.brand = product.brand
+        model.is_self_worked = product.is_self_worked
         model.base_price = product.base_price
+        model.price_usd = product.price_usd
+        model.price_eur = product.price_eur
+        model.material = product.material
+        model.density = product.density
+        model.composition = product.composition
+        model.print_method = product.print_method
+        model.note = product.note
         model.description = product.description
         model.attributes = product.attributes
         model.is_published = product.is_published
@@ -292,6 +319,7 @@ class SqlAlchemyProductVariantRepository:
             sku=model.sku,
             size=model.size,
             color_name=model.color_name,
+            color=model.color_name,
             created_by=model.created_by,
             color_hex=model.color_hex,
             price_override=model.price_override,
@@ -367,7 +395,7 @@ class SqlAlchemyProductVariantRepository:
             product_id=variant.product_id,
             sku=variant.sku,
             size=variant.size,
-            color_name=variant.color_name,
+            color_name=variant.color_name or variant.color,
             color_hex=variant.color_hex,
             price_override=variant.price_override,
             stock_quantity=variant.stock_quantity,
@@ -389,7 +417,7 @@ class SqlAlchemyProductVariantRepository:
             raise EntityNotFoundError("Variant not found")
         model.sku = variant.sku
         model.size = variant.size
-        model.color_name = variant.color_name
+        model.color_name = variant.color_name or variant.color
         model.color_hex = variant.color_hex
         model.price_override = variant.price_override
         model.stock_quantity = variant.stock_quantity
@@ -418,6 +446,7 @@ class SqlAlchemyProductImageRepository:
             url=model.url,
             created_by=model.created_by,
             variant_id=model.variant_id,
+            color=model.color,
             alt_text=model.alt_text,
             sort_order=model.sort_order,
             is_main=model.is_main,
@@ -457,6 +486,7 @@ class SqlAlchemyProductImageRepository:
             id=image.id,
             product_id=image.product_id,
             variant_id=image.variant_id,
+            color=image.color,
             url=image.url,
             alt_text=image.alt_text,
             sort_order=image.sort_order,
@@ -478,6 +508,7 @@ class SqlAlchemyProductImageRepository:
             raise EntityNotFoundError("Image not found")
         model.url = image.url
         model.variant_id = image.variant_id
+        model.color = image.color
         model.alt_text = image.alt_text
         model.sort_order = image.sort_order
         model.is_main = image.is_main

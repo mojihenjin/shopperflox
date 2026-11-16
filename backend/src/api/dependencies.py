@@ -245,3 +245,22 @@ def require_permission(permission: str):
         return current_user
 
     return permission_dependency
+
+
+def require_catalog_or_creator_permission():
+    async def permission_dependency(
+        current_user: UserDomain = Depends(get_current_user),
+    ) -> UserDomain:
+        user_perms = current_user.global_permissions
+        has_perm = (
+            "*" in user_perms
+            or "catalog:manage" in user_perms
+            or any(p.startswith("creator:") or p == "creator" for p in user_perms)
+        )
+        if not has_perm:
+            raise PermissionDeniedError(
+                "Permission 'catalog:manage' or 'creator:*' required"
+            )
+        return current_user
+
+    return permission_dependency

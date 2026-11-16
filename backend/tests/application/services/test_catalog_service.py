@@ -156,3 +156,97 @@ async def test_product_crud_and_detail(catalog_uow, admin_user):
     # Detail on deleted product raises EntityNotFoundError
     with pytest.raises(EntityNotFoundError):
         await service.get_product_detail("smartphone-x")
+
+
+@pytest.mark.anyio
+async def test_creator_product_creation_and_authorization(catalog_uow, admin_user):
+    service = CatalogService(catalog_uow)
+    cat = await service.create_category(
+        actor=admin_user, name="Streetwear", slug="streetwear"
+    )
+
+    creator1 = UserDomain(
+        id=uuid7(),
+        login="designer1",
+        global_permissions=["creator:*"],
+    )
+    creator2 = UserDomain(
+        id=uuid7(),
+        login="designer2",
+        global_permissions=["creator:products"],
+    )
+
+    # Creator1 creates product with is_self_worked and variants
+    prod = await service.create_product(
+        actor=creator1,
+        category_id=cat.id,
+        title="Custom Bomber",
+        slug="custom-bomber",
+        is_self_worked=True,
+        base_price=Decimal("12000.00"),
+        price_usd=Decimal("130.00"),
+        price_eur=Decimal("120.00"),
+        material="Nylon Satin",
+        variants=[
+            {"color": "Sage Green", "size": "M", "stock_quantity": 5},
+            {"sku": "BOMB-BLK-L", "color": "Black", "size": "L", "stock_quantity": 10},
+        ],
+    )
+    assert prod.creator_id == creator1.id
+    assert prod.brand == "self-worked"
+    assert prod.is_self_worked is True
+
+    # Check variants created in UoW
+    variants = await catalog_uow.variants.list_by_product_id(prod.id)
+    assert len(variants) == 2
+    skus = [v.sku for v in variants]
+    assert "BOMB-BLK-L" in skus
+
+    # Creator1 adds color-tagged image
+    img = await service.add_image(
+        actor=creator1,
+        product_id=prod.id,
+        url="https://example.com/green.jpg",
+        color="Sage Green",
+    )
+    assert img.color == "Sage Green"
+
+    # Creator2 cannot modify product
+    with pytest.raises(PermissionDeniedError):
+        await service.update_product(
+            actor=creator2,
+            product_id=prod.id,
+            title="Unauthorized",
+        )
+
+    # Creator2 cannot add variant to creator1's product
+    with pytest.raises(PermissionDeniedError):
+        await service.create_variant(
+            actor=creator2,
+            product_id=prod.id,
+            sku="HACK-1",
+        )
+
+    # Creator2 cannot update variant of creator1's product
+    with pytest.raises(PermissionDeniedError):
+        await service.update_variant(
+            actor=creator2,
+            variant_id=variants[0].id,
+            stock_quantity=999,
+        )
+
+    # Creator1 CAN update variant
+    updated_var = await service.update_variant(
+        actor=creator1,
+        variant_id=variants[0].id,
+        stock_quantity=8,
+    )
+    assert updated_var.stock_quantity == 8
+
+    # Admin CAN update variant
+    admin_updated_var = await service.update_variant(
+        actor=admin_user,
+        variant_id=variants[0].id,
+        stock_quantity=12,
+    )
+    assert admin_updated_var.stock_quantity == 12

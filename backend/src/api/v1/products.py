@@ -3,7 +3,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 
-from src.api.dependencies import get_catalog_service, require_permission
+from src.api.dependencies import (
+    get_catalog_service,
+    require_catalog_or_creator_permission,
+)
 from src.api.v1.schemas import (
     ProductCreateRequest,
     ProductDetailResponse,
@@ -68,7 +71,7 @@ async def get_product_detail(
 )
 async def create_product(
     req: ProductCreateRequest,
-    current_user: UserDomain = Depends(require_permission("catalog:manage")),
+    current_user: UserDomain = Depends(require_catalog_or_creator_permission()),
     catalog_service: CatalogService = Depends(get_catalog_service),
 ):
     product = await catalog_service.create_product(
@@ -77,10 +80,19 @@ async def create_product(
         title=req.title,
         slug=req.slug,
         brand=req.brand,
+        is_self_worked=req.is_self_worked,
         base_price=req.base_price,
+        price_usd=req.price_usd,
+        price_eur=req.price_eur,
+        material=req.material,
+        density=req.density,
+        composition=req.composition,
+        print_method=req.print_method,
+        note=req.note,
         description=req.description,
         attributes=req.attributes,
         is_published=req.is_published,
+        variants=[v.model_dump() for v in req.variants] if req.variants else None,
     )
     return ResponseGenerator.answer(
         body=ProductResponse.model_validate(product),
@@ -92,7 +104,7 @@ async def create_product(
 async def update_product(
     product_id: UUID,
     req: ProductUpdateRequest,
-    current_user: UserDomain = Depends(require_permission("catalog:manage")),
+    current_user: UserDomain = Depends(require_catalog_or_creator_permission()),
     catalog_service: CatalogService = Depends(get_catalog_service),
 ):
     product = await catalog_service.update_product(
@@ -101,8 +113,18 @@ async def update_product(
         category_id=req.category_id,
         title=req.title,
         slug=req.slug,
-        brand=req.brand,
+        brand=req.brand if "brand" in req.model_fields_set else ...,
+        is_self_worked=req.is_self_worked,
         base_price=req.base_price,
+        price_usd=req.price_usd if "price_usd" in req.model_fields_set else ...,
+        price_eur=req.price_eur if "price_eur" in req.model_fields_set else ...,
+        material=req.material if "material" in req.model_fields_set else ...,
+        density=req.density if "density" in req.model_fields_set else ...,
+        composition=req.composition if "composition" in req.model_fields_set else ...,
+        print_method=req.print_method
+        if "print_method" in req.model_fields_set
+        else ...,
+        note=req.note if "note" in req.model_fields_set else ...,
         description=req.description,
         attributes=req.attributes,
         is_published=req.is_published,
@@ -113,7 +135,7 @@ async def update_product(
 @router.delete("/products/{product_id}", response_model=BaseResponse[None])
 async def delete_product(
     product_id: UUID,
-    current_user: UserDomain = Depends(require_permission("catalog:manage")),
+    current_user: UserDomain = Depends(require_catalog_or_creator_permission()),
     catalog_service: CatalogService = Depends(get_catalog_service),
 ):
     await catalog_service.delete_product(actor=current_user, product_id=product_id)
@@ -128,15 +150,16 @@ async def delete_product(
 async def create_product_variant(
     product_id: UUID,
     req: ProductVariantCreateRequest,
-    current_user: UserDomain = Depends(require_permission("catalog:manage")),
+    current_user: UserDomain = Depends(require_catalog_or_creator_permission()),
     catalog_service: CatalogService = Depends(get_catalog_service),
 ):
+    color = req.color or req.color_name
     variant = await catalog_service.create_variant(
         actor=current_user,
         product_id=product_id,
         sku=req.sku,
         size=req.size,
-        color_name=req.color_name,
+        color_name=color,
         color_hex=req.color_hex,
         price_override=req.price_override,
         stock_quantity=req.stock_quantity,
@@ -154,15 +177,16 @@ async def create_product_variant(
 async def update_product_variant(
     variant_id: UUID,
     req: ProductVariantUpdateRequest,
-    current_user: UserDomain = Depends(require_permission("catalog:manage")),
+    current_user: UserDomain = Depends(require_catalog_or_creator_permission()),
     catalog_service: CatalogService = Depends(get_catalog_service),
 ):
+    color = req.color or req.color_name
     variant = await catalog_service.update_variant(
         actor=current_user,
         variant_id=variant_id,
         sku=req.sku,
         size=req.size,
-        color_name=req.color_name,
+        color_name=color,
         color_hex=req.color_hex,
         price_override=req.price_override,
         stock_quantity=req.stock_quantity,
@@ -178,7 +202,7 @@ async def update_product_variant(
 async def add_product_image(
     product_id: UUID,
     req: ProductImageCreateRequest,
-    current_user: UserDomain = Depends(require_permission("catalog:manage")),
+    current_user: UserDomain = Depends(require_catalog_or_creator_permission()),
     catalog_service: CatalogService = Depends(get_catalog_service),
 ):
     image = await catalog_service.add_image(
@@ -186,6 +210,7 @@ async def add_product_image(
         product_id=product_id,
         url=req.url,
         variant_id=req.variant_id,
+        color=req.color,
         alt_text=req.alt_text,
         sort_order=req.sort_order,
         is_main=req.is_main,
@@ -204,10 +229,11 @@ async def add_product_image(
 async def upload_product_image(
     product_id: UUID,
     file: UploadFile = File(...),
+    color: str | None = Form(default=None),
     alt_text: str | None = Form(default=None),
     sort_order: int = Form(default=0),
     is_main: bool = Form(default=False),
-    current_user: UserDomain = Depends(require_permission("catalog:manage")),
+    current_user: UserDomain = Depends(require_catalog_or_creator_permission()),
     catalog_service: CatalogService = Depends(get_catalog_service),
 ):
     data = await file.read()
@@ -215,6 +241,7 @@ async def upload_product_image(
         actor=current_user,
         product_id=product_id,
         file_data=data,
+        color=color,
         alt_text=alt_text,
         sort_order=sort_order,
         is_main=is_main,

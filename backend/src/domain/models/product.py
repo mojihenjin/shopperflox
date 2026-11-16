@@ -21,8 +21,19 @@ class ProductDomain(BaseDomain):
     base_price: Decimal
     created_by: UUID
 
+    creator_id: UUID | None = field(default=None)
     description: str | None = field(default=None)
     brand: str | None = field(default=None)
+    is_self_worked: bool = field(default=False)
+    price_usd: Decimal | None = field(default=None)
+    price_eur: Decimal | None = field(default=None)
+
+    material: str | None = field(default=None)
+    density: str | None = field(default=None)
+    composition: str | None = field(default=None)
+    print_method: str | None = field(default=None)
+    note: str | None = field(default=None)
+
     attributes: dict[str, Any] = field(default_factory=dict)
     is_published: bool = field(default=False)
 
@@ -33,6 +44,10 @@ class ProductDomain(BaseDomain):
     def __post_init__(self) -> None:
         if self.base_price < 0:
             raise DomainValidationError("Product base_price must be non-negative")
+        if self.price_usd is not None and self.price_usd < 0:
+            raise DomainValidationError("Product price_usd must be non-negative")
+        if self.price_eur is not None and self.price_eur < 0:
+            raise DomainValidationError("Product price_eur must be non-negative")
 
     @property
     def is_available(self) -> bool:
@@ -47,8 +62,9 @@ class ProductVariantDomain(BaseDomain):
     id: UUID = field(default_factory=uuid7)
     product_id: UUID
     sku: str
-    size: str
-    color_name: str
+    size: str | None = field(default=None)
+    color_name: str | None = field(default=None)
+    color: str | None = field(default=None)
     created_by: UUID
 
     color_hex: str | None = field(default=None)
@@ -59,6 +75,11 @@ class ProductVariantDomain(BaseDomain):
     updated_at: datetime = field(default_factory=factory_now)
 
     def __post_init__(self) -> None:
+        if self.color_name is None and self.color is not None:
+            self.color_name = self.color
+        elif self.color is None and self.color_name is not None:
+            self.color = self.color_name
+
         if self.stock_quantity < 0:
             raise DomainValidationError("Variant stock_quantity must be non-negative")
         if self.price_override is not None and self.price_override < 0:
@@ -76,6 +97,7 @@ class ProductImageDomain(BaseDomain):
     created_by: UUID
 
     variant_id: UUID | None = field(default=None)
+    color: str | None = field(default=None)
     alt_text: str | None = field(default=None)
     sort_order: int = field(default=0)
     is_main: bool = field(default=False)

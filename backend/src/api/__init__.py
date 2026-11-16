@@ -22,6 +22,7 @@ from .dependencies import (
     get_token_provider,
     get_user_service,
     get_user_uow,
+    require_catalog_or_creator_permission,
     require_permission,
 )
 
@@ -51,6 +52,7 @@ __all__ = [
     "get_user_uow",
     "health",
     "metrics",
+    "require_catalog_or_creator_permission",
     "require_permission",
     "v1",
 ]

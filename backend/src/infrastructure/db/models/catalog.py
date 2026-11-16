@@ -47,10 +47,25 @@ class ProductModel(Base):
     category_id: Mapped[UUID] = mapped_column(
         ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False
     )
+    creator_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(255), nullable=False)
     brand: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    is_self_worked: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
     base_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    price_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    price_eur: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+
+    material: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    density: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    composition: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    print_method: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     attributes: Mapped[dict[str, Any]] = mapped_column(default=dict, nullable=False)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -63,6 +78,15 @@ class ProductModel(Base):
 
     __table_args__ = (
         CheckConstraint("base_price >= 0", name="chk_products_base_price_non_negative"),
+        CheckConstraint(
+            "price_usd IS NULL OR price_usd >= 0",
+            name="chk_products_price_usd_non_negative",
+        ),
+        CheckConstraint(
+            "price_eur IS NULL OR price_eur >= 0",
+            name="chk_products_price_eur_non_negative",
+        ),
+        Index("ix_products_creator_id", "creator_id"),
         Index(
             "uq_products_slug_active",
             "slug",
@@ -94,8 +118,8 @@ class ProductVariantModel(Base):
         ForeignKey("products.id", ondelete="CASCADE"), nullable=False
     )
     sku: Mapped[str] = mapped_column(String(64), nullable=False)
-    size: Mapped[str] = mapped_column(String(64), nullable=False)
-    color_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    size: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    color_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
     color_hex: Mapped[str | None] = mapped_column(String(32), nullable=True)
     price_override: Mapped[Decimal | None] = mapped_column(
         Numeric(12, 2), nullable=True
@@ -149,6 +173,7 @@ class ProductImageModel(Base):
     variant_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("product_variants.id", ondelete="SET NULL"), nullable=True
     )
+    color: Mapped[str | None] = mapped_column(String(100), nullable=True)
     url: Mapped[str] = mapped_column(String(512), nullable=False)
     alt_text: Mapped[str | None] = mapped_column(String(255), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -168,6 +193,7 @@ class ProductImageModel(Base):
         ),
         Index("ix_product_images_product_id", "product_id"),
         Index("ix_product_images_variant_id", "variant_id"),
+        Index("ix_product_images_color", "color"),
     )
 
 

@@ -27,6 +27,7 @@ from .catalog import (
     ProductVariantCreateRequest,
     ProductVariantResponse,
     ProductVariantUpdateRequest,
+    VariantCreateItem,
 )
 from .moderation import (
     BanUserRequest,
@@ -103,6 +104,7 @@ __all__ = [
     "UserPersonalResponse",
     "UserProfileResponse",
     "UserResponse",
+    "VariantCreateItem",
     "VerificationInitResponse",
     "VerifyCodeRequest",
     "VerifyEmailRequest",

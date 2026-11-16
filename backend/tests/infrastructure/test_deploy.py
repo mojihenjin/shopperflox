@@ -61,7 +61,7 @@ def test_nginx_shopperflox_conf_routes_and_security():
 
     # Frontend location /
     assert "location /" in content
-    assert "ShopperFlox Frontend" in content
+    assert "proxy_pass http://frontend_upstream;" in content
 
 
 def test_docker_compose_services():

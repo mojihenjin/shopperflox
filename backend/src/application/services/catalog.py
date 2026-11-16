@@ -40,6 +40,35 @@ class CatalogService:
         ):
             raise PermissionDeniedError("Permission 'catalog:manage' required")
 
+    def _check_creator_permission(self, actor: UserDomain) -> None:
+        if not actor or not (
+            "*" in actor.global_permissions
+            or "catalog:manage" in actor.global_permissions
+            or any(
+                p.startswith("creator:") or p == "creator"
+                for p in actor.global_permissions
+            )
+        ):
+            raise PermissionDeniedError(
+                "Permission 'catalog:manage' or 'creator:*' required"
+            )
+
+    def _check_product_modify_permission(
+        self, actor: UserDomain, product: ProductDomain
+    ) -> None:
+        if not actor:
+            raise PermissionDeniedError("Authentication required")
+        perms = actor.global_permissions
+        if "*" in perms or "catalog:manage" in perms:
+            return
+        is_creator = any(p.startswith("creator:") or p == "creator" for p in perms)
+        is_owner = product.creator_id is not None and product.creator_id == actor.id
+        if is_creator and is_owner:
+            return
+        raise PermissionDeniedError(
+            "Access denied: only product creator or catalog manager can modify this product"
+        )
+
     async def get_categories(self) -> list[CategoryDomain]:
         async with self.uow:
             return await self.uow.categories.list_all()
@@ -179,17 +208,29 @@ class CatalogService:
         title: str,
         slug: str,
         base_price: Decimal,
+        price_usd: Decimal | None = None,
+        price_eur: Decimal | None = None,
         brand: str | None = None,
+        is_self_worked: bool = False,
+        material: str | None = None,
+        density: str | None = None,
+        composition: str | None = None,
+        print_method: str | None = None,
+        note: str | None = None,
         description: str | None = None,
         attributes: dict[str, Any] | None = None,
         is_published: bool = False,
+        variants: list[dict[str, Any]] | None = None,
     ) -> ProductDomain:
-        self._check_permission(actor)
+        self._check_creator_permission(actor)
         title = title.strip()
         slug = slug.strip()
         clean_brand = brand.strip() if brand else None
         if not title or not slug:
             raise DomainValidationError("Product title and slug cannot be empty")
+
+        if is_self_worked and not clean_brand:
+            clean_brand = "self-worked"
 
         async with self.uow:
             category = await self.uow.categories.get_by_id(category_id)
@@ -198,16 +239,52 @@ class CatalogService:
 
             product = ProductDomain(
                 category_id=category_id,
+                creator_id=actor.id,
                 title=title,
                 slug=slug,
                 brand=clean_brand,
+                is_self_worked=is_self_worked,
                 base_price=base_price,
+                price_usd=price_usd,
+                price_eur=price_eur,
+                material=material.strip() if material else None,
+                density=density.strip() if density else None,
+                composition=composition.strip() if composition else None,
+                print_method=print_method.strip() if print_method else None,
+                note=note.strip() if note else None,
                 description=description,
                 attributes=attributes or {},
                 is_published=is_published,
                 created_by=actor.id,
             )
             await self.uow.products.add(product)
+
+            if variants:
+                for item in variants:
+                    sku = (item.get("sku") or "").strip()
+                    if not sku:
+                        sku = f"{slug[:16]}-{uuid7().hex[:8]}".upper()
+                    color = item.get("color") or item.get("color_name")
+                    color_clean = color.strip() if color else None
+                    size = item.get("size")
+                    size_clean = size.strip() if size else None
+                    stock_qty = int(item.get("stock_quantity", 0))
+                    price_override = item.get("price_override")
+                    variant = ProductVariantDomain(
+                        product_id=product.id,
+                        sku=sku,
+                        size=size_clean,
+                        color_name=color_clean,
+                        color=color_clean,
+                        color_hex=item.get("color_hex"),
+                        price_override=Decimal(str(price_override))
+                        if price_override is not None
+                        else None,
+                        stock_quantity=stock_qty,
+                        created_by=actor.id,
+                    )
+                    await self.uow.variants.add(variant)
+
             await self.uow.commit()
             return product
 
@@ -220,18 +297,27 @@ class CatalogService:
         title: str | None = None,
         slug: str | None = None,
         brand: str | None = ...,  # type: ignore[assignment]
+        is_self_worked: bool | None = None,
         base_price: Decimal | None = None,
+        price_usd: Decimal | None = ...,  # type: ignore[assignment]
+        price_eur: Decimal | None = ...,  # type: ignore[assignment]
+        material: str | None = ...,  # type: ignore[assignment]
+        density: str | None = ...,  # type: ignore[assignment]
+        composition: str | None = ...,  # type: ignore[assignment]
+        print_method: str | None = ...,  # type: ignore[assignment]
+        note: str | None = ...,  # type: ignore[assignment]
         description: str | None = None,
         attributes: dict[str, Any] | None = None,
         is_published: bool | None = None,
     ) -> ProductDomain:
-        self._check_permission(actor)
         async with self.uow:
             product = await self.uow.products.get_by_id(
                 product_id, include_unpublished=True
             )
             if product is None or product.deleted_at is not None:
                 raise EntityNotFoundError("Product not found")
+
+            self._check_product_modify_permission(actor, product)
 
             if category_id is not None:
                 category = await self.uow.categories.get_by_id(category_id)
@@ -251,11 +337,38 @@ class CatalogService:
                     raise DomainValidationError("Product slug cannot be empty")
                 product.slug = slug_clean
 
+            if is_self_worked is not None:
+                product.is_self_worked = is_self_worked
+
             if brand is not ...:
                 product.brand = brand.strip() if brand else None
 
+            if product.is_self_worked and not product.brand:
+                product.brand = "self-worked"
+
             if base_price is not None:
                 product.base_price = base_price
+
+            if price_usd is not ...:
+                product.price_usd = price_usd
+
+            if price_eur is not ...:
+                product.price_eur = price_eur
+
+            if material is not ...:
+                product.material = material.strip() if material else None
+
+            if density is not ...:
+                product.density = density.strip() if density else None
+
+            if composition is not ...:
+                product.composition = composition.strip() if composition else None
+
+            if print_method is not ...:
+                product.print_method = print_method.strip() if print_method else None
+
+            if note is not ...:
+                product.note = note.strip() if note else None
 
             if description is not None:
                 product.description = description
@@ -272,13 +385,14 @@ class CatalogService:
             return product
 
     async def delete_product(self, *, actor: UserDomain, product_id: UUID) -> None:
-        self._check_permission(actor)
         async with self.uow:
             product = await self.uow.products.get_by_id(
                 product_id, include_unpublished=True
             )
             if product is None or product.deleted_at is not None:
                 raise EntityNotFoundError("Product not found")
+
+            self._check_product_modify_permission(actor, product)
 
             now = factory_now()
             product.deleted_at = now
@@ -292,13 +406,12 @@ class CatalogService:
         actor: UserDomain,
         product_id: UUID,
         sku: str,
-        size: str,
-        color_name: str,
+        size: str | None = None,
+        color_name: str | None = None,
         color_hex: str | None = None,
         price_override: Decimal | None = None,
         stock_quantity: int = 0,
     ) -> ProductVariantDomain:
-        self._check_permission(actor)
         sku = sku.strip()
         if not sku:
             raise DomainValidationError("SKU cannot be empty")
@@ -309,6 +422,8 @@ class CatalogService:
             )
             if product is None or product.deleted_at is not None:
                 raise EntityNotFoundError("Product not found")
+
+            self._check_product_modify_permission(actor, product)
 
             variant = ProductVariantDomain(
                 product_id=product_id,
@@ -336,11 +451,18 @@ class CatalogService:
         price_override: Decimal | None = None,
         stock_quantity: int | None = None,
     ) -> ProductVariantDomain:
-        self._check_permission(actor)
         async with self.uow:
             variant = await self.uow.variants.get_by_id(variant_id)
             if variant is None:
                 raise EntityNotFoundError("Variant not found")
+
+            product = await self.uow.products.get_by_id(
+                variant.product_id, include_unpublished=True
+            )
+            if product is None or product.deleted_at is not None:
+                raise EntityNotFoundError("Product not found")
+
+            self._check_product_modify_permission(actor, product)
 
             if sku is not None:
                 sku_clean = sku.strip()
@@ -353,6 +475,7 @@ class CatalogService:
 
             if color_name is not None:
                 variant.color_name = color_name
+                variant.color = color_name
 
             if color_hex is not None:
                 variant.color_hex = color_hex
@@ -375,11 +498,11 @@ class CatalogService:
         product_id: UUID,
         url: str,
         variant_id: UUID | None = None,
+        color: str | None = None,
         alt_text: str | None = None,
         sort_order: int = 0,
         is_main: bool = False,
     ) -> ProductImageDomain:
-        self._check_permission(actor)
         url = url.strip()
         if not url:
             raise DomainValidationError("Image URL cannot be empty")
@@ -390,6 +513,8 @@ class CatalogService:
             )
             if product is None or product.deleted_at is not None:
                 raise EntityNotFoundError("Product not found")
+
+            self._check_product_modify_permission(actor, product)
 
             if variant_id is not None:
                 variant = await self.uow.variants.get_by_id(variant_id)
@@ -405,6 +530,7 @@ class CatalogService:
             image = ProductImageDomain(
                 product_id=product_id,
                 variant_id=variant_id,
+                color=color.strip() if color else None,
                 url=url,
                 alt_text=alt_text,
                 sort_order=sort_order,
@@ -442,12 +568,11 @@ class CatalogService:
         actor: UserDomain,
         product_id: UUID,
         file_data: bytes,
+        color: str | None = None,
         alt_text: str | None = None,
         sort_order: int = 0,
         is_main: bool = False,
     ) -> ProductImageDomain:
-        self._check_permission(actor)
-
         if len(file_data) > 5 * 1024 * 1024:
             raise DomainValidationError("File size exceeds 5 MB limit")
 
@@ -462,6 +587,8 @@ class CatalogService:
             )
             if product is None or product.deleted_at is not None:
                 raise EntityNotFoundError("Product not found")
+
+            self._check_product_modify_permission(actor, product)
 
             image_id = uuid7()
             key = f"products/{product_id}/{image_id}.{ext}"
@@ -481,6 +608,7 @@ class CatalogService:
                 id=image_id,
                 product_id=product_id,
                 url=public_url,
+                color=color.strip() if color else None,
                 alt_text=alt_text,
                 sort_order=sort_order,
                 is_main=should_be_main,
