@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { authApi, usersApi } from '../api/endpoints';
+import { authApi, usersApi, brandsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import type { ApiError } from '../api/client';
 
@@ -40,6 +40,22 @@ export function ProfilePage() {
   const isCreator =
     permissions.includes('*') ||
     permissions.some((p) => p.startsWith('creator:'));
+
+  const { data: myBrandsData } = useQuery({
+    queryKey: ['myBrands'],
+    queryFn: () => brandsApi.my(),
+    enabled: isAuthenticated,
+  });
+
+  const myBrands = myBrandsData?.data || [];
+  const hasBrandAccess =
+    permissions.includes('*') ||
+    permissions.includes('creator:brand') ||
+    myBrands.length > 0;
+  const isBrandActiveManager = myBrands.some(
+    (b) => !b.brand.is_deleted && (b.role === 'representative' || b.role === 'moderator')
+  );
+  const canCreateProduct = isCreator || isBrandActiveManager;
 
   useEffect(() => {
     if (personal) {
@@ -492,7 +508,15 @@ export function ProfilePage() {
               >
                 ВЕСЬ КАТАЛОГ ↗
               </Link>
-              {isCreator && (
+              {hasBrandAccess && (
+                <Link
+                  to="/brands/manage"
+                  className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-4 py-2.5 text-xs font-sans uppercase tracking-wider font-semibold transition-colors"
+                >
+                  БРЕНДЫ ↗
+                </Link>
+              )}
+              {canCreateProduct && (
                 <Link
                   to="/creator/products/new"
                   className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-4 py-2.5 text-xs font-sans uppercase tracking-wider font-semibold transition-colors"

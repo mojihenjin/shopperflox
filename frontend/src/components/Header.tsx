@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { categoriesApi, cartApi, searchApi, authApi, notificationsApi, moderationApi } from '../api/endpoints';
+import { categoriesApi, cartApi, searchApi, authApi, notificationsApi, moderationApi, brandsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { useDebounce } from '../hooks/useDebounce';
 import { NotificationsDrawer } from './NotificationsDrawer';
@@ -66,6 +66,23 @@ export function Header() {
   const canModerate =
     permissions.includes('*') ||
     permissions.includes('mod:approve_manager');
+
+  // Brands query for current user
+  const { data: myBrandsData } = useQuery({
+    queryKey: ['myBrands'],
+    queryFn: () => brandsApi.my(),
+    enabled: isAuthenticated,
+  });
+
+  const myBrands = myBrandsData?.data || [];
+  const hasBrandAccess =
+    permissions.includes('*') ||
+    permissions.includes('creator:brand') ||
+    myBrands.length > 0;
+  const isBrandActiveManager = myBrands.some(
+    (b) => !b.brand.is_deleted && (b.role === 'representative' || b.role === 'moderator')
+  );
+  const canCreateProduct = isCreator || isBrandActiveManager;
 
   const rootCategories = (categoriesData?.data || []).filter(
     (c) => c.parent_id === null || c.parent_id === undefined
@@ -409,9 +426,20 @@ export function Header() {
               </Link>
             )}
 
+            {hasBrandAccess && (
+              <Link
+                to="/brands/manage"
+                className={`hover:opacity-70 transition-colors duration-200 whitespace-nowrap font-medium uppercase ${
+                  isOverHero ? 'text-[#F2E9DB]' : 'text-sf-dark'
+                }`}
+              >
+                БРЕНДЫ
+              </Link>
+            )}
+
             {isAuthenticated ? (
               <div className="flex items-center gap-2 sm:gap-3">
-                {isCreator && (
+                {canCreateProduct && (
                   <Link
                     to="/creator/products/new"
                     className={`px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-sans uppercase tracking-wider font-semibold transition-colors duration-200 whitespace-nowrap ${
