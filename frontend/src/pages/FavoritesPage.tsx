@@ -33,7 +33,7 @@ export function FavoritesPage() {
           ИЗБРАННОЕ
         </h1>
         <p className="mt-3 text-xs font-sans uppercase tracking-wider text-sf-muted">
-          Войдите в аккаунт, чтобы сохранять понравившиеся модели солнцезащитных очков.
+          Войдите в аккаунт, чтобы сохранять понравившиеся товары в вишлист.
         </p>
         <button
           type="button"
@@ -49,7 +49,7 @@ export function FavoritesPage() {
   const products = data?.data || [];
 
   return (
-    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-12 md:py-16">
+    <div className="w-full max-w-none px-4 md:px-8 py-12 md:py-16">
       <div className="border-b border-sf-dark/20 pb-6 mb-10 flex items-end justify-between">
         <div>
           <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
@@ -74,7 +74,7 @@ export function FavoritesPage() {
             ВАШ СПИСОК ИЗБРАННОГО ПУСТ
           </div>
           <p className="mt-2 text-xs font-sans uppercase tracking-wider text-sf-muted">
-            Отмечайте значком «♡» понравившиеся очки в каталоге, чтобы вернуться к ним позже
+            Отмечайте значком «♡» понравившиеся товары в каталоге, чтобы вернуться к ним позже
           </p>
           <Link
             to="/"
@@ -84,7 +84,7 @@ export function FavoritesPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-10">
           {products.map((product) => (
             <ProductCard
               key={product.id}

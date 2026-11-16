@@ -30,7 +30,7 @@ export function OrdersPage() {
   }
 
   return (
-    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-12 md:py-16">
+    <div className="w-full max-w-none px-4 md:px-8 py-12 md:py-16">
       <div className="border-b border-sf-dark/20 pb-6 mb-10">
         <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
           ( ЛИЧНЫЙ КАБИНЕТ )
@@ -45,7 +45,7 @@ export function OrdersPage() {
           У ВАС ПОКА НЕТ ОФОРМЛЕННЫХ ЗАКАЗОВ
         </div>
         <p className="mt-2 text-xs font-sans uppercase tracking-wider text-sf-muted">
-          После оформления покупки здесь будут отображаться статус доставки и трек-номер
+          После оформления покупки здесь будут отображаться статус заказа и информация об отправлении
         </p>
         <Link
           to="/"

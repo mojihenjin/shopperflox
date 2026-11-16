@@ -37,6 +37,20 @@ export interface UserResponse {
   updated_at: string;
 }
 
+export interface UserPersonalResponse {
+  id?: string;
+  firstname?: string | null;
+  lastname?: string | null;
+  phone_number?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface UserProfileResponse {
+  user: UserResponse;
+  personal?: UserPersonalResponse | null;
+}
+
 export interface RegisterRequest {
   login: string;
   password: string;

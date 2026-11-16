@@ -189,7 +189,7 @@ export function ProductDetailPage() {
     <div className="w-full bg-[#F2E9DB]">
       {/* Breadcrumbs */}
       <div className="border-b border-sf-dark/15 py-3">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 flex items-center gap-2 text-[11px] font-sans uppercase tracking-wider text-sf-muted">
+        <div className="w-full max-w-none px-4 md:px-8 flex items-center gap-2 text-[11px] font-sans uppercase tracking-wider text-sf-muted">
           <Link to="/" className="hover:text-sf-dark">
             КАТАЛОГ
           </Link>
@@ -204,7 +204,7 @@ export function ProductDetailPage() {
         </div>
       </div>
 
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-10 md:py-16">
+      <div className="w-full max-w-none px-4 md:px-8 py-10 md:py-16">
         {feedbackNotice && (
           <div className="mb-8 p-3.5 bg-sf-dark text-sf-cream text-xs font-sans uppercase tracking-widest text-center">
             {feedbackNotice}
@@ -390,8 +390,8 @@ export function ProductDetailPage() {
 
             {/* Editorial Features Guarantee */}
             <div className="border-t border-sf-dark/20 pt-6 space-y-2 text-[11px] font-sans uppercase tracking-wider text-sf-muted">
-              <div>✓ ОРИГИНАЛЬНАЯ КОМПЛЕКТАЦИЯ: ФУТЛЯР + САЛФЕТКА ИЗ МИКРОФИБРЫ</div>
-              <div>✓ БЕСПЛАТНАЯ ПРИМЕРКА ПРИ ДОСТАВКЕ КУРЬЕРОМ</div>
+              <div>✓ ПРЕМИАЛЬНЫЕ МАТЕРИАЛЫ И ВЫСОКОКАЧЕСТВЕННАЯ ФУРНИТУРА</div>
+              <div>✓ ОРИГИНАЛЬНАЯ КОМПЛЕКТАЦИЯ И ФИРМЕННАЯ УПАКОВКА</div>
               <div>✓ ГАРАНТИЯ КАЧЕСТВА SHOPPERFLOX — 12 МЕСЯЦЕВ</div>
             </div>
           </div>

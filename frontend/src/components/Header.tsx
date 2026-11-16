@@ -22,25 +22,32 @@ export function Header() {
   const debouncedQuery = useDebounce(searchQuery.trim(), 300);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch current user if token exists but user info isn't loaded yet
-  useEffect(() => {
-    if (isAuthenticated && !user) {
-      authApi.getMe()
-        .then((res) => {
-          if (res.data) setUser(res.data);
-        })
-        .catch(() => {
-          // Token might be invalid or handled by refresh
-        });
-    }
-  }, [isAuthenticated, user, setUser]);
-
   // Categories query
   const { data: categoriesData } = useQuery({
     queryKey: ['categories'],
     queryFn: () => categoriesApi.list(),
     staleTime: 5 * 60 * 1000,
   });
+
+  // User profile query via TanStack Query when authenticated
+  const { data: userProfileData } = useQuery({
+    queryKey: ['userProfile'],
+    queryFn: () => authApi.getMe(),
+    enabled: isAuthenticated,
+    staleTime: 60 * 1000,
+  });
+
+  const currentUser = userProfileData?.data?.user || user;
+  const permissions = currentUser?.global_permissions || [];
+  const isCreator =
+    permissions.includes('*') ||
+    permissions.some((p) => p.startsWith('creator:'));
+
+  useEffect(() => {
+    if (userProfileData?.data?.user) {
+      setUser(userProfileData.data.user);
+    }
+  }, [userProfileData, setUser]);
 
   const rootCategories = (categoriesData?.data || []).filter(
     (c) => c.parent_id === null || c.parent_id === undefined
@@ -127,10 +134,10 @@ export function Header() {
     <header className="sticky top-0 z-50 bg-[#F2E9DB] border-b border-sf-dark/15 text-sf-dark">
       {/* Top Banner / Philosophy slogan */}
       <div className="bg-sf-dark text-sf-cream text-[11px] font-sans tracking-widest uppercase py-1.5 px-4 text-center border-b border-sf-cream/20">
-        <span>SHOPPERFLOX — СТИЛЬ В ДЕТАЛЯХ &nbsp;|&nbsp; БЕСПЛАТНАЯ ДОСТАВКА ОТ 10 000 ₽</span>
+        <span>SHOPPERFLOX — ОДЕЖДА И АКСЕССУАРЫ &nbsp;|&nbsp; ПОДДЕРЖКА: support@shopper.flox</span>
       </div>
 
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
+      <div className="w-full max-w-none px-4 md:px-8">
         {/* Main navigation row */}
         <div className="flex items-center justify-between h-16 md:h-20 gap-4">
           {/* Logo */}
@@ -304,14 +311,28 @@ export function Header() {
             </Link>
 
             {isAuthenticated ? (
-              <div className="flex items-center gap-3">
-                <span className="text-sf-muted hidden lg:inline">
-                  {user?.login ? `(${user.login})` : ''}
-                </span>
+              <div className="flex items-center gap-2 sm:gap-3">
+                {isCreator && (
+                  <Link
+                    to="/creator/products/new"
+                    className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-sans uppercase tracking-wider font-semibold border border-[#3F2021] transition-colors whitespace-nowrap"
+                  >
+                    + СОЗДАТЬ ТОВАР
+                  </Link>
+                )}
+
+                <Link
+                  to="/profile"
+                  className="font-mono text-xs font-bold text-sf-dark hover:opacity-75 transition-opacity whitespace-nowrap"
+                  title="Личный кабинет"
+                >
+                  @{currentUser?.login || user?.login || 'профиль'}
+                </Link>
+
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="border border-sf-dark px-2.5 py-1 hover:bg-sf-dark hover:text-sf-cream transition-colors text-[11px]"
+                  className="border border-sf-dark px-2.5 py-1 hover:bg-sf-dark hover:text-sf-cream transition-colors text-[11px] whitespace-nowrap"
                 >
                   ВЫХОД
                 </button>
@@ -320,9 +341,9 @@ export function Header() {
               <Link
                 to={loginUrl}
                 state={{ from: location }}
-                className="border border-sf-dark px-2.5 py-1 hover:bg-sf-dark hover:text-sf-cream transition-colors text-[11px] whitespace-nowrap"
+                className="border border-sf-dark px-3 py-1 hover:bg-sf-dark hover:text-sf-cream transition-colors text-[11px] whitespace-nowrap font-medium"
               >
-                ACCOUNT / LOGIN
+                ВОЙТИ
               </Link>
             )}
           </nav>
@@ -339,12 +360,12 @@ export function Header() {
               }}
               className="hover:opacity-60 transition-opacity whitespace-nowrap"
             >
-              ВСЕ МОДЕЛИ
+              ВСЕ ТОВАРЫ
             </button>
             {rootCategories.map((cat) => (
               <Link
                 key={cat.id}
-                to={`/?category_id=${cat.id}`}
+                to={`/?category=${cat.slug || cat.id}`}
                 className="hover:opacity-60 transition-opacity whitespace-nowrap"
               >
                 {cat.name}

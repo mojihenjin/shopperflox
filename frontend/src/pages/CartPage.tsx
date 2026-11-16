@@ -61,7 +61,7 @@ export function CartPage() {
   const totalAmount = data?.data?.total_amount || '0';
 
   return (
-    <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-12 md:py-16">
+    <div className="w-full max-w-none px-4 md:px-8 py-12 md:py-16">
       <div className="border-b border-sf-dark/20 pb-6 mb-10 flex items-end justify-between">
         <div>
           <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
@@ -92,7 +92,7 @@ export function CartPage() {
             ВАША КОРЗИНА ПУСТА
           </div>
           <p className="mt-2 text-xs font-sans uppercase tracking-wider text-sf-muted">
-            Выберите понравившиеся модели солнцезащитных очков в нашем каталоге
+            Выберите понравившиеся товары в нашем каталоге
           </p>
           <Link
             to="/"
@@ -109,7 +109,7 @@ export function CartPage() {
               <div key={item.id} className="py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="font-serif text-lg uppercase text-sf-dark">
-                    {item.title || 'СОЛНЦЕЗАЩИТНЫЕ ОЧКИ'}
+                    {item.title || 'ТОВАР'}
                   </div>
                   <div className="text-xs font-sans uppercase text-sf-muted flex items-center gap-3">
                     {item.sku && <span>SKU: {item.sku}</span>}
@@ -185,10 +185,6 @@ export function CartPage() {
                   <span>ТОВАРЫ ({items.reduce((s, i) => s + i.quantity, 0)}):</span>
                   <span>{formatPrice(totalAmount)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>ДОСТАВКА:</span>
-                  <span className="text-emerald-800">БЕСПЛАТНО</span>
-                </div>
               </div>
 
               <div className="flex justify-between items-baseline text-sf-dark">
@@ -209,7 +205,7 @@ export function CartPage() {
               </button>
 
               <div className="text-[10px] uppercase tracking-wider text-sf-muted text-center pt-1">
-                ОПЛАТА ОНЛАЙН ИЛИ ПРИ ПОЛУЧЕНИИ ПОСЛЕ ПРИМЕРКИ
+                ОПЛАТА ОНЛАЙН ИЛИ ПРИ ПОЛУЧЕНИИ В ПУНКТЕ ВЫДАЧИ
               </div>
             </div>
           </div>

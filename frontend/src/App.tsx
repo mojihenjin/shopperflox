@@ -9,6 +9,8 @@ import { RegisterPage } from './pages/RegisterPage';
 import { FavoritesPage } from './pages/FavoritesPage';
 import { CartPage } from './pages/CartPage';
 import { OrdersPage } from './pages/OrdersPage';
+import { ProfilePage } from './pages/ProfilePage';
+import { CreatorNewProductPage } from './pages/CreatorNewProductPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,6 +45,22 @@ export function App() {
               element={
                 <ProtectedRoute>
                   <OrdersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="profile"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="creator/products/new"
+              element={
+                <ProtectedRoute>
+                  <CreatorNewProductPage />
                 </ProtectedRoute>
               }
             />

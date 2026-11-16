@@ -68,7 +68,7 @@ export function RegisterPage() {
         if (loginRes.data.access_token && loginRes.data.refresh_token) {
           setTokens(loginRes.data.access_token, loginRes.data.refresh_token);
           const meRes = await authApi.getMe();
-          if (meRes.data) setUser(meRes.data);
+          if (meRes.data?.user) setUser(meRes.data.user);
           navigate(returnTo, { replace: true });
         } else {
           navigate(returnTo !== '/' ? `/login?redirect=${encodeURIComponent(returnTo)}` : '/login');
@@ -110,7 +110,7 @@ export function RegisterPage() {
       if (loginRes.data.access_token && loginRes.data.refresh_token) {
         setTokens(loginRes.data.access_token, loginRes.data.refresh_token);
         const meRes = await authApi.getMe();
-        if (meRes.data) setUser(meRes.data);
+        if (meRes.data?.user) setUser(meRes.data.user);
         navigate(returnTo, { replace: true });
       } else {
         navigate(returnTo !== '/' ? `/login?redirect=${encodeURIComponent(returnTo)}` : '/login');

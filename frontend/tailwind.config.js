@@ -25,9 +25,6 @@ export default {
         none: '0px',
         DEFAULT: '0px',
       },
-      maxWidth: {
-        container: '1200px',
-      },
       aspectRatio: {
         portrait: '2 / 3',
         banner: '1160 / 348',

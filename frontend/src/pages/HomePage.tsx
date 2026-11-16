@@ -17,7 +17,7 @@ export function HomePage() {
   const currentPath = `${location.pathname}${location.search}`;
   const loginRedirectUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
 
-  const categoryIdParam = searchParams.get('category_id') || '';
+  const categoryParam = searchParams.get('category') || searchParams.get('category_id') || '';
   const searchParam = searchParams.get('search') || '';
   const minPriceParam = searchParams.get('min_price') || '';
   const maxPriceParam = searchParams.get('max_price') || '';
@@ -40,12 +40,33 @@ export function HomePage() {
     queryFn: () => categoriesApi.list(),
   });
 
+  const categories = useMemo(() => categoriesData?.data || [], [categoriesData]);
+
+  // Find selected category
+  const selectedCategory = useMemo(() => {
+    if (!categoryParam) return null;
+    return categories.find(
+      (c) => c.slug === categoryParam || c.id === categoryParam
+    ) || null;
+  }, [categories, categoryParam]);
+
+  // Resolve valid UUID for category_id parameter of GET /api/v1/products
+  const activeCategoryId = useMemo(() => {
+    if (selectedCategory) return selectedCategory.id;
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryParam)) {
+      return categoryParam;
+    }
+    return undefined;
+  }, [selectedCategory, categoryParam]);
+
+  const catalogTitle = selectedCategory ? selectedCategory.name.toUpperCase() : 'ВСЕ ТОВАРЫ';
+
   // Fetch products
   const { data: productsData, isLoading: isProductsLoading } = useQuery({
-    queryKey: ['products', categoryIdParam, searchParam, minPriceParam, maxPriceParam, offset],
+    queryKey: ['products', activeCategoryId, searchParam, minPriceParam, maxPriceParam, offset],
     queryFn: () =>
       productsApi.list({
-        category_id: categoryIdParam || undefined,
+        category_id: activeCategoryId || undefined,
         search: searchParam || undefined,
         min_price: minPriceParam || undefined,
         max_price: maxPriceParam || undefined,
@@ -83,11 +104,13 @@ export function HomePage() {
     },
   });
 
-  const handleCategorySelect = (id: string) => {
+  const handleCategorySelect = (slugOrId: string) => {
     const next = new URLSearchParams(searchParams);
-    if (id) {
-      next.set('category_id', id);
+    if (slugOrId) {
+      next.set('category', slugOrId);
+      next.delete('category_id');
     } else {
+      next.delete('category');
       next.delete('category_id');
     }
     next.set('page', '1');
@@ -116,7 +139,6 @@ export function HomePage() {
   const totalProducts = productsData?.metadata?.total ?? (productsData?.data?.length || 0);
   const totalPages = Math.ceil(totalProducts / PAGE_SIZE) || 1;
   const products = productsData?.data || [];
-  const categories = categoriesData?.data || [];
 
   const handlePageChange = (newPage: number) => {
     const next = new URLSearchParams(searchParams);
@@ -138,7 +160,7 @@ export function HomePage() {
             <div className="flex flex-col justify-between py-12 lg:py-20 pr-0 lg:pr-12">
               <div className="space-y-6">
                 <div className="text-[12px] font-sans font-medium uppercase tracking-widest text-sf-cream/80">
-                  SHOPPERFLOX — БРЕНД СОЛНЦЕЗАЩИТНЫХ ОЧКОВ
+                  SHOPPERFLOX — ОДЕЖДА И АКСЕССУАРЫ
                 </div>
 
                 <div className="relative">
@@ -153,7 +175,7 @@ export function HomePage() {
                 </div>
 
                 <p className="max-w-md text-xs sm:text-sm font-sans uppercase tracking-wider text-sf-cream/70 leading-relaxed">
-                  Коллекции солнцезащитных очков вне времени. Бескомпромиссная геометрия, премиальный итальянский ацетат и полная защита UV400.
+                  Коллекции одежды и аксессуаров вне времени. Бескомпромиссная геометрия, премиальные ткани и архитектурный силуэт.
                 </p>
               </div>
 
@@ -266,16 +288,16 @@ export function HomePage() {
                 (2) ВЫБИРАЕМ МАТЕРИАЛЫ
               </div>
               <p className="text-xs font-sans uppercase tracking-wider text-sf-cream/85 leading-relaxed">
-                Высококачественный ацетат ручной полировки, надежные шарнирные крепления и стойкое антибликовое покрытие.
+                Высококачественные премиальные материалы, надежная фурнитура и безупречное качество пошива каждого изделия.
               </p>
             </div>
 
             <div className="pt-6 md:pt-0 md:pl-8 space-y-3">
               <div className="text-[13px] font-sans font-bold uppercase tracking-wider text-sf-cream">
-                (3) ЗАЩИТА UV400
+                (3) ПРЕМИУМ МАТЕРИАЛЫ
               </div>
               <p className="text-xs font-sans uppercase tracking-wider text-sf-cream/85 leading-relaxed">
-                Каждая модель проходит лабораторный контроль категории светопропускания и блокирует 100% спектра UVA/UVB лучей.
+                Каждое изделие проходит строгий контроль качества материалов, прочности швов и идеальной посадки.
               </p>
             </div>
           </div>
@@ -284,7 +306,7 @@ export function HomePage() {
 
       {/* 3. CATALOG SECTION: Warm Cream (#F2E9DB) */}
       <section id="catalog" className="w-full bg-[#F2E9DB] py-14 md:py-20">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
+        <div className="w-full max-w-none px-4 md:px-8">
           {/* Header of catalog & Active Filters */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-sf-dark/20">
             <div>
@@ -292,7 +314,7 @@ export function HomePage() {
                 ( КАТАЛОГ КОЛЛЕКЦИЙ )
               </span>
               <h2 className="font-serif text-3xl md:text-5xl uppercase tracking-wider text-sf-dark mt-1">
-                СОЛНЦЕЗАЩИТНЫЕ ОЧКИ
+                {catalogTitle}
               </h2>
             </div>
 
@@ -329,32 +351,36 @@ export function HomePage() {
           <div className="py-6 space-y-4">
             {/* Category tabs */}
             {categories.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-sf-dark/10">
                 <button
                   type="button"
                   onClick={() => handleCategorySelect('')}
-                  className={`px-3 py-1.5 text-xs font-sans uppercase tracking-wider border transition-colors ${
-                    !categoryIdParam
+                  className={`px-3.5 py-1.5 text-xs font-sans uppercase tracking-wider border transition-colors ${
+                    !categoryParam
                       ? 'bg-sf-dark text-sf-cream border-sf-dark font-semibold'
-                      : 'border-sf-dark/30 hover:border-sf-dark text-sf-dark'
+                      : 'border-sf-dark/30 hover:border-sf-dark text-sf-dark bg-transparent'
                   }`}
                 >
-                  ВСЕ КАТЕГОРИИ
+                  ВСЕ
                 </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => handleCategorySelect(cat.id)}
-                    className={`px-3 py-1.5 text-xs font-sans uppercase tracking-wider border transition-colors ${
-                      categoryIdParam === cat.id
-                        ? 'bg-sf-dark text-sf-cream border-sf-dark font-semibold'
-                        : 'border-sf-dark/30 hover:border-sf-dark text-sf-dark'
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
+                {categories.map((cat) => {
+                  const isSelected =
+                    categoryParam === cat.slug || categoryParam === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => handleCategorySelect(cat.slug || cat.id)}
+                      className={`px-3.5 py-1.5 text-xs font-sans uppercase tracking-wider border transition-colors ${
+                        isSelected
+                          ? 'bg-sf-dark text-sf-cream border-sf-dark font-semibold'
+                          : 'border-sf-dark/30 hover:border-sf-dark text-sf-dark bg-transparent'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -387,7 +413,7 @@ export function HomePage() {
                 </button>
               </form>
 
-              {(categoryIdParam || searchParam || minPriceParam || maxPriceParam) && (
+              {(categoryParam || searchParam || minPriceParam || maxPriceParam) && (
                 <button
                   type="button"
                   onClick={handleResetFilters}
@@ -424,12 +450,12 @@ export function HomePage() {
             <div
               className={
                 columns === 2
-                  ? 'grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8'
+                  ? 'grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-10'
                   : columns === 6
-                  ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4'
+                  ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-3 gap-y-6'
                   : columns === 8
-                  ? 'grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 md:gap-3'
-                  : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8'
+                  ? 'grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-x-3 gap-y-6'
+                  : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-10'
               }
             >
               {products.map((product) => (

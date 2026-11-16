@@ -12,6 +12,7 @@ import type {
   ReviewResponse,
   SearchResultResponse,
   TokenPairResponse,
+  UserProfileResponse,
   UserResponse,
   VerifyCodeRequest,
 } from '../types/api';
@@ -41,7 +42,7 @@ export const authApi = {
     }),
 
   getMe: () =>
-    apiFetch<UserResponse>('/api/v1/users/me', {
+    apiFetch<UserProfileResponse>('/api/v1/users/me', {
       method: 'GET',
     }),
 };

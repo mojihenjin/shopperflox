@@ -38,8 +38,8 @@ export function LoginPage() {
         setTokens(res.data.access_token, res.data.refresh_token);
         try {
           const meRes = await authApi.getMe();
-          if (meRes.data) {
-            setUser(meRes.data);
+          if (meRes.data?.user) {
+            setUser(meRes.data.user);
           }
         } catch {
           // Non-critical, user will reload on next request
