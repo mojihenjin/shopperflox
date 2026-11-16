@@ -12,6 +12,7 @@ import { CartPage } from './pages/CartPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { CreatorNewProductPage } from './pages/CreatorNewProductPage';
+import { CreatorEditProductPage } from './pages/CreatorEditProductPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -63,6 +64,14 @@ export function App() {
               element={
                 <ProtectedRoute>
                   <CreatorNewProductPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="creator/products/:slug/edit"
+              element={
+                <ProtectedRoute>
+                  <CreatorEditProductPage />
                 </ProtectedRoute>
               }
             />

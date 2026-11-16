@@ -160,6 +160,25 @@ export interface ProductCreateRequest {
   variants?: VariantCreateItem[];
 }
 
+export interface ProductUpdateRequest {
+  category_id?: string | null;
+  title?: string | null;
+  slug?: string | null;
+  brand?: string | null;
+  is_self_worked?: boolean | null;
+  base_price?: number | string | null;
+  price_usd?: number | string | null;
+  price_eur?: number | string | null;
+  material?: string | null;
+  density?: string | null;
+  composition?: string | null;
+  print_method?: string | null;
+  note?: string | null;
+  description?: string | null;
+  attributes?: Record<string, unknown> | null;
+  is_published?: boolean | null;
+}
+
 export interface ProductVariantResponse {
   id: string;
   product_id: string;

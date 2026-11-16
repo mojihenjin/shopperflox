@@ -6,6 +6,7 @@ import type {
   CreateReviewRequest,
   LoginRequest,
   ProductCreateRequest,
+  ProductUpdateRequest,
   ProductDetailResponse,
   ProductImageResponse,
   ProductResponse,
@@ -113,6 +114,17 @@ export const productsApi = {
     apiFetch<ProductResponse>('/api/v1/products', {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+
+  update: (productId: string, data: ProductUpdateRequest) =>
+    apiFetch<ProductResponse>(`/api/v1/products/${productId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (productId: string) =>
+    apiFetch<null>(`/api/v1/products/${productId}`, {
+      method: 'DELETE',
     }),
 
   uploadImage: (productId: string, formData: FormData) =>

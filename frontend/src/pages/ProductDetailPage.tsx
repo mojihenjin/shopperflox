@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { productsApi, cartApi, favoritesApi } from '../api/endpoints';
+import { productsApi, cartApi, favoritesApi, authApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { formatImageUrl, formatPrice, formatDate } from '../utils/format';
 import type { FitFeedback, ProductVariantResponse } from '../types/api';
@@ -12,16 +12,18 @@ export function ProductDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user: authUser } = useAuthStore();
 
   const currentPath = `${location.pathname}${location.search}`;
   const loginRedirectUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
 
+  // --- STATE HOOKS (Strictly top-level) ---
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariantResponse | null>(null);
-  const [selectedCurrency, setSelectedCurrency] = useState<'RUB' | 'USD' | 'EUR'>('RUB');
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Review Form States
   const [reviewRating, setReviewRating] = useState<number>(5);
@@ -30,7 +32,8 @@ export function ProductDetailPage() {
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewSuccess, setReviewSuccess] = useState<string | null>(null);
 
-  // Fetch product detail
+  // --- DATA FETCHING HOOKS (Strictly top-level) ---
+  // 1. Product Detail
   const {
     data: productData,
     isLoading,
@@ -43,26 +46,28 @@ export function ProductDetailPage() {
 
   const detail = productData?.data;
   const product = detail?.product;
-  const variants = detail?.variants || [];
-  const images = detail?.images || [];
+  const variants = useMemo(() => detail?.variants || [], [detail?.variants]);
+  const images = useMemo(() => detail?.images || [], [detail?.images]);
 
-  // Automatically select first variant when product loads
-  useEffect(() => {
-    if (variants.length > 0 && !selectedVariant) {
-      setSelectedVariant(variants[0]);
-    }
-  }, [variants, selectedVariant]);
+  // 2. Current User Profile (for role and permissions check)
+  const { data: userProfileData } = useQuery({
+    queryKey: ['userProfile'],
+    queryFn: () => authApi.getMe(),
+    enabled: isAuthenticated,
+  });
 
-  // Fetch reviews for this product
+  const currentUser = userProfileData?.data?.user ?? authUser;
+
+  // 3. Product Reviews
   const { data: reviewsData } = useQuery({
     queryKey: ['reviews', product?.id],
     queryFn: () => productsApi.getReviews(product?.id || ''),
     enabled: Boolean(product?.id),
   });
 
-  const reviews = reviewsData?.data || [];
+  const reviews = useMemo(() => reviewsData?.data || [], [reviewsData?.data]);
 
-  // Fetch favorites
+  // 4. Favorites
   const { data: favoritesData } = useQuery({
     queryKey: ['favorites'],
     queryFn: () => favoritesApi.list(),
@@ -73,6 +78,179 @@ export function ProductDetailPage() {
     if (!product?.id) return false;
     return (favoritesData?.data || []).some((p) => p.id === product.id);
   }, [favoritesData, product?.id]);
+
+  // --- COMPUTED COLOR & VARIANT STATE (Strictly top-level) ---
+  // Unique available colors extracted from variants and images
+  const availableColors = useMemo(() => {
+    const colorMap = new Map<string, { name: string; hex?: string | null }>();
+    variants.forEach((v) => {
+      const name = (v.color_name || v.color || '').trim();
+      if (name && !colorMap.has(name.toLowerCase())) {
+        colorMap.set(name.toLowerCase(), { name, hex: v.color_hex });
+      }
+    });
+    images.forEach((img) => {
+      const name = (img.color || '').trim();
+      if (name && !colorMap.has(name.toLowerCase())) {
+        colorMap.set(name.toLowerCase(), { name });
+      }
+    });
+    return Array.from(colorMap.values());
+  }, [variants, images]);
+
+  // Filtered images based on selected color (fallback to all images)
+  const filteredImages = useMemo(() => {
+    if (!selectedColor) return images;
+    const matching = images.filter(
+      (img) => img.color && img.color.trim().toLowerCase() === selectedColor.trim().toLowerCase()
+    );
+    return matching.length > 0 ? matching : images;
+  }, [images, selectedColor]);
+
+  // Filtered variants based on selected color (for sizes)
+  const availableSizesForColor = useMemo(() => {
+    if (!selectedColor) {
+      return variants.filter((v) => Boolean(v.size));
+    }
+    const matching = variants.filter(
+      (v) =>
+        ((v.color_name && v.color_name.trim().toLowerCase() === selectedColor.trim().toLowerCase()) ||
+         (v.color && v.color.trim().toLowerCase() === selectedColor.trim().toLowerCase())) &&
+        Boolean(v.size)
+    );
+    return matching.length > 0 ? matching : variants.filter((v) => Boolean(v.size));
+  }, [variants, selectedColor]);
+
+  // Active / selected variant
+  const activeVariant = useMemo<ProductVariantResponse | null>(() => {
+    if (!variants || variants.length === 0) return null;
+    if (selectedVariantId) {
+      const found = variants.find((v) => v.id === selectedVariantId);
+      if (found) return found;
+    }
+    if (availableSizesForColor.length > 0) {
+      return availableSizesForColor[0];
+    }
+    return variants[0] || null;
+  }, [variants, selectedVariantId, availableSizesForColor]);
+
+  // Permissions calculation
+  const permissions = useMemo(() => {
+    if (!currentUser || !product) {
+      return { isCreator: false, isSuperAdmin: false, hasBrandAccess: false, canUpdate: false, canDelete: false };
+    }
+    const isCreator = Boolean(product.creator_id && currentUser.id === product.creator_id);
+    const globalPermissions = currentUser.global_permissions || [];
+    const isSuperAdmin = globalPermissions.includes('*');
+    const hasBrandAccess = Boolean(
+      product.brand &&
+      (globalPermissions.some((p) => p.toLowerCase() === `brand:${product.brand!.toLowerCase()}`) ||
+       globalPermissions.includes('brand:*'))
+    );
+    const canUpdate = isCreator || isSuperAdmin || hasBrandAccess || globalPermissions.includes('mod:update');
+    const canDelete = isCreator || isSuperAdmin || hasBrandAccess || globalPermissions.includes('mod:delete');
+
+    return { isCreator, isSuperAdmin, hasBrandAccess, canUpdate, canDelete };
+  }, [currentUser, product]);
+
+  // --- EFFECT HOOKS (Strictly top-level) ---
+  // 1. Auto-select initial color when product data loads
+  useEffect(() => {
+    if (availableColors.length > 0 && !selectedColor) {
+      setSelectedColor(availableColors[0].name);
+    }
+  }, [availableColors, selectedColor]);
+
+  // 2. Auto-synchronize variant when available sizes change
+  useEffect(() => {
+    if (availableSizesForColor.length > 0) {
+      const currentValid = availableSizesForColor.some((v) => v.id === selectedVariantId);
+      if (!currentValid) {
+        const inStock = availableSizesForColor.find((v) => (v.stock_quantity ?? 0) > 0);
+        setSelectedVariantId((inStock || availableSizesForColor[0]).id);
+      }
+    } else if (variants.length > 0 && !selectedVariantId) {
+      setSelectedVariantId(variants[0].id);
+    }
+  }, [availableSizesForColor, selectedVariantId, variants]);
+
+  // 3. Reset image index when selected color changes
+  useEffect(() => {
+    setSelectedImageIndex(0);
+  }, [selectedColor]);
+
+  // 4. Keyboard navigation for gallery (ArrowLeft / ArrowRight)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      if (filteredImages.length <= 1) return;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setSelectedImageIndex((prev) => (prev - 1 + filteredImages.length) % filteredImages.length);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setSelectedImageIndex((prev) => (prev + 1) % filteredImages.length);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [filteredImages.length]);
+
+  // --- MUTATION HOOKS (Strictly top-level) ---
+  // Toggle Publish Mutation
+  const togglePublishMutation = useMutation({
+    mutationFn: async () => {
+      if (!product?.id) return;
+      const newStatus = !product.is_published;
+      return productsApi.update(product.id, { is_published: newStatus });
+    },
+    onSuccess: (res) => {
+      queryClient.setQueryData(['product', slug], (old: { data?: { product?: typeof product } } | undefined) => {
+        if (!old || !old.data || !old.data.product) return old;
+        return {
+          ...old,
+          data: {
+            ...old.data,
+            product: {
+              ...old.data.product,
+              is_published: res?.data?.is_published,
+            },
+          },
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: ['product', slug] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setFeedbackNotice(
+        res?.data?.is_published
+          ? 'ТОВАР ТЕПЕРЬ ОПУБЛИКОВАН В КАТАЛОГЕ'
+          : 'ТОВАР СКРЫТ ИЗ ПУБЛИЧНОГО ДОСТУПА'
+      );
+      setTimeout(() => setFeedbackNotice(null), 3500);
+    },
+    onError: (err: ApiError) => {
+      setFeedbackNotice(err.message || 'Не удалось обновить статус публикации');
+      setTimeout(() => setFeedbackNotice(null), 3500);
+    },
+  });
+
+  // Delete Product Mutation
+  const deleteProductMutation = useMutation({
+    mutationFn: async () => {
+      if (!product?.id) return;
+      return productsApi.delete(product.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      navigate('/');
+    },
+    onError: (err: ApiError) => {
+      setFeedbackNotice(err.message || 'Ошибка при удалении товара');
+      setShowDeleteConfirm(false);
+      setTimeout(() => setFeedbackNotice(null), 3500);
+    },
+  });
 
   // Toggle favorite mutation
   const toggleFavoriteMutation = useMutation({
@@ -100,8 +278,8 @@ export function ProductDetailPage() {
         navigate(loginRedirectUrl, { state: { from: location } });
         return;
       }
-      if (!selectedVariant) return;
-      await cartApi.updateItem(selectedVariant.id, quantity);
+      if (!activeVariant) return;
+      await cartApi.updateItem(activeVariant.id, quantity);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
@@ -140,32 +318,35 @@ export function ProductDetailPage() {
     },
   });
 
+  // --- CONDITIONAL EARLY RETURNS (Strictly below all hooks) ---
   if (isLoading) {
     return (
-      <div className="max-w-[1280px] mx-auto px-4 py-32 text-center text-xs font-sans uppercase tracking-widest text-sf-muted">
-        ( ЗАГРУЗКА ИНФОРМАЦИИ О МОДЕЛИ... )
+      <div className="w-full min-h-[60vh] bg-[#F2E9DB] flex items-center justify-center py-32 px-4 text-center">
+        <div className="text-xs font-sans uppercase tracking-widest text-[#3F2021]/60">
+          ( ЗАГРУЗКА ИНФОРМАЦИИ О МОДЕЛИ... )
+        </div>
       </div>
     );
   }
 
   if (error || !product) {
     return (
-      <div className="max-w-[600px] mx-auto px-4 py-24 text-center">
-        <h1 className="font-serif text-3xl uppercase tracking-wider text-sf-dark">
+      <div className="w-full min-h-[60vh] bg-[#F2E9DB] flex flex-col items-center justify-center py-24 px-4 text-center">
+        <h1 className="font-serif text-3xl uppercase tracking-wider text-[#3F2021]">
           МОДЕЛЬ НЕ НАЙДЕНА
         </h1>
-        <p className="mt-2 text-xs font-sans uppercase tracking-wider text-sf-muted">
+        <p className="mt-2 text-xs font-sans uppercase tracking-wider text-[#3F2021]/60">
           Возможно, товар был перемещён в архив или ссылка устарела.
         </p>
-        <div className="mt-3 text-xs font-sans uppercase tracking-wider text-sf-muted">
+        <div className="mt-3 text-xs font-sans uppercase tracking-wider text-[#3F2021]/60">
           СЛУЖБА ПОДДЕРЖКИ:{' '}
-          <a href="mailto:support@shopper.flox" className="text-sf-dark underline underline-offset-4">
+          <span className="text-[#3F2021] font-semibold">
             support@shopper.flox
-          </a>
+          </span>
         </div>
         <Link
-          to="/"
-          className="mt-6 inline-block bg-sf-dark text-sf-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider"
+          to="/catalog"
+          className="mt-6 inline-block bg-[#3F2021] text-[#F2E9DB] px-6 py-2.5 text-xs font-sans uppercase tracking-wider hover:bg-[#2B1516] transition-colors rounded-none"
         >
           ВЕРНУТЬСЯ В КАТАЛОГ ↗
         </Link>
@@ -173,41 +354,33 @@ export function ProductDetailPage() {
     );
   }
 
-  // Selected color resolution & Gallery filtering
-  const selectedColor = selectedVariant?.color_name || selectedVariant?.color || null;
+  // --- PRESENTATION HELPERS ---
+  const activeImage = filteredImages[selectedImageIndex] || filteredImages[0] || null;
+  const totalImagesCount = filteredImages.length;
+  const currentImageNumber = totalImagesCount > 0 ? selectedImageIndex + 1 : 0;
+  const formattedCounter = `${String(currentImageNumber).padStart(2, '0')} / ${String(Math.max(1, totalImagesCount)).padStart(2, '0')}`;
 
-  const filteredImages = useMemo(() => {
-    if (!selectedColor) return images;
-    const matching = images.filter(
-      (img) => img.color && img.color.trim().toLowerCase() === selectedColor.trim().toLowerCase()
-    );
-    return matching.length > 0 ? matching : images;
-  }, [images, selectedColor]);
+  const effectivePriceRub = activeVariant?.price_override || product.base_price;
+  const rubPriceText = formatPrice(effectivePriceRub);
+  const usdPriceText = product.price_usd
+    ? `$ ${Number(product.price_usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : 'НЕ УКАЗАНО';
+  const eurPriceText = product.price_eur
+    ? `€ ${Number(product.price_eur).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : 'НЕ УКАЗАНО';
 
-  // Reset image index when color changes
-  useEffect(() => {
-    setSelectedImageIndex(0);
-  }, [selectedColor]);
+  const stockQuantity = activeVariant?.stock_quantity ?? 0;
+  const isOutOfStock = activeVariant !== null && stockQuantity === 0;
 
-  const activeImage = filteredImages[selectedImageIndex]?.url || null;
-  const currentPrice = selectedVariant?.price_override || product.base_price;
-  const inStock = selectedVariant ? (selectedVariant.stock_quantity ?? 0) > 0 : true;
+  const handlePrevImage = () => {
+    if (totalImagesCount <= 1) return;
+    setSelectedImageIndex((prev) => (prev - 1 + totalImagesCount) % totalImagesCount);
+  };
 
-  const hasMultiCurrency = Boolean(product.price_usd || product.price_eur);
-  let displayedPriceText = formatPrice(currentPrice);
-  if (selectedCurrency === 'USD' && product.price_usd) {
-    displayedPriceText = `$ ${Number(product.price_usd).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-  } else if (selectedCurrency === 'EUR' && product.price_eur) {
-    displayedPriceText = `€ ${Number(product.price_eur).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-  }
-
-  const hasSpecs = Boolean(
-    product.material ||
-    product.density ||
-    product.composition ||
-    product.print_method ||
-    product.note
-  );
+  const handleNextImage = () => {
+    if (totalImagesCount <= 1) return;
+    setSelectedImageIndex((prev) => (prev + 1) % totalImagesCount);
+  };
 
   const handleReviewSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,9 +394,9 @@ export function ProductDetailPage() {
   return (
     <div className="w-full bg-[#F2E9DB]">
       {/* Breadcrumbs */}
-      <div className="border-b border-sf-dark/15 py-3">
-        <div className="w-full max-w-none px-4 md:px-8 flex items-center gap-2 text-[11px] font-sans uppercase tracking-wider text-sf-muted">
-          <Link to="/catalog" className="hover:text-sf-dark">
+      <div className="border-b border-[#3F2021]/15 py-3">
+        <div className="w-full max-w-none px-4 md:px-8 flex items-center gap-2 text-[11px] font-sans uppercase tracking-wider text-[#3F2021]/60">
+          <Link to="/catalog" className="hover:text-[#3F2021]">
             КАТАЛОГ
           </Link>
           <span>/</span>
@@ -233,286 +406,412 @@ export function ProductDetailPage() {
               <span>/</span>
             </>
           )}
-          <span className="text-sf-dark font-medium truncate">{product.title}</span>
+          <span className="text-[#3F2021] font-medium truncate">{product.title || 'НЕ УКАЗАНО'}</span>
         </div>
       </div>
 
-      <div className="w-full max-w-none px-4 md:px-8 py-10 md:py-16">
+      <div className="w-full max-w-none px-4 md:px-8 py-8 md:py-14">
         {feedbackNotice && (
-          <div className="mb-8 p-3.5 bg-sf-dark text-sf-cream text-xs font-sans uppercase tracking-widest text-center">
+          <div className="mb-8 p-3.5 bg-[#3F2021] text-[#F2E9DB] text-xs font-sans uppercase tracking-widest text-center rounded-none">
             {feedbackNotice}
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14">
-          {/* LEFT: 2:3 Portrait Gallery (7 cols on desktop) */}
-          <div className="lg:col-span-7 flex flex-col md:flex-row gap-4">
-            {/* Thumbnails */}
-            {filteredImages.length > 1 && (
-              <div className="flex md:flex-col gap-2 order-2 md:order-1 overflow-x-auto md:overflow-y-auto max-h-[640px] scrollbar-none">
+        {/* MAIN TWO-COLUMN SECTION */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+          {/* LEFT COLUMN: Large Photo Gallery (7 columns on desktop) */}
+          <div className="lg:col-span-7 flex flex-col gap-4">
+            {/* Gallery Header / Color info indicator */}
+            <div className="flex items-center justify-between text-[11px] font-sans uppercase tracking-wider text-[#3F2021]/70">
+              <div>
+                {selectedColor ? (
+                  <span>ЦВЕТ: <strong className="text-[#3F2021]">{selectedColor}</strong> ({totalImagesCount} ФОТО)</span>
+                ) : (
+                  <span>ГАЛЕРЕЯ МОДЕЛИ</span>
+                )}
+              </div>
+              <div className="font-mono text-xs font-semibold text-[#3F2021]">
+                {formattedCounter}
+              </div>
+            </div>
+
+            {/* Main Stage Image (2:3 aspect ratio, bg-[#E5E5E5], rounded-none) */}
+            <div className="relative aspect-[2/3] w-full bg-[#E5E5E5] border border-[#3F2021]/20 overflow-hidden rounded-none select-none">
+              {activeImage ? (
+                <img
+                  src={formatImageUrl(activeImage.url, product.title)}
+                  alt={activeImage.alt_text || product.title}
+                  className="w-full h-full object-cover rounded-none"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs font-sans uppercase tracking-widest text-[#3F2021]/50">
+                  ( НЕТ ФОТОГРАФИИ )
+                </div>
+              )}
+
+              {/* Overlaid Navigation Arrows */}
+              {totalImagesCount > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handlePrevImage}
+                    aria-label="Предыдущее фото"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-[#F2E9DB]/90 text-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] border border-[#3F2021]/30 flex items-center justify-center font-serif text-lg transition-colors rounded-none"
+                  >
+                    ←
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextImage}
+                    aria-label="Следующее фото"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-[#F2E9DB]/90 text-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] border border-[#3F2021]/30 flex items-center justify-center font-serif text-lg transition-colors rounded-none"
+                  >
+                    →
+                  </button>
+                </>
+              )}
+
+              {/* Overlay Monospace Counter in bottom-right corner */}
+              <div className="absolute bottom-3 right-3 bg-[#3F2021]/80 text-[#F2E9DB] px-2.5 py-1 text-[11px] font-mono tracking-widest rounded-none">
+                {formattedCounter}
+              </div>
+            </div>
+
+            {/* Thumbnails Filmstrip below the main image */}
+            {totalImagesCount > 1 && (
+              <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none">
                 {filteredImages.map((img, idx) => (
                   <button
-                    key={img.id}
+                    key={img.id || idx}
                     type="button"
                     onClick={() => setSelectedImageIndex(idx)}
-                    className={`relative w-16 h-24 md:w-20 md:h-28 flex-shrink-0 border transition-all ${
+                    className={`relative w-16 h-24 sm:w-20 sm:h-28 flex-shrink-0 border transition-all rounded-none ${
                       selectedImageIndex === idx
-                        ? 'border-sf-dark ring-1 ring-sf-dark'
-                        : 'border-sf-dark/25 opacity-70 hover:opacity-100'
+                        ? 'border-[#3F2021] ring-2 ring-[#3F2021]'
+                        : 'border-[#3F2021]/30 opacity-70 hover:opacity-100'
                     }`}
                   >
                     <img
                       src={formatImageUrl(img.url, product.title)}
                       alt={img.alt_text || product.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover rounded-none"
                     />
                   </button>
                 ))}
               </div>
             )}
-
-            {/* Main Stage Image (2:3 aspect ratio) */}
-            <div className="flex-1 order-1 md:order-2 space-y-2">
-              {selectedColor && filteredImages.length < images.length && (
-                <div className="text-[11px] font-sans uppercase tracking-wider text-sf-muted">
-                  ( ЦВЕТ: {selectedColor} — {filteredImages.length} ИЗ {images.length} ФОТО )
-                </div>
-              )}
-              <div className="relative aspect-[2/3] w-full bg-[#E5DBCB] border border-sf-dark/20 overflow-hidden">
-                <img
-                  src={formatImageUrl(activeImage, product.title)}
-                  alt={product.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
           </div>
 
-          {/* RIGHT: Product Details & Variant Picker (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col justify-between space-y-8">
+          {/* RIGHT COLUMN: Information, Variant Picker, Characteristics, Actions (5 columns) */}
+          <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
             <div className="space-y-6">
-              {/* Brand and self-worked badge */}
+              {/* Mandatory Field 1: Brand / (self-worked) */}
               <div className="flex flex-wrap items-center gap-2">
-                {product.brand && (
-                  <div className="text-[12px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
-                    [ {product.brand} ]
-                  </div>
-                )}
                 {product.is_self_worked && (
-                  <span className="bg-[#3F2021] text-[#F2E9DB] px-2.5 py-0.5 text-[10px] font-sans uppercase tracking-widest font-semibold">
-                    SELF-WORKED
+                  <span className="bg-[#3F2021] text-[#F2E9DB] px-2.5 py-0.5 text-[10px] font-sans uppercase tracking-widest font-semibold rounded-none">
+                    ( self-worked )
                   </span>
                 )}
+                <span className="text-xs font-sans font-semibold uppercase tracking-widest text-[#3F2021]/70">
+                  [ {product.brand || 'НЕ УКАЗАНО'} ]
+                </span>
               </div>
 
-              <h1 className="font-serif text-3xl sm:text-4xl uppercase tracking-wider text-sf-dark leading-snug">
-                {product.title}
+              {/* Mandatory Field 2: Title */}
+              <h1 className="font-serif text-3xl sm:text-4xl uppercase tracking-wider text-[#3F2021] leading-snug">
+                {product.title || 'НЕ УКАЗАНО'}
               </h1>
 
-              {/* Price Row with Currency Switcher */}
-              <div className="flex flex-wrap items-baseline justify-between gap-4 border-b border-sf-dark/15 pb-4">
-                <div className="flex items-baseline gap-4">
-                  <span className="font-sans text-2xl font-bold text-sf-black">
-                    {displayedPriceText}
-                  </span>
-                  {selectedVariant?.price_override && selectedCurrency === 'RUB' && (
-                    <span className="text-xs font-sans uppercase tracking-wider text-sf-muted line-through">
-                      {formatPrice(product.base_price)}
-                    </span>
-                  )}
+              {/* Mandatory Field 3: Price in RUB, USD, EUR */}
+              <div className="space-y-2 border-b border-[#3F2021]/15 pb-4">
+                <div className="font-serif text-3xl font-bold text-[#3F2021]">
+                  {rubPriceText}
                 </div>
-
-                {hasMultiCurrency && (
-                  <div className="flex items-center gap-1 border border-sf-dark/25 p-0.5 bg-[#FFFFFF]">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCurrency('RUB')}
-                      className={`px-2 py-0.5 text-[11px] font-sans font-semibold transition-colors ${
-                        selectedCurrency === 'RUB'
-                          ? 'bg-[#3F2021] text-[#F2E9DB]'
-                          : 'text-[#3F2021]/70 hover:text-[#3F2021]'
-                      }`}
-                    >
-                      ₽ RUB
-                    </button>
-                    {product.price_usd && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedCurrency('USD')}
-                        className={`px-2 py-0.5 text-[11px] font-sans font-semibold transition-colors ${
-                          selectedCurrency === 'USD'
-                            ? 'bg-[#3F2021] text-[#F2E9DB]'
-                            : 'text-[#3F2021]/70 hover:text-[#3F2021]'
-                        }`}
-                      >
-                        $ USD
-                      </button>
-                    )}
-                    {product.price_eur && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedCurrency('EUR')}
-                        className={`px-2 py-0.5 text-[11px] font-sans font-semibold transition-colors ${
-                          selectedCurrency === 'EUR'
-                            ? 'bg-[#3F2021] text-[#F2E9DB]'
-                            : 'text-[#3F2021]/70 hover:text-[#3F2021]'
-                        }`}
-                      >
-                        € EUR
-                      </button>
-                    )}
-                  </div>
-                )}
+                <div className="text-xs font-mono uppercase tracking-wider text-[#3F2021]/80">
+                  ₽: {rubPriceText} · $: {usdPriceText} · €: {eurPriceText}
+                </div>
               </div>
 
-              {/* SKU & Availability Badge */}
-              <div className="flex items-center gap-3 text-xs font-sans uppercase tracking-wider border-b border-sf-dark/15 pb-4">
-                <span className="text-sf-muted">АРТИКУЛ / SKU:</span>
-                <span className="font-mono font-semibold text-sf-dark">
-                  {selectedVariant?.sku || 'НЕ ВЫБРАН'}
-                </span>
-                <span className="ml-auto">
-                  {inStock ? (
-                    <span className="text-emerald-800 font-semibold">
-                      В НАЛИЧИИ ({selectedVariant?.stock_quantity ?? 'МНОГО'})
-                    </span>
-                  ) : (
-                    <span className="text-sf-coral font-semibold">НЕТ В НАЛИЧИИ</span>
-                  )}
-                </span>
-              </div>
-
-              {/* Description */}
-              {product.description && (
-                <div className="text-xs font-sans uppercase tracking-wider text-sf-dark/80 leading-relaxed">
-                  {product.description}
+              {/* Mandatory Field 4: Colors (interactive or "Цвет: НЕ УКАЗАНО") */}
+              <div className="space-y-2">
+                <div className="text-xs font-sans font-semibold uppercase tracking-wider text-[#3F2021]">
+                  ЦВЕТ: {selectedColor || 'НЕ УКАЗАНО'}
                 </div>
-              )}
-
-              {/* Characteristics Table */}
-              {hasSpecs && (
-                <div className="border border-sf-dark/20 bg-sf-cream/40 p-5 space-y-3">
-                  <div className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-dark">
-                    ( ХАРАКТЕРИСТИКИ ИЗДЕЛИЯ )
+                {availableColors.length === 0 ? (
+                  <div className="text-xs font-sans uppercase tracking-wider text-[#3F2021]/60">
+                    Цвет: НЕ УКАЗАНО
                   </div>
-                  <div className="divide-y divide-sf-dark/15 text-xs font-sans">
-                    {product.material && (
-                      <div className="flex justify-between py-2 gap-4">
-                        <span className="text-sf-muted uppercase tracking-wider">МАТЕРИАЛ:</span>
-                        <span className="font-semibold text-sf-dark uppercase text-right">{product.material}</span>
-                      </div>
-                    )}
-                    {product.density && (
-                      <div className="flex justify-between py-2 gap-4">
-                        <span className="text-sf-muted uppercase tracking-wider">ПЛОТНОСТЬ:</span>
-                        <span className="font-semibold text-sf-dark uppercase text-right">{product.density}</span>
-                      </div>
-                    )}
-                    {product.composition && (
-                      <div className="flex justify-between py-2 gap-4">
-                        <span className="text-sf-muted uppercase tracking-wider">СОСТАВ:</span>
-                        <span className="font-semibold text-sf-dark uppercase text-right">{product.composition}</span>
-                      </div>
-                    )}
-                    {product.print_method && (
-                      <div className="flex justify-between py-2 gap-4">
-                        <span className="text-sf-muted uppercase tracking-wider">НАНЕСЕНИЕ:</span>
-                        <span className="font-semibold text-sf-dark uppercase text-right">{product.print_method}</span>
-                      </div>
-                    )}
-                    {product.note && (
-                      <div className="py-2 space-y-1">
-                        <span className="text-sf-muted uppercase tracking-wider block">ПРИМЕЧАНИЕ:</span>
-                        <p className="text-sf-dark uppercase leading-relaxed text-[11px]">{product.note}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Variant Picker (Color & Size) */}
-              {variants.length > 0 && (
-                <div className="space-y-4 pt-2">
-                  <div className="text-xs font-sans font-semibold uppercase tracking-wider text-sf-dark">
-                    ВЫБЕРИТЕ ВАРИАНТ МОДЕЛИ:
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {variants.map((v) => {
-                      const isSelected = selectedVariant?.id === v.id;
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {availableColors.map((c) => {
+                      const isSelected = selectedColor?.trim().toLowerCase() === c.name.trim().toLowerCase();
                       return (
                         <button
-                          key={v.id}
+                          key={c.name}
                           type="button"
-                          onClick={() => setSelectedVariant(v)}
-                          className={`p-3 text-left border transition-colors flex flex-col justify-between ${
+                          onClick={() => setSelectedColor(c.name)}
+                          className={`px-3 py-1.5 text-xs font-sans uppercase tracking-wider border transition-colors flex items-center gap-2 rounded-none ${
                             isSelected
-                              ? 'bg-sf-dark text-sf-cream border-sf-dark'
-                              : 'bg-[#F2E9DB] text-sf-dark border-sf-dark/30 hover:border-sf-dark'
+                              ? 'bg-[#3F2021] text-[#F2E9DB] border-[#3F2021] font-semibold'
+                              : 'border-[#3F2021]/30 text-[#3F2021] hover:border-[#3F2021] bg-[#F2E9DB]'
                           }`}
                         >
-                          <div className="flex items-center justify-between text-xs font-semibold uppercase">
-                            <span>{v.color_name}</span>
-                            {v.color_hex && (
-                              <span
-                                className="w-3.5 h-3.5 border border-sf-cream/40 inline-block"
-                                style={{ backgroundColor: v.color_hex }}
-                              />
-                            )}
-                          </div>
-                          <div className="mt-2 flex items-center justify-between text-[11px] opacity-80">
-                            <span>РАЗМЕР: {v.size}</span>
-                            <span>{formatPrice(v.price_override || product.base_price)}</span>
-                          </div>
+                          {c.hex && (
+                            <span
+                              className="w-3 h-3 inline-block border border-current rounded-none"
+                              style={{ backgroundColor: c.hex }}
+                            />
+                          )}
+                          <span>{c.name}</span>
                         </button>
                       );
                     })}
                   </div>
+                )}
+              </div>
+
+              {/* Mandatory Field 5: Sizes with stock count */}
+              <div className="space-y-2">
+                <div className="text-xs font-sans font-semibold uppercase tracking-wider text-[#3F2021]">
+                  РАЗМЕР: {activeVariant?.size || 'НЕ УКАЗАНО'}
+                </div>
+                {availableSizesForColor.length === 0 ? (
+                  <div className="text-xs font-sans uppercase tracking-wider text-[#3F2021]/60">
+                    Размеры: НЕ УКАЗАНО
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {availableSizesForColor.map((v) => {
+                      const isSelected = activeVariant?.id === v.id;
+                      const stock = v.stock_quantity ?? 0;
+                      const stockLabel = stock > 0 ? `${stock} шт.` : '0 шт. — нет';
+                      const noStock = stock === 0;
+
+                      return (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => setSelectedVariantId(v.id)}
+                          className={`px-3 py-2 text-xs font-sans uppercase tracking-wider border transition-colors rounded-none ${
+                            isSelected
+                              ? 'bg-[#3F2021] text-[#F2E9DB] border-[#3F2021] font-semibold'
+                              : noStock
+                              ? 'border-[#3F2021]/20 text-[#3F2021]/40 bg-[#3F2021]/5'
+                              : 'border-[#3F2021]/30 text-[#3F2021] hover:border-[#3F2021] bg-[#F2E9DB]'
+                          }`}
+                        >
+                          {v.size} ({stockLabel})
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Mandatory Field 6: Description */}
+              <div className="space-y-1.5 pt-2 border-t border-[#3F2021]/15">
+                <div className="text-[11px] font-sans font-semibold uppercase tracking-widest text-[#3F2021]/70">
+                  ( ОПИСАНИЕ )
+                </div>
+                <p className="text-xs font-sans uppercase tracking-wider text-[#3F2021] leading-relaxed whitespace-pre-line">
+                  {product.description || 'НЕ УКАЗАНО'}
+                </p>
+              </div>
+
+              {/* Characteristics: Mandatory Material + Optional Density/Composition/Print/Note */}
+              <div className="border border-[#3F2021]/20 bg-[#F2E9DB] p-4 space-y-3 rounded-none">
+                <div className="text-[11px] font-sans font-semibold uppercase tracking-widest text-[#3F2021]">
+                  ( ХАРАКТЕРИСТИКИ ИЗДЕЛИЯ )
+                </div>
+                <div className="divide-y divide-[#3F2021]/15 text-xs font-sans">
+                  {/* Mandatory Material */}
+                  <div className="flex justify-between py-2 gap-4">
+                    <span className="text-[#3F2021]/60 uppercase tracking-wider">МАТЕРИАЛ:</span>
+                    <span className="font-semibold text-[#3F2021] uppercase text-right">
+                      {product.material || 'НЕ УКАЗАНО'}
+                    </span>
+                  </div>
+
+                  {/* Optional: Density */}
+                  {product.density && (
+                    <div className="flex justify-between py-2 gap-4">
+                      <span className="text-[#3F2021]/60 uppercase tracking-wider">ПЛОТНОСТЬ:</span>
+                      <span className="font-semibold text-[#3F2021] uppercase text-right">
+                        {product.density}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Optional: Composition */}
+                  {product.composition && (
+                    <div className="flex justify-between py-2 gap-4">
+                      <span className="text-[#3F2021]/60 uppercase tracking-wider">СОСТАВ:</span>
+                      <span className="font-semibold text-[#3F2021] uppercase text-right">
+                        {product.composition}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Optional: Print Method */}
+                  {product.print_method && (
+                    <div className="flex justify-between py-2 gap-4">
+                      <span className="text-[#3F2021]/60 uppercase tracking-wider">НАНЕСЕНИЕ:</span>
+                      <span className="font-semibold text-[#3F2021] uppercase text-right">
+                        {product.print_method}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Optional: Note */}
+                  {product.note && (
+                    <div className="py-2 space-y-1">
+                      <span className="text-[#3F2021]/60 uppercase tracking-wider block">ПРИМЕЧАНИЕ:</span>
+                      <p className="text-[#3F2021] uppercase leading-relaxed text-[11px]">
+                        {product.note}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Control Panel: Immediately under characteristics for creator, brand or moderator */}
+              {(permissions.canUpdate || permissions.canDelete) && (
+                <div className="border border-[#3F2021]/30 bg-[#F2E9DB] p-4 space-y-3 rounded-none">
+                  <div className="flex items-center justify-between border-b border-[#3F2021]/15 pb-2">
+                    <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-[#3F2021]">
+                      ( УПРАВЛЕНИЕ ТОВАРОМ )
+                    </span>
+                    <span className="text-[10px] font-sans uppercase tracking-wider text-[#3F2021]/70">
+                      СТАТУС: <strong className="text-[#3F2021]">{product.is_published ? 'ОПУБЛИКОВАН' : 'СКРЫТ'}</strong>
+                    </span>
+                  </div>
+
+                  {!showDeleteConfirm ? (
+                    <div className="flex flex-wrap gap-2.5 pt-1">
+                      {permissions.canUpdate && (
+                        <Link
+                          to={`/creator/products/${product.slug}/edit`}
+                          className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-4 py-2 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none inline-block"
+                        >
+                          ИЗМЕНИТЬ ↗
+                        </Link>
+                      )}
+
+                      {permissions.canUpdate && (
+                        <button
+                          type="button"
+                          disabled={togglePublishMutation.isPending}
+                          onClick={() => togglePublishMutation.mutate()}
+                          className="border border-[#3F2021] text-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] px-4 py-2 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none"
+                        >
+                          {togglePublishMutation.isPending
+                            ? 'ОБНОВЛЕНИЕ...'
+                            : product.is_published
+                            ? 'СКРЫТЬ'
+                            : 'ПОКАЗАТЬ'}
+                        </button>
+                      )}
+
+                      {permissions.canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => setShowDeleteConfirm(true)}
+                          className="border border-[#3F2021]/60 text-[#3F2021]/80 hover:bg-[#3F2021] hover:text-[#F2E9DB] px-4 py-2 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none"
+                        >
+                          УДАЛИТЬ
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    /* Inline confirmation for deletion (NO browser window.confirm) */
+                    <div className="border border-[#3F2021] p-3 bg-[#FFFFFF] space-y-3 rounded-none">
+                      <div className="text-xs font-sans uppercase tracking-wider text-[#3F2021] font-semibold">
+                        ВЫ УВЕРЕНЫ, ЧТО ХОТИТЕ УДАЛИТЬ ЭТОТ ТОВАР? ДЕЙСТВИЕ НЕОБРАТИМО.
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          disabled={deleteProductMutation.isPending}
+                          onClick={() => deleteProductMutation.mutate()}
+                          className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-4 py-2 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none disabled:opacity-50"
+                        >
+                          {deleteProductMutation.isPending ? 'УДАЛЕНИЕ...' : 'ПОДТВЕРДИТЬ УДАЛЕНИЕ'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deleteProductMutation.isPending}
+                          onClick={() => setShowDeleteConfirm(false)}
+                          className="border border-[#3F2021] text-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] px-4 py-2 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none"
+                        >
+                          ОТМЕНА
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Quantity selector & Actions */}
-              <div className="space-y-3 pt-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-sans uppercase tracking-wider text-sf-dark">
-                    КОЛИЧЕСТВО:
-                  </span>
-                  <div className="flex items-center border border-sf-dark">
-                    <button
-                      type="button"
-                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                      disabled={quantity <= 1}
-                      className="px-3 py-1 text-sm font-sans hover:bg-sf-dark hover:text-sf-cream transition-colors disabled:opacity-40"
-                    >
-                      −
-                    </button>
-                    <span className="px-4 py-1 text-xs font-mono font-bold text-sf-dark">
-                      {quantity}
+              {/* Customer Actions: Quantity, In-stock, Add to Cart, Favorites */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-sans uppercase tracking-wider text-[#3F2021]">
+                      КОЛИЧЕСТВО:
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setQuantity((q) => q + 1)}
-                      className="px-3 py-1 text-sm font-sans hover:bg-sf-dark hover:text-sf-cream transition-colors"
-                    >
-                      +
-                    </button>
+                    <div className="flex items-center border border-[#3F2021]">
+                      <button
+                        type="button"
+                        onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                        disabled={quantity <= 1 || isOutOfStock}
+                        className="px-3 py-1 text-sm font-sans hover:bg-[#3F2021] hover:text-[#F2E9DB] transition-colors disabled:opacity-30 rounded-none"
+                      >
+                        −
+                      </button>
+                      <span className="px-4 py-1 text-xs font-mono font-bold text-[#3F2021]">
+                        {quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setQuantity((q) => q + 1)}
+                        disabled={isOutOfStock}
+                        className="px-3 py-1 text-sm font-sans hover:bg-[#3F2021] hover:text-[#F2E9DB] transition-colors disabled:opacity-30 rounded-none"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    {isOutOfStock ? (
+                      <span className="text-xs font-sans uppercase tracking-wider font-semibold text-[#FF8562]">
+                        НЕТ В НАЛИЧИИ
+                      </span>
+                    ) : (
+                      <span className="text-xs font-sans uppercase tracking-wider font-semibold text-[#3F2021]/80">
+                        В НАЛИЧИИ ({stockQuantity})
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <button
                     type="button"
-                    disabled={!inStock || addToCartMutation.isPending}
+                    disabled={isOutOfStock || addToCartMutation.isPending}
                     onClick={() => addToCartMutation.mutate()}
-                    className="flex-1 bg-sf-dark text-sf-cream hover:bg-sf-black py-3.5 px-6 text-xs font-sans font-semibold uppercase tracking-widest transition-colors disabled:opacity-40"
+                    className="flex-1 bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] py-4 px-6 text-xs font-sans font-semibold uppercase tracking-[0.08em] transition-colors disabled:opacity-40 rounded-none"
                   >
-                    {addToCartMutation.isPending ? 'ДОБАВЛЕНИЕ...' : 'ДОБАВИТЬ В КОРЗИНУ ↗'}
+                    {addToCartMutation.isPending
+                      ? 'ДОБАВЛЕНИЕ...'
+                      : isOutOfStock
+                      ? 'ТОВАР РАСПРОДАН'
+                      : 'В КОРЗИНУ ↗'}
                   </button>
 
                   <button
                     type="button"
                     onClick={() => toggleFavoriteMutation.mutate()}
-                    className="border border-sf-dark hover:bg-sf-dark hover:text-sf-cream py-3.5 px-6 text-xs font-sans font-semibold uppercase tracking-wider transition-colors"
+                    className="border border-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] py-4 px-6 text-xs font-sans font-semibold uppercase tracking-wider transition-colors rounded-none"
                   >
                     {isFavorite ? '♥ В ИЗБРАННОМ' : '♡ В ИЗБРАННОЕ'}
                   </button>
@@ -521,7 +820,7 @@ export function ProductDetailPage() {
             </div>
 
             {/* Editorial Features Guarantee */}
-            <div className="border-t border-sf-dark/20 pt-6 space-y-2 text-[11px] font-sans uppercase tracking-wider text-sf-muted">
+            <div className="border-t border-[#3F2021]/20 pt-6 space-y-2 text-[11px] font-sans uppercase tracking-wider text-[#3F2021]/60">
               <div>✓ ПРЕМИАЛЬНЫЕ МАТЕРИАЛЫ И ВЫСОКОКАЧЕСТВЕННАЯ ФУРНИТУРА</div>
               <div>✓ ОРИГИНАЛЬНАЯ КОМПЛЕКТАЦИЯ И ФИРМЕННАЯ УПАКОВКА</div>
               <div>✓ ГАРАНТИЯ КАЧЕСТВА SHOPPERFLOX — 12 МЕСЯЦЕВ</div>
@@ -529,50 +828,50 @@ export function ProductDetailPage() {
           </div>
         </div>
 
-        {/* REVIEWS SECTION */}
-        <section className="mt-20 pt-12 border-t border-sf-dark/20">
+        {/* REVIEWS SECTION BELOW TWO-COLUMN BLOCK */}
+        <section className="mt-20 pt-12 border-t border-[#3F2021]/20">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
             <div>
-              <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
+              <span className="text-[11px] font-sans font-semibold uppercase tracking-widest text-[#3F2021]/60">
                 ( ОТЗЫВЫ И ВПЕЧАТЛЕНИЯ )
               </span>
-              <h2 className="font-serif text-3xl uppercase tracking-wider text-sf-dark mt-1">
+              <h2 className="font-serif text-3xl uppercase tracking-wider text-[#3F2021] mt-1">
                 ОТЗЫВЫ ПОКУПАТЕЛЕЙ
               </h2>
             </div>
-            <div className="text-xs font-sans uppercase tracking-wider text-sf-muted">
+            <div className="text-xs font-sans uppercase tracking-wider text-[#3F2021]/70">
               ВСЕГО ОТЗЫВОВ: {reviews.length}
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-            {/* Reviews List (7 cols) */}
+            {/* Reviews List (7 columns) */}
             <div className="lg:col-span-7 space-y-6">
               {reviews.length === 0 ? (
-                <div className="p-8 border border-sf-dark/20 text-center text-xs font-sans uppercase tracking-widest text-sf-muted">
+                <div className="p-8 border border-[#3F2021]/20 text-center text-xs font-sans uppercase tracking-widest text-[#3F2021]/60 rounded-none">
                   ( У ЭТОЙ МОДЕЛИ ЕЩЕ НЕТ ОТЗЫВОВ. СТАНЬТЕ ПЕРВЫМ! )
                 </div>
               ) : (
                 reviews.map((rev) => (
-                  <div key={rev.id} className="p-5 border border-sf-dark/20 bg-sf-cream/40 space-y-3">
+                  <div key={rev.id} className="p-5 border border-[#3F2021]/20 bg-[#F2E9DB] space-y-3 rounded-none">
                     <div className="flex items-center justify-between text-xs font-sans">
                       <div className="flex items-center gap-2">
-                        <span className="font-serif font-bold text-sf-dark tracking-wider">
+                        <span className="font-serif font-bold text-[#3F2021] tracking-wider">
                           {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
                         </span>
-                        <span className="font-semibold text-sf-dark">({rev.rating}/5)</span>
+                        <span className="font-semibold text-[#3F2021]">({rev.rating}/5)</span>
                       </div>
-                      <span className="text-sf-muted text-[11px]">{formatDate(rev.created_at)}</span>
+                      <span className="text-[#3F2021]/60 text-[11px]">{formatDate(rev.created_at)}</span>
                     </div>
 
                     {rev.fit_feedback && (
-                      <div className="inline-block bg-sf-dark/10 text-sf-dark px-2 py-0.5 text-[10px] font-sans uppercase tracking-widest">
+                      <div className="inline-block bg-[#3F2021]/10 text-[#3F2021] px-2 py-0.5 text-[10px] font-sans uppercase tracking-widest rounded-none">
                         ПОСАДКА: {rev.fit_feedback === 'true_to_size' ? 'В РАЗМЕР' : rev.fit_feedback === 'runs_small' ? 'МАЛОМЕРИТ' : 'БОЛЬШЕМЕРИТ'}
                       </div>
                     )}
 
                     {rev.comment && (
-                      <p className="text-xs font-sans uppercase tracking-wider text-sf-dark leading-relaxed">
+                      <p className="text-xs font-sans uppercase tracking-wider text-[#3F2021] leading-relaxed">
                         {rev.comment}
                       </p>
                     )}
@@ -581,22 +880,22 @@ export function ProductDetailPage() {
               )}
             </div>
 
-            {/* Review Form (5 cols) */}
+            {/* Review Form (5 columns) */}
             <div className="lg:col-span-5">
-              <div className="border border-sf-dark p-6 bg-[#F2E9DB]">
-                <h3 className="font-serif text-xl uppercase tracking-wider text-sf-dark mb-4">
+              <div className="border border-[#3F2021] p-6 bg-[#F2E9DB] rounded-none">
+                <h3 className="font-serif text-xl uppercase tracking-wider text-[#3F2021] mb-4">
                   ОСТАВИТЬ ОТЗЫВ
                 </h3>
 
                 {!isAuthenticated ? (
                   <div className="space-y-4 text-center py-6">
-                    <p className="text-xs font-sans uppercase tracking-wider text-sf-muted">
+                    <p className="text-xs font-sans uppercase tracking-wider text-[#3F2021]/60">
                       Чтобы поделиться впечатлениями о покупке, необходимо войти в аккаунт
                     </p>
                     <Link
                       to={loginRedirectUrl}
                       state={{ from: location }}
-                      className="inline-block bg-sf-dark text-sf-cream px-6 py-2.5 text-xs font-sans uppercase tracking-wider hover:bg-sf-black transition-colors"
+                      className="inline-block bg-[#3F2021] text-[#F2E9DB] px-6 py-2.5 text-xs font-sans uppercase tracking-wider hover:bg-[#2B1516] transition-colors rounded-none"
                     >
                       ВОЙТИ В АККАУНТ ↗
                     </Link>
@@ -604,20 +903,20 @@ export function ProductDetailPage() {
                 ) : (
                   <form onSubmit={handleReviewSubmit} className="space-y-4">
                     {reviewSuccess && (
-                      <div className="p-3 bg-sf-dark text-sf-cream text-xs uppercase tracking-wider">
+                      <div className="p-3 bg-[#3F2021] text-[#F2E9DB] text-xs uppercase tracking-wider text-center rounded-none">
                         {reviewSuccess}
                       </div>
                     )}
 
                     {reviewError && (
-                      <div className="p-3 border border-sf-dark bg-sf-dark/5 text-sf-dark text-xs uppercase tracking-wider">
+                      <div className="p-3 border border-[#3F2021] bg-[#FF8562]/10 text-[#3F2021] text-xs uppercase tracking-wider rounded-none">
                         {reviewError}
                       </div>
                     )}
 
                     {/* Rating Selector */}
                     <div>
-                      <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-sf-dark mb-1.5">
+                      <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1.5">
                         ОЦЕНКА *
                       </label>
                       <div className="flex gap-2">
@@ -626,10 +925,10 @@ export function ProductDetailPage() {
                             key={val}
                             type="button"
                             onClick={() => setReviewRating(val)}
-                            className={`flex-1 py-1.5 border text-xs font-sans font-semibold transition-colors ${
+                            className={`flex-1 py-1.5 border text-xs font-sans font-semibold transition-colors rounded-none ${
                               reviewRating >= val
-                                ? 'bg-sf-dark text-sf-cream border-sf-dark'
-                                : 'border-sf-dark/30 text-sf-dark'
+                                ? 'bg-[#3F2021] text-[#F2E9DB] border-[#3F2021]'
+                                : 'border-[#3F2021]/30 text-[#3F2021]'
                             }`}
                           >
                             ★ {val}
@@ -640,7 +939,7 @@ export function ProductDetailPage() {
 
                     {/* Fit Feedback */}
                     <div>
-                      <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-sf-dark mb-1.5">
+                      <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1.5">
                         СООТВЕТСТВИЕ РАЗМЕРУ
                       </label>
                       <div className="grid grid-cols-3 gap-2">
@@ -649,10 +948,10 @@ export function ProductDetailPage() {
                             key={fit}
                             type="button"
                             onClick={() => setReviewFit(fit)}
-                            className={`py-1.5 px-1 border text-[10px] font-sans uppercase tracking-wider transition-colors ${
+                            className={`py-1.5 px-1 border text-[10px] font-sans uppercase tracking-wider transition-colors rounded-none ${
                               reviewFit === fit
-                                ? 'bg-sf-dark text-sf-cream border-sf-dark font-semibold'
-                                : 'border-sf-dark/30 text-sf-dark hover:border-sf-dark'
+                                ? 'bg-[#3F2021] text-[#F2E9DB] border-[#3F2021] font-semibold'
+                                : 'border-[#3F2021]/30 text-[#3F2021] hover:border-[#3F2021]'
                             }`}
                           >
                             {fit === 'runs_small' ? 'МАЛОМЕРИТ' : fit === 'true_to_size' ? 'В РАЗМЕР' : 'БОЛЬШЕМЕРИТ'}
@@ -665,7 +964,7 @@ export function ProductDetailPage() {
                     <div>
                       <label
                         htmlFor="rev-comment"
-                        className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-sf-dark mb-1.5"
+                        className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1.5"
                       >
                         КОММЕНТАРИЙ
                       </label>
@@ -675,14 +974,14 @@ export function ProductDetailPage() {
                         value={reviewComment}
                         onChange={(e) => setReviewComment(e.target.value)}
                         placeholder="ПОДЕЛИТЕСЬ ВАШИМИ ВПЕЧАТЛЕНИЯМИ О ПОСАДКЕ И МАТЕРИАЛАХ..."
-                        className="w-full bg-[#F2E9DB] border border-sf-dark/30 focus:border-sf-dark p-2.5 text-xs font-sans uppercase tracking-wider outline-none text-sf-black resize-none"
+                        className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-2.5 text-xs font-sans uppercase tracking-wider outline-none text-[#3F2021] resize-none rounded-none"
                       />
                     </div>
 
                     <button
                       type="submit"
                       disabled={createReviewMutation.isPending}
-                      className="w-full bg-sf-dark text-sf-cream hover:bg-sf-black py-3 text-xs font-sans font-semibold uppercase tracking-widest transition-colors disabled:opacity-50"
+                      className="w-full bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] py-3 text-xs font-sans font-semibold uppercase tracking-widest transition-colors disabled:opacity-50 rounded-none"
                     >
                       {createReviewMutation.isPending ? 'ОТПРАВКА...' : 'ОПУБЛИКОВАТЬ ОТЗЫВ ↗'}
                     </button>
