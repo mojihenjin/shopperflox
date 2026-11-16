@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { categoriesApi, cartApi, searchApi, authApi, notificationsApi } from '../api/endpoints';
+import { categoriesApi, cartApi, searchApi, authApi, notificationsApi, moderationApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { useDebounce } from '../hooks/useDebounce';
 import { NotificationsDrawer } from './NotificationsDrawer';
@@ -72,6 +72,9 @@ export function Header() {
   const isCreator =
     permissions.includes('*') ||
     permissions.some((p) => p.startsWith('creator:'));
+  const canModerate =
+    permissions.includes('*') ||
+    permissions.includes('mod:approve_manager');
 
   useEffect(() => {
     if (userProfileData?.data?.user) {
@@ -105,6 +108,16 @@ export function Header() {
   });
 
   const unreadCount = unreadNotificationsData?.data?.count ?? 0;
+
+  // Pending moderation count query (for moderators)
+  const { data: moderationPendingData } = useQuery({
+    queryKey: ['moderationPendingCount'],
+    queryFn: () => moderationApi.getPendingCount(),
+    enabled: isAuthenticated && canModerate,
+    refetchInterval: 30000,
+  });
+
+  const pendingModerationCount = moderationPendingData?.data?.pending_count ?? 0;
 
   // Search query (3-in-1: brands, products, variants)
   const { data: searchResults, isFetching: isSearching } = useQuery({
@@ -398,6 +411,17 @@ export function Header() {
               >
                 УВЕДОМЛЕНИЯ ({unreadCount})
               </button>
+            )}
+
+            {canModerate && (
+              <Link
+                to="/moderation/requests"
+                className={`hover:opacity-70 transition-colors duration-200 whitespace-nowrap font-medium uppercase ${
+                  isOverHero ? 'text-[#F2E9DB]' : 'text-sf-dark'
+                }`}
+              >
+                ЗАЯВКИ ({pendingModerationCount})
+              </Link>
             )}
 
             {isAuthenticated ? (

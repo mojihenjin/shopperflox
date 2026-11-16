@@ -13,6 +13,7 @@ import { OrdersPage } from './pages/OrdersPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { CreatorNewProductPage } from './pages/CreatorNewProductPage';
 import { CreatorEditProductPage } from './pages/CreatorEditProductPage';
+import { ModerationRequestsPage } from './pages/ModerationRequestsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +73,14 @@ export function App() {
               element={
                 <ProtectedRoute>
                   <CreatorEditProductPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="moderation/requests"
+              element={
+                <ProtectedRoute>
+                  <ModerationRequestsPage />
                 </ProtectedRoute>
               }
             />

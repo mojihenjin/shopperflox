@@ -128,6 +128,9 @@ export interface ProductResponse {
   is_published?: boolean;
   is_hidden?: 0 | 1 | 2;
   is_limited?: boolean;
+  moderation_status?: 'pending' | 'approved' | 'rejected';
+  request_type?: 'CREATE' | 'EDIT';
+  rejection_reason?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -320,4 +323,15 @@ export interface OrderResponse {
   created_at: string;
   items?: OrderItemResponse[] | null;
   payment?: unknown | null;
+}
+
+export type ModerationRequestType = 'CREATE' | 'EDIT';
+export type ModerationStatus = 'pending' | 'approved' | 'rejected';
+
+export interface PendingCountResponse {
+  pending_count: number;
+}
+
+export interface RejectProductRequest {
+  reason?: string | null;
 }

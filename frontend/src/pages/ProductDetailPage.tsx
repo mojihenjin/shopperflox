@@ -525,6 +525,26 @@ export function ProductDetailPage() {
           {/* RIGHT COLUMN: Information, Variant Picker, Characteristics, Actions (5 columns) */}
           <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
             <div className="space-y-6">
+              {/* Moderation Status Banner (for author and moderators) */}
+              {permissions.canUpdate && product.moderation_status === 'pending' && (
+                <div className="border border-[#3F2021]/30 bg-[#F2E9DB] p-2.5 text-center text-xs font-sans uppercase tracking-widest text-[#3F2021] font-semibold">
+                  ( НА МОДЕРАЦИИ · ТИП: {product.request_type || 'CREATE'} )
+                </div>
+              )}
+              {permissions.canUpdate && product.moderation_status === 'rejected' && (
+                <div className="border border-[#FF8562] bg-[#FF8562]/10 p-3 text-center text-xs font-sans uppercase tracking-wider text-[#3F2021] font-semibold space-y-1">
+                  <div>( ОТКЛОНЕНО: {product.rejection_reason || 'Причина не указана'} )</div>
+                  <div>
+                    <Link
+                      to={`/creator/products/${product.slug}/edit`}
+                      className="underline underline-offset-4 font-bold hover:opacity-80 inline-block mt-0.5"
+                    >
+                      ИСПРАВИТЬ И ОТПРАВИТЬ ЗАНОВО ↗
+                    </Link>
+                  </div>
+                </div>
+              )}
+
               {/* Visibility Banner (for author and moderators) */}
               {permissions.canUpdate && product.is_hidden === 1 && (
                 <div className="border border-[#3F2021]/30 bg-[#F2E9DB] p-2 text-center text-xs font-sans uppercase tracking-widest text-[#3F2021] font-semibold">

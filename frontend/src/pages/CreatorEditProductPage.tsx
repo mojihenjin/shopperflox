@@ -232,6 +232,18 @@ export function CreatorEditProductPage() {
         </div>
 
         {/* Notices */}
+        {product.moderation_status === 'approved' && (
+          <div className="p-4 bg-[#FFFFFF] border border-[#3F2021]/30 text-xs font-sans uppercase tracking-wider text-[#3F2021] leading-relaxed rounded-none">
+            <span className="font-semibold block mb-1">( ИНФОРМАЦИЯ О ПОВТОРНОЙ МОДЕРАЦИИ )</span>
+            Изменение названия, описания или характеристик изделия отправит карточку на повторную проверку модератором (тип заявки: EDIT). Изменение базовых цен и видимости применяется сразу без повторной проверки.
+          </div>
+        )}
+        {product.moderation_status === 'rejected' && (
+          <div className="p-4 bg-[#FF8562]/10 border border-[#FF8562] text-xs font-sans uppercase tracking-wider text-[#3F2021] leading-relaxed rounded-none">
+            <span className="font-semibold block mb-1">( ТОВАР БЫЛ ОТКЛОНЁН МОДЕРАТОРОМ )</span>
+            Причина: {product.rejection_reason || 'Причина не указана'}. Внесите необходимые исправления и сохраните изменения для повторной отправки заявки на модерацию.
+          </div>
+        )}
         {errorMessage && (
           <div className="p-4 bg-[#FF8562]/10 border border-[#FF8562] text-xs font-sans uppercase tracking-wider text-[#3F2021]">
             {errorMessage}
