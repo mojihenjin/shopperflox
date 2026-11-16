@@ -12,6 +12,19 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+      frontend:
+        condition: service_started
+    networks:
+      - shopperflox-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: shopperflox-frontend
+    restart: unless-stopped
+    expose:
+      - "80"
     networks:
       - shopperflox-network
 
