@@ -1,4 +1,3 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -15,19 +14,9 @@ import { CreatorNewProductPage } from './pages/CreatorNewProductPage';
 import { CreatorEditProductPage } from './pages/CreatorEditProductPage';
 import { ModerationRequestsPage } from './pages/ModerationRequestsPage';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-
 export function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+    <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<HomePage />} />
@@ -88,7 +77,6 @@ export function App() {
           </Route>
         </Routes>
       </BrowserRouter>
-    </QueryClientProvider>
   );
 }
 
