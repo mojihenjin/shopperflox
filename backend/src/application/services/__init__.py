@@ -1,3 +1,4 @@
+from .admin import AdminService
 from .auth import AuthService
 from .brand import BrandService
 from .cart import CartItemDetail, CartService
@@ -11,6 +12,7 @@ from .review import ReviewService
 from .user import UserService
 
 __all__ = [
+    "AdminService",
     "AuthService",
     "BrandService",
     "CartItemDetail",

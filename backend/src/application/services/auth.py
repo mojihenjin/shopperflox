@@ -141,9 +141,11 @@ class AuthService:
 
         async with self.uow:
             if "@" in clean_id:
-                user = await self.uow.users.get_by_email(clean_id.lower())
+                user = await self.uow.users.get_by_email(
+                    clean_id.lower(), include_deleted=True
+                )
             else:
-                user = await self.uow.users.get_by_login(clean_id)
+                user = await self.uow.users.get_by_login(clean_id, include_deleted=True)
 
             if user is None or user.password_hash is None:
                 await self.hasher.verify_dummy(password)
@@ -154,6 +156,9 @@ class AuthService:
             )
             if not is_valid:
                 raise AuthenticationError("Invalid credentials")
+
+            if user.is_deleted:
+                raise PermissionDeniedError("User account has been deleted")
 
             ban = await self.uow.bans.get_active_by_user_id(user.id)
             if ban and ban.is_active():
@@ -184,6 +189,12 @@ class AuthService:
             raise AuthenticationError("Token has been revoked")
 
         user_id = UUID(payload["sub"])
+        iat = payload.get("iat")
+        if self.blacklist and await self.blacklist.is_user_revoked(
+            user_id, token_iat=iat
+        ):
+            raise AuthenticationError("Token has been revoked")
+
         user = await self.verify_access(user_id=user_id)
 
         if jti and self.blacklist:
@@ -234,9 +245,11 @@ class AuthService:
         required_permission: str | None = None,
     ) -> UserDomain:
         async with self.uow:
-            user = await self.uow.users.get_by_id(user_id)
-            if user is None or user.is_deleted:
+            user = await self.uow.users.get_by_id(user_id, include_deleted=True)
+            if user is None:
                 raise AuthenticationError("User not found or deleted")
+            if user.is_deleted:
+                raise PermissionDeniedError("User account has been deleted")
 
             ban = await self.uow.bans.get_active_by_user_id(user.id)
             if ban and ban.is_active():
