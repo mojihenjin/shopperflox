@@ -37,12 +37,28 @@ from src.infrastructure.payments import StubPaymentGateway
 class InMemoryTokenBlacklist:
     def __init__(self) -> None:
         self.revoked: set[str] = set()
+        self.revoked_users: dict[UUID, float] = {}
 
     async def is_revoked(self, jti: str) -> bool:
         return jti in self.revoked
 
     async def revoke(self, jti: str, ttl_seconds: int) -> None:
         self.revoked.add(jti)
+
+    async def revoke_user(self, user_id: UUID, ttl_seconds: int = 2592000) -> None:
+        from src.utils import factory_now
+
+        self.revoked_users[user_id] = factory_now().timestamp()
+
+    async def is_user_revoked(
+        self, user_id: UUID, token_iat: float | None = None
+    ) -> bool:
+        revoked_at = self.revoked_users.get(user_id)
+        if revoked_at is None:
+            return False
+        if token_iat is None:
+            return True
+        return revoked_at >= float(token_iat)
 
 
 class InMemoryEmailVerificationStore:

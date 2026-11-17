@@ -14,6 +14,7 @@ from src.domain.interfaces import (
     UserRepositoryProtocol,
 )
 from src.domain.models import (
+    AdminReviewItemDomain,
     BrandDomain,
     BrandMemberDomain,
     BrandMemberRole,
@@ -34,6 +35,7 @@ from src.domain.models import (
     UserDomain,
     UserPersonalDomain,
 )
+from src.utils import factory_now
 
 
 class InMemoryUserRepository:
@@ -48,21 +50,25 @@ class InMemoryUserRepository:
             return None
         return user
 
-    async def get_by_login(self, login: str) -> UserDomain | None:
+    async def get_by_login(
+        self, login: str, *, include_deleted: bool = False
+    ) -> UserDomain | None:
         clean = login.strip().lower()
         for user in self.store.values():
-            if user.login.strip().lower() == clean and not user.is_deleted:
+            if user.login.strip().lower() == clean:
+                if user.is_deleted and not include_deleted:
+                    continue
                 return user
         return None
 
-    async def get_by_email(self, email: str) -> UserDomain | None:
+    async def get_by_email(
+        self, email: str, *, include_deleted: bool = False
+    ) -> UserDomain | None:
         clean = email.strip().lower()
         for user in self.store.values():
-            if (
-                user.email
-                and user.email.strip().lower() == clean
-                and not user.is_deleted
-            ):
+            if user.email and user.email.strip().lower() == clean:
+                if user.is_deleted and not include_deleted:
+                    continue
                 return user
         return None
 
@@ -84,6 +90,49 @@ class InMemoryUserRepository:
 
     async def update(self, user: UserDomain) -> None:
         self.store[user.id] = user
+
+    async def count_superadmins(self) -> int:
+        return sum(
+            1
+            for u in self.store.values()
+            if not u.is_deleted and "*" in u.global_permissions
+        )
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        status: str = "all",
+        verified_profile: bool | None = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[tuple[UserDomain, UserBanDomain | None]], int]:
+        users = list(self.store.values())
+        if search:
+            s = search.strip().lower()
+            users = [
+                u
+                for u in users
+                if s in u.login.lower() or (u.email and s in u.email.lower())
+            ]
+        if status == "deleted":
+            users = [u for u in users if u.is_deleted]
+        elif status == "active":
+            users = [u for u in users if not u.is_deleted]
+        if verified_profile is not None:
+            users = [u for u in users if u.verified_profile == verified_profile]
+
+        reverse = sort_order == "desc"
+        if sort_by == "login":
+            users.sort(key=lambda u: u.login, reverse=reverse)
+        else:
+            users.sort(key=lambda u: u.created_at, reverse=reverse)
+
+        total = len(users)
+        paged = users[offset : offset + limit]
+        return [(u, None) for u in paged], total
 
 
 class InMemoryUserPersonalRepository:
@@ -262,12 +311,26 @@ class FakeTokenProvider:
 class FakeTokenBlacklist:
     def __init__(self) -> None:
         self.revoked_tokens: set[str] = set()
+        self.revoked_users: dict[UUID, float] = {}
 
     async def is_revoked(self, jti: str) -> bool:
         return jti in self.revoked_tokens
 
     async def revoke(self, jti: str, ttl_seconds: int) -> None:
         self.revoked_tokens.add(jti)
+
+    async def revoke_user(self, user_id: UUID, ttl_seconds: int = 2592000) -> None:
+        self.revoked_users[user_id] = factory_now().timestamp()
+
+    async def is_user_revoked(
+        self, user_id: UUID, token_iat: float | None = None
+    ) -> bool:
+        revoked_at = self.revoked_users.get(user_id)
+        if revoked_at is None:
+            return False
+        if token_iat is None:
+            return True
+        return revoked_at >= float(token_iat)
 
 
 @pytest.fixture
@@ -314,6 +377,26 @@ class InMemoryCategoryRepository:
 
     async def delete(self, category_id: UUID) -> None:
         self.store.pop(category_id, None)
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        sort_by: str = "sort_order",
+        sort_order: str = "asc",
+    ) -> list[CategoryDomain]:
+        cats = list(self.store.values())
+        if search:
+            s = search.strip().lower()
+            cats = [c for c in cats if s in c.name.lower() or s in c.slug.lower()]
+        reverse = sort_order == "desc"
+        if sort_by == "name":
+            cats.sort(key=lambda c: c.name, reverse=reverse)
+        elif sort_by == "created_at":
+            cats.sort(key=lambda c: c.created_at, reverse=reverse)
+        else:
+            cats.sort(key=lambda c: c.sort_order, reverse=reverse)
+        return cats
 
 
 class InMemoryProductRepository:
@@ -423,6 +506,69 @@ class InMemoryProductRepository:
             for p in self.store.values()
             if p.deleted_at is None and p.moderation_status == "pending"
         )
+
+    async def count_by_category_id(self, category_id: UUID) -> int:
+        return sum(
+            1
+            for p in self.store.values()
+            if p.deleted_at is None and p.category_id == category_id
+        )
+
+    async def hide_all_by_brand_id(self, brand_id: UUID) -> int:
+        count = 0
+        for p in self.store.values():
+            if p.deleted_at is None and p.brand_id == brand_id:
+                p.is_hidden = 2
+                count += 1
+        return count
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        moderation_status: str | None = None,
+        is_hidden: int | None = None,
+        is_limited: bool | None = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[ProductDomain], int]:
+        prods = [p for p in self.store.values() if p.deleted_at is None]
+        if search:
+            s = search.strip().lower()
+            prods = [
+                p
+                for p in prods
+                if s in p.title.lower()
+                or s in p.slug.lower()
+                or (p.brand and s in p.brand.lower())
+            ]
+        if moderation_status:
+            prods = [
+                p
+                for p in prods
+                if str(p.moderation_status).lower() == str(moderation_status).lower()
+            ]
+        if is_hidden is not None:
+            prods = [p for p in prods if p.is_hidden == is_hidden]
+        if is_limited is not None:
+            prods = [p for p in prods if p.is_limited == is_limited]
+
+        reverse = sort_order == "desc"
+        if sort_by == "base_price":
+            prods.sort(key=lambda p: p.base_price, reverse=reverse)
+        elif sort_by == "views_count":
+            prods.sort(key=lambda p: p.views_count, reverse=reverse)
+        elif sort_by == "orders_count":
+            prods.sort(key=lambda p: p.orders_count, reverse=reverse)
+        elif sort_by == "title":
+            prods.sort(key=lambda p: p.title, reverse=reverse)
+        else:
+            prods.sort(key=lambda p: p.created_at, reverse=reverse)
+
+        total = len(prods)
+        return prods[offset : offset + limit], total
 
 
 class InMemoryProductVariantRepository:
@@ -560,6 +706,51 @@ class InMemoryBrandRepository:
             for b in self.brands.values()
             if not b.is_deleted and b.moderation_status == "pending"
         )
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        moderation_status: str | None = None,
+        is_verified: bool | None = None,
+        include_deleted: bool = True,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[tuple[BrandDomain, list[BrandMemberDomain]]], int]:
+        brands = list(self.brands.values())
+        if not include_deleted:
+            brands = [b for b in brands if not b.is_deleted]
+        if search:
+            s = search.strip().lower()
+            brands = [b for b in brands if s in b.name.lower() or s in b.slug.lower()]
+        if moderation_status:
+            brands = [
+                b
+                for b in brands
+                if str(b.moderation_status).lower() == str(moderation_status).lower()
+            ]
+        if is_verified is not None:
+            brands = [b for b in brands if b.is_verified == is_verified]
+
+        reverse = sort_order == "desc"
+        if sort_by == "name":
+            brands.sort(key=lambda b: b.name, reverse=reverse)
+        elif sort_by == "views_count":
+            brands.sort(key=lambda b: b.views_count, reverse=reverse)
+        elif sort_by == "orders_count":
+            brands.sort(key=lambda b: b.orders_count, reverse=reverse)
+        else:
+            brands.sort(key=lambda b: b.created_at, reverse=reverse)
+
+        total = len(brands)
+        paged = brands[offset : offset + limit]
+        result = []
+        for b in paged:
+            mems = [m for (b_id, _), m in self.members.items() if b_id == b.id]
+            result.append((b, mems))
+        return result, total
 
     async def increment_views(self, brand_id: UUID) -> None:
         b = self.brands.get(brand_id)
@@ -863,6 +1054,44 @@ class InMemoryReviewRepository:
 
     async def delete(self, review_id: UUID) -> None:
         self.reviews.pop(review_id, None)
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        rating: int | None = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[AdminReviewItemDomain], int]:
+        from src.domain.models import AdminReviewItemDomain
+
+        matched = list(self.reviews.values())
+        if rating is not None:
+            matched = [r for r in matched if r.rating == rating]
+        if search:
+            s = search.strip().lower()
+            matched = [r for r in matched if r.comment and s in r.comment.lower()]
+
+        reverse = sort_order == "desc"
+        if sort_by == "rating":
+            matched.sort(key=lambda x: x.rating, reverse=reverse)
+        else:
+            matched.sort(key=lambda x: x.created_at, reverse=reverse)
+
+        total = len(matched)
+        paged = matched[offset : offset + limit]
+        items = [
+            AdminReviewItemDomain(
+                review=r,
+                user_login="user",
+                product_title="Product",
+                product_slug="product",
+            )
+            for r in paged
+        ]
+        return items, total
 
 
 class FakeCartUnitOfWork:
