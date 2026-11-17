@@ -1045,6 +1045,61 @@ class CatalogService:
 
             await self.uow.commit()
 
+    async def reorder_images(
+        self,
+        *,
+        actor: UserDomain,
+        product_id: UUID,
+        items: list[dict[str, Any]],
+    ) -> list[ProductImageDomain]:
+        async with self.uow:
+            product = await self.uow.products.get_by_id(
+                product_id, include_unpublished=True
+            )
+            if product is None or product.deleted_at is not None:
+                raise EntityNotFoundError("Product not found")
+
+            await self._check_product_modify_permission(actor, product)
+
+            existing_images = await self.uow.images.list_by_product_id(product_id)
+            existing_map = {img.id: img for img in existing_images}
+
+            item_ids = [it["image_id"] for it in items]
+            if len(item_ids) != len(set(item_ids)):
+                raise DomainValidationError("Duplicate image_id in reorder request")
+
+            for it in items:
+                if it["image_id"] not in existing_map:
+                    raise EntityNotFoundError(
+                        f"Image {it['image_id']} does not belong to this product"
+                    )
+
+            if items:
+                await self.uow.images.unset_main_for_product(product_id)
+
+                main_image_id: UUID | None = None
+                for it in items:
+                    if it.get("sort_order") == 0:
+                        main_image_id = it["image_id"]
+                        break
+                if main_image_id is None and items:
+                    main_image_id = items[0]["image_id"]
+
+                for it in items:
+                    img = existing_map[it["image_id"]]
+                    img.sort_order = it["sort_order"]
+                    img.is_main = img.id == main_image_id
+                    if "color" in it:
+                        c_val = it["color"]
+                        img.color = c_val.strip() if (c_val and c_val.strip()) else None
+                    await self.uow.images.update(img)
+
+                product.updated_at = factory_now()
+                await self.uow.products.update(product)
+                await self.uow.commit()
+
+            return await self.uow.images.list_by_product_id(product_id)
+
     async def list_pending_products(
         self,
         *,

@@ -154,6 +154,20 @@ class ProductImageCreateRequest(BaseModel):
     is_main: bool = False
 
 
+class ProductImageReorderItem(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    image_id: UUID
+    sort_order: int = Field(ge=0)
+    color: str | None = Field(default=None, max_length=100)
+
+
+class ProductImageReorderRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[ProductImageReorderItem]
+
+
 class ProductImageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,7 +1,7 @@
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, Form, Query, UploadFile, status
 
 from src.api.dependencies import (
     get_catalog_service,
@@ -13,6 +13,8 @@ from src.api.v1.schemas import (
     ProductCreateRequest,
     ProductDetailResponse,
     ProductImageCreateRequest,
+    ProductImageReorderItem,
+    ProductImageReorderRequest,
     ProductImageResponse,
     ProductResponse,
     ProductUpdateRequest,
@@ -292,3 +294,36 @@ async def delete_product_image(
         image_id=image_id,
     )
     return ResponseGenerator.answer(body=None, status_code=status.HTTP_200_OK)
+
+
+@router.patch(
+    "/products/{product_id}/images/reorder",
+    response_model=BaseResponse[list[ProductImageResponse]],
+    status_code=status.HTTP_200_OK,
+)
+async def reorder_product_images(
+    product_id: UUID,
+    items: list[ProductImageReorderItem] | ProductImageReorderRequest = Body(...),
+    current_user: UserDomain = Depends(get_current_user),
+    catalog_service: CatalogService = Depends(get_catalog_service),
+):
+    reorder_list = (
+        items.items if isinstance(items, ProductImageReorderRequest) else items
+    )
+    payload = [
+        {
+            "image_id": it.image_id,
+            "sort_order": it.sort_order,
+            **({"color": it.color} if "color" in it.model_fields_set else {}),
+        }
+        for it in reorder_list
+    ]
+    images = await catalog_service.reorder_images(
+        actor=current_user,
+        product_id=product_id,
+        items=payload,
+    )
+    return ResponseGenerator.answer(
+        body=[ProductImageResponse.model_validate(img) for img in images],
+        status_code=status.HTTP_200_OK,
+    )
