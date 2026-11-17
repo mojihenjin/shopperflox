@@ -1,5 +1,6 @@
 from . import dependencies, health, metrics, v1
 from .dependencies import (
+    get_admin_service,
     get_auth_service,
     get_brand_service,
     get_brand_uow,
@@ -33,6 +34,7 @@ from .dependencies import (
 
 __all__ = [
     "dependencies",
+    "get_admin_service",
     "get_auth_service",
     "get_brand_service",
     "get_brand_uow",

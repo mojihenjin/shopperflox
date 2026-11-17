@@ -4,6 +4,7 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.application.services import (
+    AdminService,
     AuthService,
     BrandService,
     CartService,
@@ -249,6 +250,26 @@ def get_review_service(
     return ReviewService(uow=uow)
 
 
+def get_admin_service(
+    user_uow: UserUnitOfWorkProtocol = Depends(get_user_uow),
+    catalog_uow: CatalogUnitOfWorkProtocol = Depends(get_catalog_uow),
+    brand_uow: BrandUnitOfWorkProtocol = Depends(get_brand_uow),
+    review_uow: ReviewUnitOfWorkProtocol = Depends(get_review_uow),
+    hasher: PasswordHasherProtocol = Depends(get_password_hasher),
+    token_blacklist: TokenBlacklistProtocol = Depends(get_token_blacklist),
+    task_queue: TaskQueueProtocol = Depends(get_task_queue),
+) -> AdminService:
+    return AdminService(
+        user_uow=user_uow,
+        catalog_uow=catalog_uow,
+        brand_uow=brand_uow,
+        review_uow=review_uow,
+        hasher=hasher,
+        token_blacklist=token_blacklist,
+        task_queue=task_queue,
+    )
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     auth_service: AuthService = Depends(get_auth_service),
@@ -275,6 +296,10 @@ async def get_current_user(
         raise AuthenticationError(f"Invalid token user id: {exc}") from exc
 
     user = await auth_service.verify_access(user_id=user_id)
+
+    iat = payload.get("iat")
+    if await token_blacklist.is_user_revoked(user_id, token_iat=iat):
+        raise AuthenticationError("Token has been revoked")
     token_perms = payload.get("global_permissions")
     if token_perms is None:
         token_perms = payload.get("permissions")
@@ -308,6 +333,9 @@ async def get_optional_current_user(
 
         user_id = UUID(str(user_id_raw))
         user = await auth_service.verify_access(user_id=user_id)
+        iat = payload.get("iat")
+        if await token_blacklist.is_user_revoked(user_id, token_iat=iat):
+            return None
         token_perms = payload.get("global_permissions")
         if token_perms is None:
             token_perms = payload.get("permissions")
