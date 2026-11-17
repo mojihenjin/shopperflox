@@ -14,7 +14,7 @@ from .product import (
     ProductImageDomain,
     ProductVariantDomain,
 )
-from .review import FitFeedback, ReviewDomain
+from .review import AdminReviewItemDomain, FitFeedback, ReviewDomain
 from .search import BrandSearchResult, SearchResultDomain
 from .user import (
     UserAddressDomain,
@@ -24,6 +24,7 @@ from .user import (
 )
 
 __all__ = [
+    "AdminReviewItemDomain",
     "BaseDomain",
     "BrandDomain",
     "BrandMemberDomain",

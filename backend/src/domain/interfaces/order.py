@@ -10,6 +10,7 @@ from src.domain.interfaces.catalog import (
 )
 from src.domain.interfaces.user import UserAddressRepositoryProtocol
 from src.domain.models import (
+    AdminReviewItemDomain,
     OrderDomain,
     OrderItemDomain,
     OrderStatus,
@@ -79,6 +80,17 @@ class ReviewRepositoryProtocol(Protocol):
     async def add(self, review: ReviewDomain) -> None: ...
 
     async def delete(self, review_id: UUID) -> None: ...
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        rating: int | None = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[AdminReviewItemDomain], int]: ...
 
 
 class OrderUnitOfWorkProtocol(Protocol):

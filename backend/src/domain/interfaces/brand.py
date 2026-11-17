@@ -27,6 +27,19 @@ class BrandRepositoryProtocol(Protocol):
 
     async def count_pending(self) -> int: ...
 
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        moderation_status: str | None = None,
+        is_verified: bool | None = None,
+        include_deleted: bool = True,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[tuple[BrandDomain, list[BrandMemberDomain]]], int]: ...
+
     async def increment_views(self, brand_id: UUID) -> None: ...
 
     async def increment_orders(self, brand_id: UUID, quantity: int) -> None: ...

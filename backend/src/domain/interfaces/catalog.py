@@ -30,6 +30,14 @@ class CategoryRepositoryProtocol(Protocol):
 
     async def delete(self, category_id: UUID) -> None: ...
 
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        sort_by: str = "sort_order",
+        sort_order: str = "asc",
+    ) -> list[CategoryDomain]: ...
+
 
 class ProductRepositoryProtocol(Protocol):
     async def get_by_id(
@@ -83,6 +91,23 @@ class ProductRepositoryProtocol(Protocol):
     ) -> tuple[list[ProductDomain], int]: ...
 
     async def count_pending_products(self) -> int: ...
+
+    async def count_by_category_id(self, category_id: UUID) -> int: ...
+
+    async def hide_all_by_brand_id(self, brand_id: UUID) -> int: ...
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        moderation_status: str | None = None,
+        is_hidden: int | None = None,
+        is_limited: bool | None = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[ProductDomain], int]: ...
 
 
 class ProductVariantRepositoryProtocol(Protocol):

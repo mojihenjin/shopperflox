@@ -35,3 +35,11 @@ class ReviewDomain(BaseDomain):
     def __post_init__(self) -> None:
         if not (1 <= self.rating <= 5):
             raise DomainValidationError("Review rating must be between 1 and 5")
+
+
+@dataclass(slots=True, kw_only=True)
+class AdminReviewItemDomain:
+    review: ReviewDomain
+    user_login: str
+    product_title: str
+    product_slug: str

@@ -17,15 +17,33 @@ class UserRepositoryProtocol(Protocol):
         self, user_id: UUID, *, include_deleted: bool = False
     ) -> UserDomain | None: ...
 
-    async def get_by_login(self, login: str) -> UserDomain | None: ...
+    async def get_by_login(
+        self, login: str, *, include_deleted: bool = False
+    ) -> UserDomain | None: ...
 
-    async def get_by_email(self, email: str) -> UserDomain | None: ...
+    async def get_by_email(
+        self, email: str, *, include_deleted: bool = False
+    ) -> UserDomain | None: ...
 
     async def exists_active(self, login: str, email: str | None = None) -> bool: ...
 
     async def add(self, user: UserDomain) -> None: ...
 
     async def update(self, user: UserDomain) -> None: ...
+
+    async def count_superadmins(self) -> int: ...
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        status: str = "all",
+        verified_profile: bool | None = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[tuple[UserDomain, UserBanDomain | None]], int]: ...
 
 
 class UserPersonalRepositoryProtocol(Protocol):
