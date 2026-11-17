@@ -2,6 +2,7 @@ import { apiFetch } from './client';
 import { notificationsApi } from './notifications';
 import { moderationApi } from './moderation';
 import { brandsApi } from './brands';
+import { adminApi } from './admin';
 import type {
   CartItemRequest,
   CartResponse,
@@ -35,7 +36,7 @@ import type {
   UserAddressResponse,
 } from '../types/api';
 
-export { notificationsApi, moderationApi, brandsApi };
+export { notificationsApi, moderationApi, brandsApi, adminApi };
 
 export const authApi = {
   login: (data: LoginRequest) =>

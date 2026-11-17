@@ -444,3 +444,78 @@ export interface RemoveMemberResponse {
   brand_deleted?: boolean;
 }
 
+export interface AdminUserBanResponse {
+  id: string;
+  reason: string;
+  ended_at?: string | null;
+}
+
+export interface AdminUserResponse {
+  id: string;
+  login: string;
+  email?: string | null;
+  verified_profile: boolean;
+  verified_email: boolean;
+  global_permissions: string[];
+  is_deleted: boolean;
+  deleted_at?: string | null;
+  active_ban?: AdminUserBanResponse | null;
+  created_at: string;
+}
+
+export interface AdminUserUpdateRequest {
+  login?: string | null;
+  global_permissions?: string[] | null;
+  verified_profile?: boolean | null;
+}
+
+export interface AdminBanUserRequest {
+  reason: string;
+  ended_at?: string | null;
+}
+
+export interface AdminBrandResponse {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  logo_url?: string | null;
+  his_url?: string | null;
+  moderation_status?: 'pending' | 'approved' | 'rejected' | string;
+  rejection_reason?: string | null;
+  is_verified?: boolean;
+  views_count?: number;
+  orders_count?: number;
+  is_deleted?: boolean;
+  created_at: string;
+  members?: BrandMemberResponse[];
+}
+
+export interface AdminCategoryCreateRequest {
+  name: string;
+  slug?: string | null;
+  parent_id?: string | null;
+  sort_order?: number;
+}
+
+export interface AdminCategoryUpdateRequest {
+  name?: string | null;
+  slug?: string | null;
+  parent_id?: string | null;
+  sort_order?: number | null;
+}
+
+export interface AdminReviewResponse {
+  id: string;
+  user_id: string;
+  product_id: string;
+  rating: number;
+  comment?: string | null;
+  fit_feedback?: 'true_to_size' | 'runs_small' | 'runs_large' | string | null;
+  is_published: boolean;
+  user_login: string;
+  product_title: string;
+  product_slug: string;
+  created_at: string;
+}
+
