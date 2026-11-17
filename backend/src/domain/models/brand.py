@@ -15,6 +15,7 @@ from .product import ModerationStatus
 class BrandMemberRole(StrEnum):
     REPRESENTATIVE = "representative"
     MODERATOR = "moderator"
+    QUEUE_MANAGER = "queue_manager"
 
 
 @dataclass(slots=True, kw_only=True)

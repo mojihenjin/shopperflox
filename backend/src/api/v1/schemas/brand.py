@@ -70,7 +70,7 @@ class AddBrandMemberRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     login: str = Field(min_length=1, max_length=150)
-    role: Literal["representative", "moderator"]
+    role: Literal["representative", "moderator", "queue_manager"]
 
 
 class RemoveMemberResponse(BaseModel):

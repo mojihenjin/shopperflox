@@ -20,6 +20,7 @@ from .models import (
     UserPersonalModel,
 )
 from .repositories import (
+    SqlAlchemyAnalyticsRepository,
     SqlAlchemyBrandRepository,
     SqlAlchemyCartRepository,
     SqlAlchemyCategoryRepository,
@@ -30,6 +31,7 @@ from .repositories import (
     SqlAlchemyProductImageRepository,
     SqlAlchemyProductRepository,
     SqlAlchemyProductVariantRepository,
+    SqlAlchemyQueueRepository,
     SqlAlchemyReviewRepository,
     SqlAlchemyUserAddressRepository,
     SqlAlchemyUserBanRepository,
@@ -44,11 +46,13 @@ from .session import (
     get_session,
 )
 from .uow import (
+    SqlAlchemyAnalyticsUnitOfWork,
     SqlAlchemyBrandUnitOfWork,
     SqlAlchemyCartUnitOfWork,
     SqlAlchemyCatalogUnitOfWork,
     SqlAlchemyNotificationUnitOfWork,
     SqlAlchemyOrderUnitOfWork,
+    SqlAlchemyQueueUnitOfWork,
     SqlAlchemyReviewUnitOfWork,
     SqlAlchemyUserUnitOfWork,
 )
@@ -69,6 +73,8 @@ __all__ = [
     "ProductModel",
     "ProductVariantModel",
     "ReviewModel",
+    "SqlAlchemyAnalyticsRepository",
+    "SqlAlchemyAnalyticsUnitOfWork",
     "SqlAlchemyBrandRepository",
     "SqlAlchemyBrandUnitOfWork",
     "SqlAlchemyCartRepository",
@@ -84,6 +90,8 @@ __all__ = [
     "SqlAlchemyProductImageRepository",
     "SqlAlchemyProductRepository",
     "SqlAlchemyProductVariantRepository",
+    "SqlAlchemyQueueRepository",
+    "SqlAlchemyQueueUnitOfWork",
     "SqlAlchemyReviewRepository",
     "SqlAlchemyReviewUnitOfWork",
     "SqlAlchemyUserAddressRepository",

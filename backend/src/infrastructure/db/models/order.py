@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    DateTime,
     ForeignKey,
     Index,
     Integer,
@@ -13,6 +14,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    func,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -115,10 +117,21 @@ class OrderItemModel(Base):
     color_snapshot: Mapped[str] = mapped_column(String(64), nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    fulfillment_status: Mapped[str] = mapped_column(
+        String(32), default="pending", server_default="pending", nullable=False
+    )
+    post_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    tracking_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_by: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=func.now(),
+        server_default=func.now(),
+        nullable=False,
+    )
 
     order: Mapped["OrderModel"] = relationship(back_populates="items")
 
@@ -126,6 +139,10 @@ class OrderItemModel(Base):
         CheckConstraint("quantity > 0", name="chk_order_items_quantity_positive"),
         CheckConstraint(
             "unit_price >= 0", name="chk_order_items_unit_price_non_negative"
+        ),
+        CheckConstraint(
+            "fulfillment_status IN ('pending', 'packing', 'handed_to_post', 'in_transit', 'delivered')",
+            name="chk_order_items_fulfillment_status",
         ),
     )
 

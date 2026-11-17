@@ -47,6 +47,10 @@ class OrderRepositoryProtocol(Protocol):
 
     async def update(self, order: OrderDomain) -> None: ...
 
+    async def get_item_by_id(self, item_id: UUID) -> OrderItemDomain | None: ...
+
+    async def update_item(self, item: OrderItemDomain) -> None: ...
+
 
 class PaymentRepositoryProtocol(Protocol):
     async def get_by_id(

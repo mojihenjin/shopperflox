@@ -1,4 +1,5 @@
 from .admin import AdminService
+from .analytics import AnalyticsService
 from .auth import AuthService
 from .brand import BrandService
 from .cart import CartItemDetail, CartService
@@ -8,11 +9,13 @@ from .moderation import UserModerationService
 from .notification import NotificationService
 from .order import OrderService
 from .payment import PaymentService
+from .queue import QueueService
 from .review import ReviewService
 from .user import UserService
 
 __all__ = [
     "AdminService",
+    "AnalyticsService",
     "AuthService",
     "BrandService",
     "CartItemDetail",
@@ -22,6 +25,7 @@ __all__ = [
     "NotificationService",
     "OrderService",
     "PaymentService",
+    "QueueService",
     "ReviewService",
     "UserModerationService",
     "UserService",

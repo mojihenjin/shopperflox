@@ -8,6 +8,7 @@ from src.domain.exceptions import EntityAlreadyExistsError, EntityNotFoundError
 from src.domain.models import (
     AdminReviewItemDomain,
     FitFeedback,
+    FulfillmentStatus,
     OrderDomain,
     OrderItemDomain,
     OrderStatus,
@@ -58,8 +59,14 @@ class SqlAlchemyOrderRepository:
             unit_price=model.unit_price,
             quantity=model.quantity,
             product_slug=product_slug,
+            fulfillment_status=FulfillmentStatus(model.fulfillment_status)
+            if model.fulfillment_status
+            else FulfillmentStatus.PENDING,
+            post_code=model.post_code,
+            tracking_url=model.tracking_url,
             created_by=model.created_by,
             created_at=model.created_at,
+            updated_at=model.updated_at,
         )
 
     async def get_by_id(
@@ -184,11 +191,45 @@ class SqlAlchemyOrderRepository:
                     color_snapshot=item.color_snapshot,
                     unit_price=item.unit_price,
                     quantity=item.quantity,
+                    fulfillment_status=str(item.fulfillment_status),
+                    post_code=item.post_code,
+                    tracking_url=item.tracking_url,
                     created_by=item.created_by,
                     created_at=item.created_at,
+                    updated_at=item.updated_at,
                 )
                 self.session.add(item_model)
 
+        await self.session.flush()
+
+    async def get_item_by_id(self, item_id: UUID) -> OrderItemDomain | None:
+        stmt = (
+            select(OrderItemModel, ProductModel.slug)
+            .outerjoin(
+                ProductVariantModel,
+                OrderItemModel.variant_id == ProductVariantModel.id,
+            )
+            .outerjoin(
+                ProductModel,
+                ProductVariantModel.product_id == ProductModel.id,
+            )
+            .where(OrderItemModel.id == item_id)
+        )
+        res = await self.session.execute(stmt)
+        row = res.first()
+        if not row:
+            return None
+        item_model, product_slug = row
+        return self._item_to_domain(item_model, product_slug)
+
+    async def update_item(self, item: OrderItemDomain) -> None:
+        model = await self.session.get(OrderItemModel, item.id)
+        if model is None:
+            raise EntityNotFoundError("Order item not found")
+        model.fulfillment_status = str(item.fulfillment_status)
+        model.post_code = item.post_code
+        model.tracking_url = item.tracking_url
+        model.updated_at = item.updated_at
         await self.session.flush()
 
     async def update(self, order: OrderDomain) -> None:

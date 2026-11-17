@@ -23,6 +23,14 @@ class OrderStatus(StrEnum):
     REFUNDED = "refunded"
 
 
+class FulfillmentStatus(StrEnum):
+    PENDING = "pending"
+    PACKING = "packing"
+    HANDED_TO_POST = "handed_to_post"
+    IN_TRANSIT = "in_transit"
+    DELIVERED = "delivered"
+
+
 ALLOWED_ORDER_TRANSITIONS: dict[OrderStatus, set[OrderStatus]] = {
     OrderStatus.PENDING_PAYMENT: {OrderStatus.PAID, OrderStatus.CANCELLED},
     OrderStatus.PAID: {
@@ -91,10 +99,16 @@ class OrderItemDomain(BaseDomain):
 
     variant_id: UUID | None = field(default=None)
     product_slug: str | None = field(default=None)
+    fulfillment_status: FulfillmentStatus = field(default=FulfillmentStatus.PENDING)
+    post_code: str | None = field(default=None)
+    tracking_url: str | None = field(default=None)
     created_at: datetime = field(default_factory=factory_now)
+    updated_at: datetime = field(default_factory=factory_now)
 
     def __post_init__(self) -> None:
         if self.unit_price < 0:
             raise DomainValidationError("OrderItem unit_price must be non-negative")
         if self.quantity <= 0:
             raise DomainValidationError("OrderItem quantity must be greater than zero")
+        if isinstance(self.fulfillment_status, str):
+            self.fulfillment_status = FulfillmentStatus(self.fulfillment_status)

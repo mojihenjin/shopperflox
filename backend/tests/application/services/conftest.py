@@ -22,6 +22,7 @@ from src.domain.models import (
     CartItemDomain,
     CategoryDomain,
     FavoriteDomain,
+    ModerationStatus,
     OrderDomain,
     OrderItemDomain,
     OrderStatus,
@@ -427,6 +428,8 @@ class InMemoryProductRepository:
         self,
         *,
         category_id: UUID | None = None,
+        brand_id: UUID | None = None,
+        brand_slug: str | None = None,
         min_price: Any = None,
         max_price: Any = None,
         search: str | None = None,
@@ -441,11 +444,15 @@ class InMemoryProductRepository:
             if (
                 not p.is_published
                 or p.deleted_at is not None
-                or p.is_hidden != 0
+                or p.effective_hidden != 0
                 or p.brand_is_deleted
             ):
                 continue
             if category_id is not None and p.category_id != category_id:
+                continue
+            if brand_id is not None and p.brand_id != brand_id:
+                continue
+            if brand_slug is not None and p.brand_slug != brand_slug:
                 continue
             if min_price is not None and p.base_price < min_price:
                 continue
@@ -460,6 +467,23 @@ class InMemoryProductRepository:
                     continue
             matched.append(p)
         return matched[offset : offset + limit], len(matched)
+
+    async def list_self_worked_by_creator(
+        self, creator_id: UUID
+    ) -> list[ProductDomain]:
+        return [
+            p
+            for p in self.store.values()
+            if p.creator_id == creator_id
+            and p.is_self_worked
+            and p.is_published
+            and (
+                p.moderation_status == "approved"
+                or p.moderation_status == ModerationStatus.APPROVED
+            )
+            and p.is_hidden == 0
+            and p.deleted_at is None
+        ]
 
     async def increment_views(self, product_id: UUID) -> None:
         p = self.store.get(product_id)
@@ -989,6 +1013,20 @@ class InMemoryOrderRepository:
 
     async def update(self, order: OrderDomain) -> None:
         self.orders[order.id] = order
+
+    async def get_item_by_id(self, item_id: UUID) -> OrderItemDomain | None:
+        for items_list in self.items.values():
+            for item in items_list:
+                if item.id == item_id:
+                    return item
+        return None
+
+    async def update_item(self, item: OrderItemDomain) -> None:
+        for items_list in self.items.values():
+            for i, existing in enumerate(items_list):
+                if existing.id == item.id:
+                    items_list[i] = item
+                    return
 
 
 class InMemoryPaymentRepository:

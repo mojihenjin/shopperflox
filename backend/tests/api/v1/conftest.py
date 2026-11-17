@@ -7,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 
 from main import app
 from src.api.dependencies import (
+    get_analytics_uow,
     get_brand_uow,
     get_cart_uow,
     get_catalog_uow,
@@ -15,6 +16,7 @@ from src.api.dependencies import (
     get_notification_uow,
     get_order_uow,
     get_payment_gateway,
+    get_queue_uow,
     get_review_uow,
     get_task_queue,
     get_token_blacklist,
@@ -23,11 +25,13 @@ from src.api.dependencies import (
 from src.infrastructure.db.models import Base
 from src.infrastructure.db.session import create_sessionmaker
 from src.infrastructure.db.uow import (
+    SqlAlchemyAnalyticsUnitOfWork,
     SqlAlchemyBrandUnitOfWork,
     SqlAlchemyCartUnitOfWork,
     SqlAlchemyCatalogUnitOfWork,
     SqlAlchemyNotificationUnitOfWork,
     SqlAlchemyOrderUnitOfWork,
+    SqlAlchemyQueueUnitOfWork,
     SqlAlchemyReviewUnitOfWork,
     SqlAlchemyUserUnitOfWork,
 )
@@ -177,6 +181,12 @@ async def client(test_email_store, test_task_queue, test_file_storage):
     def _get_test_review_uow():
         return SqlAlchemyReviewUnitOfWork(session_factory=factory)
 
+    def _get_test_queue_uow():
+        return SqlAlchemyQueueUnitOfWork(session_factory=factory)
+
+    def _get_test_analytics_uow():
+        return SqlAlchemyAnalyticsUnitOfWork(session_factory=factory)
+
     app.dependency_overrides[get_user_uow] = _get_test_uow
     app.dependency_overrides[get_brand_uow] = _get_test_brand_uow
     app.dependency_overrides[get_catalog_uow] = _get_test_catalog_uow
@@ -184,6 +194,8 @@ async def client(test_email_store, test_task_queue, test_file_storage):
     app.dependency_overrides[get_notification_uow] = _get_test_notification_uow
     app.dependency_overrides[get_order_uow] = _get_test_order_uow
     app.dependency_overrides[get_review_uow] = _get_test_review_uow
+    app.dependency_overrides[get_queue_uow] = _get_test_queue_uow
+    app.dependency_overrides[get_analytics_uow] = _get_test_analytics_uow
     app.dependency_overrides[get_token_blacklist] = lambda: blacklist
     app.dependency_overrides[get_email_verification_store] = lambda: test_email_store
     app.dependency_overrides[get_task_queue] = lambda: test_task_queue
@@ -202,6 +214,8 @@ async def client(test_email_store, test_task_queue, test_file_storage):
     app.dependency_overrides.pop(get_notification_uow, None)
     app.dependency_overrides.pop(get_order_uow, None)
     app.dependency_overrides.pop(get_review_uow, None)
+    app.dependency_overrides.pop(get_queue_uow, None)
+    app.dependency_overrides.pop(get_analytics_uow, None)
     app.dependency_overrides.pop(get_token_blacklist, None)
     app.dependency_overrides.pop(get_email_verification_store, None)
     app.dependency_overrides.pop(get_task_queue, None)

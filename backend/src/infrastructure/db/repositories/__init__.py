@@ -1,3 +1,4 @@
+from .analytics import SqlAlchemyAnalyticsRepository
 from .brand import SqlAlchemyBrandRepository
 from .cart import SqlAlchemyCartRepository
 from .catalog import (
@@ -13,6 +14,7 @@ from .order import (
     SqlAlchemyPaymentRepository,
     SqlAlchemyReviewRepository,
 )
+from .queue import SqlAlchemyQueueRepository
 from .user import (
     SqlAlchemyUserAddressRepository,
     SqlAlchemyUserBanRepository,
@@ -21,6 +23,7 @@ from .user import (
 )
 
 __all__ = [
+    "SqlAlchemyAnalyticsRepository",
     "SqlAlchemyBrandRepository",
     "SqlAlchemyCartRepository",
     "SqlAlchemyCategoryRepository",
@@ -31,6 +34,7 @@ __all__ = [
     "SqlAlchemyProductImageRepository",
     "SqlAlchemyProductRepository",
     "SqlAlchemyProductVariantRepository",
+    "SqlAlchemyQueueRepository",
     "SqlAlchemyReviewRepository",
     "SqlAlchemyUserAddressRepository",
     "SqlAlchemyUserBanRepository",

@@ -1,3 +1,7 @@
+from .analytics import (
+    AnalyticsRepositoryProtocol,
+    AnalyticsUnitOfWorkProtocol,
+)
 from .brand import (
     BrandRepositoryProtocol,
     BrandUnitOfWorkProtocol,
@@ -33,6 +37,10 @@ from .order import (
     ReviewRepositoryProtocol,
     ReviewUnitOfWorkProtocol,
 )
+from .queue import (
+    FulfillmentQueueRepositoryProtocol,
+    QueueUnitOfWorkProtocol,
+)
 from .security import (
     PasswordHasherProtocol,
     TokenBlacklistProtocol,
@@ -48,6 +56,8 @@ from .user import (
 )
 
 __all__ = [
+    "AnalyticsRepositoryProtocol",
+    "AnalyticsUnitOfWorkProtocol",
     "BrandRepositoryProtocol",
     "BrandUnitOfWorkProtocol",
     "CartRepositoryProtocol",
@@ -58,6 +68,7 @@ __all__ = [
     "EmailVerificationStoreProtocol",
     "FavoriteRepositoryProtocol",
     "FileStorageProtocol",
+    "FulfillmentQueueRepositoryProtocol",
     "NotificationRepositoryProtocol",
     "NotificationUnitOfWorkProtocol",
     "OrderRepositoryProtocol",
@@ -69,6 +80,7 @@ __all__ = [
     "ProductImageRepositoryProtocol",
     "ProductRepositoryProtocol",
     "ProductVariantRepositoryProtocol",
+    "QueueUnitOfWorkProtocol",
     "ReviewRepositoryProtocol",
     "ReviewUnitOfWorkProtocol",
     "TaskQueueProtocol",

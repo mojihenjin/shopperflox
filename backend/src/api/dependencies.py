@@ -5,6 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.application.services import (
     AdminService,
+    AnalyticsService,
     AuthService,
     BrandService,
     CartService,
@@ -13,6 +14,7 @@ from src.application.services import (
     NotificationService,
     OrderService,
     PaymentService,
+    QueueService,
     ReviewService,
     UserModerationService,
     UserService,
@@ -20,6 +22,7 @@ from src.application.services import (
 from src.core import settings
 from src.domain.exceptions import AuthenticationError, PermissionDeniedError
 from src.domain.interfaces import (
+    AnalyticsUnitOfWorkProtocol,
     BrandUnitOfWorkProtocol,
     CartUnitOfWorkProtocol,
     CatalogUnitOfWorkProtocol,
@@ -29,6 +32,7 @@ from src.domain.interfaces import (
     OrderUnitOfWorkProtocol,
     PasswordHasherProtocol,
     PaymentGatewayProtocol,
+    QueueUnitOfWorkProtocol,
     ReviewUnitOfWorkProtocol,
     TaskQueueProtocol,
     TokenBlacklistProtocol,
@@ -37,11 +41,13 @@ from src.domain.interfaces import (
 )
 from src.domain.models import UserDomain
 from src.infrastructure.db import (
+    SqlAlchemyAnalyticsUnitOfWork,
     SqlAlchemyBrandUnitOfWork,
     SqlAlchemyCartUnitOfWork,
     SqlAlchemyCatalogUnitOfWork,
     SqlAlchemyNotificationUnitOfWork,
     SqlAlchemyOrderUnitOfWork,
+    SqlAlchemyQueueUnitOfWork,
     SqlAlchemyReviewUnitOfWork,
     SqlAlchemyUserUnitOfWork,
     async_session_maker,
@@ -248,6 +254,28 @@ def get_review_service(
     uow: ReviewUnitOfWorkProtocol = Depends(get_review_uow),
 ) -> ReviewService:
     return ReviewService(uow=uow)
+
+
+def get_queue_uow(request: Request) -> QueueUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyQueueUnitOfWork(session_factory=factory)
+
+
+def get_queue_service(
+    uow: QueueUnitOfWorkProtocol = Depends(get_queue_uow),
+) -> QueueService:
+    return QueueService(uow=uow)
+
+
+def get_analytics_uow(request: Request) -> AnalyticsUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyAnalyticsUnitOfWork(session_factory=factory)
+
+
+def get_analytics_service(
+    uow: AnalyticsUnitOfWorkProtocol = Depends(get_analytics_uow),
+) -> AnalyticsService:
+    return AnalyticsService(uow=uow)
 
 
 def get_admin_service(
