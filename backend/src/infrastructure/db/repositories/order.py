@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.exceptions import EntityAlreadyExistsError, EntityNotFoundError
 from src.domain.models import (
+    AdminReviewItemDomain,
     FitFeedback,
     OrderDomain,
     OrderItemDomain,
@@ -21,6 +22,7 @@ from src.infrastructure.db.models import (
     ProductModel,
     ProductVariantModel,
     ReviewModel,
+    UserModel,
 )
 
 
@@ -367,3 +369,76 @@ class SqlAlchemyReviewRepository:
         stmt = delete(ReviewModel).where(ReviewModel.id == review_id)
         await self.session.execute(stmt)
         await self.session.flush()
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        rating: int | None = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[AdminReviewItemDomain], int]:
+        base_stmt = (
+            select(
+                ReviewModel,
+                UserModel.login,
+                ProductModel.title,
+                ProductModel.slug,
+            )
+            .join(UserModel, ReviewModel.user_id == UserModel.id)
+            .join(ProductModel, ReviewModel.product_id == ProductModel.id)
+        )
+
+        conditions = []
+        if search:
+            s = f"%{search.strip().lower()}%"
+            conditions.append(
+                or_(
+                    func.lower(ReviewModel.comment).ilike(s),
+                    func.lower(UserModel.login).ilike(s),
+                    func.lower(ProductModel.title).ilike(s),
+                )
+            )
+        if rating is not None:
+            conditions.append(ReviewModel.rating == rating)
+
+        if conditions:
+            base_stmt = base_stmt.where(*conditions)
+
+        count_stmt = (
+            select(func.count(ReviewModel.id))
+            .join(UserModel, ReviewModel.user_id == UserModel.id)
+            .join(ProductModel, ReviewModel.product_id == ProductModel.id)
+        )
+        if conditions:
+            count_stmt = count_stmt.where(*conditions)
+
+        total = await self.session.scalar(count_stmt) or 0
+
+        sort_col = ReviewModel.rating if sort_by == "rating" else ReviewModel.created_at
+        if sort_order == "asc":
+            base_stmt = base_stmt.order_by(sort_col.asc())
+        else:
+            base_stmt = base_stmt.order_by(sort_col.desc())
+
+        base_stmt = base_stmt.limit(limit).offset(offset)
+        res = await self.session.execute(base_stmt)
+
+        items = []
+        for row in res.all():
+            review_model = row[0]
+            user_login = row[1]
+            prod_title = row[2]
+            prod_slug = row[3]
+            items.append(
+                AdminReviewItemDomain(
+                    review=self._to_domain(review_model),
+                    user_login=user_login,
+                    product_title=prod_title,
+                    product_slug=prod_slug,
+                )
+            )
+
+        return items, total

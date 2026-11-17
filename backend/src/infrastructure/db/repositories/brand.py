@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -95,6 +95,98 @@ class SqlAlchemyBrandRepository:
         )
         res = await self.session.execute(stmt)
         return res.scalar_one() or 0
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        moderation_status: str | None = None,
+        is_verified: bool | None = None,
+        include_deleted: bool = True,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[tuple[BrandDomain, list[BrandMemberDomain]]], int]:
+        base_stmt = select(BrandModel)
+        conditions = []
+
+        if not include_deleted:
+            conditions.append(BrandModel.is_deleted.is_(False))
+
+        if search:
+            s = f"%{search.strip().lower()}%"
+            conditions.append(
+                or_(
+                    func.lower(BrandModel.name).ilike(s),
+                    func.lower(BrandModel.slug).ilike(s),
+                )
+            )
+
+        if moderation_status:
+            mod_val = (
+                moderation_status.value
+                if isinstance(moderation_status, ModerationStatus)
+                else str(moderation_status)
+            )
+            conditions.append(BrandModel.moderation_status == mod_val)
+
+        if is_verified is not None:
+            conditions.append(BrandModel.is_verified.is_(is_verified))
+
+        if conditions:
+            base_stmt = base_stmt.where(*conditions)
+
+        count_stmt = select(func.count(BrandModel.id))
+        if conditions:
+            count_stmt = count_stmt.where(*conditions)
+        total = await self.session.scalar(count_stmt) or 0
+
+        if sort_by == "name":
+            sort_col = BrandModel.name
+        elif sort_by == "views_count":
+            sort_col = BrandModel.views_count
+        elif sort_by == "orders_count":
+            sort_col = BrandModel.orders_count
+        else:
+            sort_col = BrandModel.created_at
+
+        if sort_order == "asc":
+            base_stmt = base_stmt.order_by(sort_col.asc())
+        else:
+            base_stmt = base_stmt.order_by(sort_col.desc())
+
+        base_stmt = base_stmt.limit(limit).offset(offset)
+        res = await self.session.execute(base_stmt)
+        brands = [self._to_domain(m) for m in res.scalars().all()]
+
+        if not brands:
+            return [], total
+
+        brand_ids = [b.id for b in brands]
+        member_stmt = (
+            select(BrandMemberModel, UserModel.login)
+            .outerjoin(UserModel, BrandMemberModel.user_id == UserModel.id)
+            .where(BrandMemberModel.brand_id.in_(brand_ids))
+            .order_by(BrandMemberModel.created_at.asc())
+        )
+        member_res = await self.session.execute(member_stmt)
+        members_by_brand: dict[UUID, list[BrandMemberDomain]] = {
+            b.id: [] for b in brands
+        }
+        for mm, login in member_res.all():
+            members_by_brand[mm.brand_id].append(
+                BrandMemberDomain(
+                    brand_id=mm.brand_id,
+                    user_id=mm.user_id,
+                    role=BrandMemberRole(mm.role),
+                    user_login=login,
+                    created_at=mm.created_at,
+                )
+            )
+
+        result = [(b, members_by_brand.get(b.id, [])) for b in brands]
+        return result, total
 
     async def increment_views(self, brand_id: UUID) -> None:
         stmt = (

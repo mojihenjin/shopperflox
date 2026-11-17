@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import String, delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,20 +50,26 @@ class SqlAlchemyUserRepository:
         model = result.scalar_one_or_none()
         return self._to_domain(model) if model else None
 
-    async def get_by_login(self, login: str) -> UserDomain | None:
+    async def get_by_login(
+        self, login: str, *, include_deleted: bool = False
+    ) -> UserDomain | None:
         stmt = select(UserModel).where(
-            func.lower(UserModel.login) == login.strip().lower(),
-            UserModel.deleted_at.is_(None),
+            func.lower(UserModel.login) == login.strip().lower()
         )
+        if not include_deleted:
+            stmt = stmt.where(UserModel.deleted_at.is_(None))
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
         return self._to_domain(model) if model else None
 
-    async def get_by_email(self, email: str) -> UserDomain | None:
+    async def get_by_email(
+        self, email: str, *, include_deleted: bool = False
+    ) -> UserDomain | None:
         stmt = select(UserModel).where(
-            func.lower(UserModel.email) == email.strip().lower(),
-            UserModel.deleted_at.is_(None),
+            func.lower(UserModel.email) == email.strip().lower()
         )
+        if not include_deleted:
+            stmt = stmt.where(UserModel.deleted_at.is_(None))
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
         return self._to_domain(model) if model else None
@@ -116,6 +122,109 @@ class SqlAlchemyUserRepository:
             raise EntityAlreadyExistsError(
                 f"User with login '{user.login}' or email '{user.email}' already exists"
             ) from exc
+
+    async def count_superadmins(self) -> int:
+        stmt = select(func.count(UserModel.id)).where(
+            UserModel.deleted_at.is_(None),
+            UserModel.global_permissions.cast(String).contains('"*"'),
+        )
+        return await self.session.scalar(stmt) or 0
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        status: str = "all",
+        verified_profile: bool | None = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[tuple[UserDomain, UserBanDomain | None]], int]:
+        now = factory_now()
+
+        ban_subq = (
+            select(
+                UserBanModel.id.label("ban_id"),
+                UserBanModel.user_id.label("ban_user_id"),
+                UserBanModel.reason.label("ban_reason"),
+                UserBanModel.created_by.label("ban_created_by"),
+                UserBanModel.created_at.label("ban_created_at"),
+                UserBanModel.ended_at.label("ban_ended_at"),
+            )
+            .where(
+                or_(
+                    UserBanModel.ended_at.is_(None),
+                    UserBanModel.ended_at > now,
+                )
+            )
+            .subquery()
+        )
+
+        base_stmt = select(UserModel, ban_subq).outerjoin(
+            ban_subq, UserModel.id == ban_subq.c.ban_user_id
+        )
+
+        conditions = []
+        if search:
+            s = f"%{search.strip().lower()}%"
+            conditions.append(
+                or_(
+                    func.lower(UserModel.login).ilike(s),
+                    func.lower(UserModel.email).ilike(s),
+                )
+            )
+
+        if status == "active":
+            conditions.append(UserModel.deleted_at.is_(None))
+            conditions.append(ban_subq.c.ban_id.is_(None))
+        elif status == "banned":
+            conditions.append(ban_subq.c.ban_id.is_not(None))
+        elif status == "unbanned":
+            conditions.append(ban_subq.c.ban_id.is_(None))
+        elif status == "deleted":
+            conditions.append(UserModel.deleted_at.is_not(None))
+
+        if verified_profile is not None:
+            conditions.append(UserModel.verified_profile.is_(verified_profile))
+
+        if conditions:
+            base_stmt = base_stmt.where(*conditions)
+
+        count_stmt = select(func.count(UserModel.id)).outerjoin(
+            ban_subq, UserModel.id == ban_subq.c.ban_user_id
+        )
+        if conditions:
+            count_stmt = count_stmt.where(*conditions)
+        total_count = await self.session.scalar(count_stmt) or 0
+
+        sort_col = UserModel.login if sort_by == "login" else UserModel.created_at
+        if sort_order == "asc":
+            base_stmt = base_stmt.order_by(sort_col.asc())
+        else:
+            base_stmt = base_stmt.order_by(sort_col.desc())
+
+        base_stmt = base_stmt.limit(limit).offset(offset)
+        result = await self.session.execute(base_stmt)
+
+        users_with_bans: list[tuple[UserDomain, UserBanDomain | None]] = []
+        for row in result.all():
+            user_model = row[0]
+            ban_id = row[1]
+            user_domain = self._to_domain(user_model)
+            ban_domain = None
+            if ban_id is not None:
+                ban_domain = UserBanDomain(
+                    id=ban_id,
+                    user_id=row[2],
+                    reason=row[3],
+                    created_by=row[4],
+                    created_at=row[5],
+                    ended_at=row[6],
+                )
+            users_with_bans.append((user_domain, ban_domain))
+
+        return users_with_bans, total_count
 
 
 class SqlAlchemyUserPersonalRepository:
