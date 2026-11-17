@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -60,8 +61,15 @@ class AdminBrandResponse(BaseModel):
     views_count: int = 0
     orders_count: int = 0
     is_deleted: bool = False
+    products_hidden_override: int | None = None
     created_at: datetime
     members: list[BrandMemberResponse] = []
+
+
+class AdminBrandVisibilityRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    products_hidden_override: Literal[1, 2] | None = None
 
 
 class AdminHideProductsResponse(BaseModel):

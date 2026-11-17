@@ -7,6 +7,7 @@ from src.api.dependencies import get_admin_service, require_permission
 from src.api.v1.schemas import (
     AdminBanUserRequest,
     AdminBrandResponse,
+    AdminBrandVisibilityRequest,
     AdminCategoryCreateRequest,
     AdminCategoryUpdateRequest,
     AdminHideProductsResponse,
@@ -272,6 +273,40 @@ async def hide_all_brand_products(
         brand_id=brand_id,
     )
     return ResponseGenerator.answer(body=AdminHideProductsResponse(updated_count=count))
+
+
+@router.post(
+    "/brands/{brand_id}/restore",
+    response_model=BaseResponse[BrandResponse],
+)
+async def restore_brand(
+    brand_id: UUID,
+    admin: UserDomain = Depends(require_permission("admin:access")),
+    admin_service: AdminService = Depends(get_admin_service),
+):
+    brand = await admin_service.restore_brand(
+        actor=admin,
+        brand_id=brand_id,
+    )
+    return ResponseGenerator.answer(body=BrandResponse.model_validate(brand))
+
+
+@router.patch(
+    "/brands/{brand_id}/visibility",
+    response_model=BaseResponse[BrandResponse],
+)
+async def set_brand_visibility(
+    brand_id: UUID,
+    req: AdminBrandVisibilityRequest,
+    admin: UserDomain = Depends(require_permission("admin:access")),
+    admin_service: AdminService = Depends(get_admin_service),
+):
+    brand = await admin_service.set_brand_visibility(
+        actor=admin,
+        brand_id=brand_id,
+        products_hidden_override=req.products_hidden_override,
+    )
+    return ResponseGenerator.answer(body=BrandResponse.model_validate(brand))
 
 
 # =====================================================================

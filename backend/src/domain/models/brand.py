@@ -5,6 +5,7 @@ from uuid import UUID
 
 from uuid6 import uuid7
 
+from src.domain.exceptions import DomainValidationError
 from src.utils import factory_now
 
 from .base import BaseDomain
@@ -29,7 +30,21 @@ class BrandDomain(BaseDomain):
     moderation_status: ModerationStatus = field(default=ModerationStatus.PENDING)
     rejection_reason: str | None = None
     is_verified: bool = False
+    products_hidden_override: int | None = None
     created_at: datetime = field(default_factory=factory_now)
+
+    def __post_init__(self) -> None:
+        if (
+            self.products_hidden_override is not None
+            and self.products_hidden_override
+            not in (
+                1,
+                2,
+            )
+        ):
+            raise DomainValidationError(
+                "Brand products_hidden_override must be None, 1, or 2"
+            )
 
 
 @dataclass(slots=True, kw_only=True)

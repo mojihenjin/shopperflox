@@ -33,6 +33,7 @@ class SqlAlchemyBrandRepository:
             else ModerationStatus.PENDING,
             rejection_reason=model.rejection_reason,
             is_verified=model.is_verified,
+            products_hidden_override=model.products_hidden_override,
             created_at=model.created_at,
         )
 
@@ -235,6 +236,7 @@ class SqlAlchemyBrandRepository:
             else str(brand.moderation_status),
             rejection_reason=brand.rejection_reason,
             is_verified=brand.is_verified,
+            products_hidden_override=brand.products_hidden_override,
             created_at=brand.created_at,
         )
         self.session.add(model)
@@ -262,6 +264,7 @@ class SqlAlchemyBrandRepository:
                 else str(brand.moderation_status),
                 rejection_reason=brand.rejection_reason,
                 is_verified=brand.is_verified,
+                products_hidden_override=brand.products_hidden_override,
             )
         )
         try:

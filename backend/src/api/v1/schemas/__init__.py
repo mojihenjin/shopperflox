@@ -1,6 +1,7 @@
 from .admin import (
     AdminBanUserRequest,
     AdminBrandResponse,
+    AdminBrandVisibilityRequest,
     AdminCategoryCreateRequest,
     AdminCategoryUpdateRequest,
     AdminHideProductsResponse,
@@ -100,6 +101,7 @@ __all__ = [
     "AddBrandMemberRequest",
     "AdminBanUserRequest",
     "AdminBrandResponse",
+    "AdminBrandVisibilityRequest",
     "AdminCategoryCreateRequest",
     "AdminCategoryUpdateRequest",
     "AdminHideProductsResponse",

@@ -33,6 +33,7 @@ class BrandResponse(BaseModel):
     moderation_status: str = "pending"
     rejection_reason: str | None = None
     is_verified: bool = False
+    products_hidden_override: int | None = None
     created_at: datetime
 
 

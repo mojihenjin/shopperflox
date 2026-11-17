@@ -2,7 +2,17 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    SmallInteger,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid6 import uuid7
 
@@ -44,12 +54,22 @@ class BrandModel(Base):
     is_verified: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false", nullable=False, index=True
     )
+    products_hidden_override: Mapped[int | None] = mapped_column(
+        SmallInteger, nullable=True, default=None
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
     members: Mapped[list["BrandMemberModel"]] = relationship(
         back_populates="brand", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "products_hidden_override IS NULL OR products_hidden_override IN (1, 2)",
+            name="chk_brands_products_hidden_override",
+        ),
     )
 
 

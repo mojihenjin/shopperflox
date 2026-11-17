@@ -328,6 +328,49 @@ class AdminService:
             await self.brand_uow.commit()
             return brand
 
+    async def restore_brand(
+        self,
+        *,
+        actor: UserDomain,
+        brand_id: UUID,
+    ) -> BrandDomain:
+        self._check_admin_permission(actor)
+        async with self.brand_uow:
+            brand = await self.brand_uow.brands.get_by_id(brand_id)
+            if brand is None:
+                raise EntityNotFoundError("Brand not found")
+
+            brand.is_deleted = False
+            await self.brand_uow.brands.update(brand)
+            await self.brand_uow.commit()
+            return brand
+
+    async def set_brand_visibility(
+        self,
+        *,
+        actor: UserDomain,
+        brand_id: UUID,
+        products_hidden_override: int | None,
+    ) -> BrandDomain:
+        self._check_admin_permission(actor)
+        if products_hidden_override is not None and products_hidden_override not in (
+            1,
+            2,
+        ):
+            raise DomainValidationError(
+                "products_hidden_override must be None, 1, or 2"
+            )
+
+        async with self.brand_uow:
+            brand = await self.brand_uow.brands.get_by_id(brand_id)
+            if brand is None:
+                raise EntityNotFoundError("Brand not found")
+
+            brand.products_hidden_override = products_hidden_override
+            await self.brand_uow.brands.update(brand)
+            await self.brand_uow.commit()
+            return brand
+
     async def hide_all_brand_products(
         self,
         *,

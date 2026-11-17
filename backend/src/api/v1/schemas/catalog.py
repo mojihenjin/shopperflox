@@ -215,6 +215,7 @@ class ProductResponse(BaseModel):
     attributes: dict[str, Any] = Field(default_factory=dict)
     is_published: bool = False
     is_hidden: int = 0
+    effective_hidden: int = 0
     is_limited: bool = False
     views_count: int = 0
     orders_count: int = 0

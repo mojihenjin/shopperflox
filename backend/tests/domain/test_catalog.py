@@ -118,6 +118,7 @@ def test_product_domain_multi_currency_and_characteristics():
 
 
 def test_product_domain_negative_currency_validation():
+    import pytest
 
     from src.domain.exceptions import DomainValidationError
 
@@ -200,3 +201,73 @@ def test_product_variant_color_alias():
     )
     assert v2.color == "Olive Green"
     assert v2.color_name == "Olive Green"
+
+
+def test_brand_products_hidden_override_domain():
+    from src.domain.exceptions import DomainValidationError
+    from src.domain.models import BrandDomain
+
+    b1 = BrandDomain(name="B1", slug="b1", products_hidden_override=None)
+    assert b1.products_hidden_override is None
+
+    b2 = BrandDomain(name="B2", slug="b2", products_hidden_override=1)
+    assert b2.products_hidden_override == 1
+
+    b3 = BrandDomain(name="B3", slug="b3", products_hidden_override=2)
+    assert b3.products_hidden_override == 2
+
+    with pytest.raises(DomainValidationError):
+        BrandDomain(name="B4", slug="b4", products_hidden_override=3)
+
+
+def test_product_effective_hidden_computation():
+    author_id = uuid7()
+    cat_id = uuid7()
+
+    p1 = ProductDomain(
+        category_id=cat_id,
+        title="P1",
+        slug="p1",
+        base_price=Decimal("10"),
+        created_by=author_id,
+        is_hidden=0,
+        brand_products_hidden_override=None,
+    )
+    assert p1.effective_hidden == 0
+    assert p1.is_hidden == 0
+
+    p2 = ProductDomain(
+        category_id=cat_id,
+        title="P2",
+        slug="p2",
+        base_price=Decimal("10"),
+        created_by=author_id,
+        is_hidden=0,
+        brand_products_hidden_override=1,
+    )
+    assert p2.effective_hidden == 1
+    assert p2.is_hidden == 0
+
+    p3 = ProductDomain(
+        category_id=cat_id,
+        title="P3",
+        slug="p3",
+        base_price=Decimal("10"),
+        created_by=author_id,
+        is_hidden=2,
+        brand_products_hidden_override=1,
+    )
+    assert p3.effective_hidden == 2
+    assert p3.is_hidden == 2
+
+    p4 = ProductDomain(
+        category_id=cat_id,
+        title="P4",
+        slug="p4",
+        base_price=Decimal("10"),
+        created_by=author_id,
+        is_hidden=0,
+        brand_products_hidden_override=2,
+    )
+    assert p4.effective_hidden == 2
+    assert p4.is_hidden == 0
