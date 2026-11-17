@@ -37,6 +37,9 @@ export function ProfilePage() {
   const user = profileData?.data?.user;
   const personal = profileData?.data?.personal;
   const permissions = user?.global_permissions || [];
+  const isAdmin =
+    permissions.includes('*') ||
+    permissions.includes('admin:access');
   const isCreator =
     permissions.includes('*') ||
     permissions.some((p) => p.startsWith('creator:') || p === 'creator');
@@ -763,6 +766,14 @@ export function ProfilePage() {
                   className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-4 py-2.5 text-xs font-sans uppercase tracking-wider font-semibold transition-colors"
                 >
                   БРЕНДЫ ↗
+                </Link>
+              )}
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] border border-[#3F2021] px-4 py-2.5 text-xs font-sans uppercase tracking-wider font-semibold transition-colors"
+                >
+                  АДМИНПАНЕЛЬ ↗
                 </Link>
               )}
               {canCreateProduct && (

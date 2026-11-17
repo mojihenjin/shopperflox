@@ -60,6 +60,9 @@ export function Header() {
   });
 
   const permissions = user?.global_permissions || [];
+  const isAdmin =
+    permissions.includes('*') ||
+    permissions.includes('admin:access');
   const isCreator =
     permissions.includes('*') ||
     permissions.some((p) => p.startsWith('creator:') || p === 'creator');
@@ -442,6 +445,17 @@ export function Header() {
                 }`}
               >
                 БРЕНДЫ
+              </Link>
+            )}
+
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className={`hover:opacity-70 transition-colors duration-200 whitespace-nowrap font-medium uppercase ${
+                  isOverHero ? 'text-[#F2E9DB]' : 'text-sf-dark'
+                }`}
+              >
+                АДМИН
               </Link>
             )}
 
