@@ -16,6 +16,7 @@ import { ModerationRequestsPage } from './pages/ModerationRequestsPage';
 import { BrandsManagePage } from './pages/BrandsManagePage';
 import { BrandDetailPage } from './pages/BrandDetailPage';
 import { BrandsListPage } from './pages/BrandsListPage';
+import { AdminPage } from './pages/AdminPage';
 
 export function App() {
   return (
@@ -83,6 +84,14 @@ export function App() {
               element={
                 <ProtectedRoute>
                   <BrandsManagePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin"
+              element={
+                <ProtectedRoute>
+                  <AdminPage />
                 </ProtectedRoute>
               }
             />
