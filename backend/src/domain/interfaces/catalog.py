@@ -52,6 +52,8 @@ class ProductRepositoryProtocol(Protocol):
         self,
         *,
         category_id: UUID | None = None,
+        brand_id: UUID | None = None,
+        brand_slug: str | None = None,
         min_price: Decimal | None = None,
         max_price: Decimal | None = None,
         search: str | None = None,
@@ -61,6 +63,10 @@ class ProductRepositoryProtocol(Protocol):
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[ProductDomain], int]: ...
+
+    async def list_self_worked_by_creator(
+        self, creator_id: UUID
+    ) -> list[ProductDomain]: ...
 
     async def increment_views(self, product_id: UUID) -> None: ...
 

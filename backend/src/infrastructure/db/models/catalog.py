@@ -63,6 +63,7 @@ class ProductModel(Base):
     base_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     price_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     price_eur: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    price_cny: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
 
     material: Mapped[str | None] = mapped_column(String(255), nullable=True)
     density: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -108,6 +109,7 @@ class ProductModel(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     brand_rel = relationship("BrandModel", foreign_keys=[brand_id])
+    creator_rel = relationship("UserModel", foreign_keys=[creator_id])
 
     __table_args__ = (
         CheckConstraint("base_price >= 0", name="chk_products_base_price_non_negative"),
@@ -118,6 +120,10 @@ class ProductModel(Base):
         CheckConstraint(
             "price_eur IS NULL OR price_eur >= 0",
             name="chk_products_price_eur_non_negative",
+        ),
+        CheckConstraint(
+            "price_cny IS NULL OR price_cny >= 0",
+            name="chk_products_price_cny_non_negative",
         ),
         CheckConstraint(
             "is_hidden IN (0, 1, 2)",

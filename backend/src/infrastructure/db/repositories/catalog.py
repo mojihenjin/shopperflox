@@ -23,6 +23,7 @@ from src.infrastructure.db.models import (
     ProductImageModel,
     ProductModel,
     ProductVariantModel,
+    UserModel,
 )
 from src.utils import factory_now
 
@@ -136,7 +137,10 @@ class SqlAlchemyProductRepository:
         self.session = session
 
     def _to_domain(
-        self, model: ProductModel, brand_model: BrandModel | None = None
+        self,
+        model: ProductModel,
+        brand_model: BrandModel | None = None,
+        creator_model: UserModel | None = None,
     ) -> ProductDomain:
         brand_name = model.brand
         brand_slug = None
@@ -144,6 +148,7 @@ class SqlAlchemyProductRepository:
         brand_his_url = None
         brand_is_verified = False
         brand_is_deleted = False
+        brand_products_hidden_override = None
         rel = brand_model
         if rel is None and "brand_rel" in model.__dict__:
             rel = model.__dict__["brand_rel"]
@@ -155,11 +160,24 @@ class SqlAlchemyProductRepository:
             brand_his_url = rel.his_url
             brand_is_verified = rel.is_verified
             brand_is_deleted = rel.is_deleted
+            brand_products_hidden_override = rel.products_hidden_override
+
+        creator_login = None
+        creator_verified = False
+        if model.is_self_worked:
+            c_rel = creator_model
+            if c_rel is None and "creator_rel" in model.__dict__:
+                c_rel = model.__dict__["creator_rel"]
+            if c_rel is not None:
+                creator_login = c_rel.login
+                creator_verified = c_rel.verified_profile
 
         return ProductDomain(
             id=model.id,
             category_id=model.category_id,
             creator_id=model.creator_id,
+            creator_login=creator_login,
+            creator_verified=creator_verified,
             brand_id=model.brand_id,
             title=model.title,
             slug=model.slug,
@@ -169,10 +187,12 @@ class SqlAlchemyProductRepository:
             brand_his_url=brand_his_url,
             brand_is_verified=brand_is_verified,
             brand_is_deleted=brand_is_deleted,
+            brand_products_hidden_override=brand_products_hidden_override,
             is_self_worked=model.is_self_worked,
             base_price=model.base_price,
             price_usd=model.price_usd,
             price_eur=model.price_eur,
+            price_cny=model.price_cny,
             material=model.material,
             density=model.density,
             composition=model.composition,
@@ -202,8 +222,9 @@ class SqlAlchemyProductRepository:
         self, product_id: UUID, *, include_unpublished: bool = False
     ) -> ProductDomain | None:
         stmt = (
-            select(ProductModel, BrandModel)
+            select(ProductModel, BrandModel, UserModel)
             .outerjoin(BrandModel, ProductModel.brand_id == BrandModel.id)
+            .outerjoin(UserModel, ProductModel.creator_id == UserModel.id)
             .where(ProductModel.id == product_id, ProductModel.deleted_at.is_(None))
         )
         if not include_unpublished:
@@ -212,15 +233,16 @@ class SqlAlchemyProductRepository:
         row = result.first()
         if not row:
             return None
-        model, brand_model = row
-        return self._to_domain(model, brand_model)
+        model, brand_model, creator_model = row
+        return self._to_domain(model, brand_model, creator_model)
 
     async def get_by_slug(
         self, slug: str, *, include_unpublished: bool = False
     ) -> ProductDomain | None:
         stmt = (
-            select(ProductModel, BrandModel)
+            select(ProductModel, BrandModel, UserModel)
             .outerjoin(BrandModel, ProductModel.brand_id == BrandModel.id)
+            .outerjoin(UserModel, ProductModel.creator_id == UserModel.id)
             .where(ProductModel.slug == slug, ProductModel.deleted_at.is_(None))
         )
         if not include_unpublished:
@@ -229,13 +251,15 @@ class SqlAlchemyProductRepository:
         row = result.first()
         if not row:
             return None
-        model, brand_model = row
-        return self._to_domain(model, brand_model)
+        model, brand_model, creator_model = row
+        return self._to_domain(model, brand_model, creator_model)
 
     async def list_catalog(
         self,
         *,
         category_id: UUID | None = None,
+        brand_id: UUID | None = None,
+        brand_slug: str | None = None,
         min_price: Decimal | None = None,
         max_price: Decimal | None = None,
         search: str | None = None,
@@ -251,9 +275,18 @@ class SqlAlchemyProductRepository:
             ProductModel.is_hidden == 0,
             ProductModel.moderation_status == "approved",
             or_(BrandModel.id.is_(None), BrandModel.is_deleted.is_(False)),
+            or_(
+                BrandModel.id.is_(None),
+                BrandModel.products_hidden_override.is_(None),
+                BrandModel.products_hidden_override == 0,
+            ),
         ]
         if category_id is not None:
             base_filters.append(ProductModel.category_id == category_id)
+        if brand_id is not None:
+            base_filters.append(ProductModel.brand_id == brand_id)
+        if brand_slug is not None:
+            base_filters.append(BrandModel.slug == brand_slug)
         if min_price is not None:
             base_filters.append(ProductModel.base_price >= min_price)
         if max_price is not None:
@@ -299,8 +332,9 @@ class SqlAlchemyProductRepository:
         total_count = count_res.scalar() or 0
 
         data_stmt = (
-            select(ProductModel, BrandModel)
+            select(ProductModel, BrandModel, UserModel)
             .outerjoin(BrandModel, ProductModel.brand_id == BrandModel.id)
+            .outerjoin(UserModel, ProductModel.creator_id == UserModel.id)
             .where(*base_filters)
             .order_by(ProductModel.created_at.desc())
             .limit(limit)
@@ -308,7 +342,7 @@ class SqlAlchemyProductRepository:
         )
         data_res = await self.session.execute(data_stmt)
         rows = data_res.all()
-        products = [self._to_domain(m, b) for m, b in rows]
+        products = [self._to_domain(m, b, u) for m, b, u in rows]
 
         if products:
             p_ids = [p.id for p in products]
@@ -372,6 +406,88 @@ class SqlAlchemyProductRepository:
 
         return products, total_count
 
+    async def list_self_worked_by_creator(
+        self, creator_id: UUID
+    ) -> list[ProductDomain]:
+        stmt = (
+            select(ProductModel, UserModel)
+            .outerjoin(UserModel, ProductModel.creator_id == UserModel.id)
+            .where(
+                ProductModel.creator_id == creator_id,
+                ProductModel.is_self_worked.is_(True),
+                ProductModel.is_published.is_(True),
+                ProductModel.moderation_status == "approved",
+                ProductModel.is_hidden == 0,
+                ProductModel.deleted_at.is_(None),
+            )
+            .order_by(ProductModel.created_at.desc())
+        )
+        res = await self.session.execute(stmt)
+        rows = res.all()
+        products = [self._to_domain(m, None, u) for m, u in rows]
+
+        if products:
+            p_ids = [p.id for p in products]
+            v_stmt = (
+                select(ProductVariantModel)
+                .where(ProductVariantModel.product_id.in_(p_ids))
+                .order_by(ProductVariantModel.created_at.asc())
+            )
+            v_res = await self.session.execute(v_stmt)
+            variants_map: dict[UUID, list[ProductVariantDomain]] = {
+                pid: [] for pid in p_ids
+            }
+            for vm in v_res.scalars().all():
+                v_domain = ProductVariantDomain(
+                    id=vm.id,
+                    product_id=vm.product_id,
+                    sku=vm.sku,
+                    size=vm.size,
+                    color_name=vm.color_name,
+                    color=vm.color_name,
+                    color_hex=vm.color_hex,
+                    price_override=vm.price_override,
+                    stock_quantity=vm.stock_quantity,
+                    orders_count=vm.orders_count,
+                    created_by=vm.created_by,
+                    created_at=vm.created_at,
+                    updated_at=vm.updated_at,
+                )
+                variants_map[vm.product_id].append(v_domain)
+
+            i_stmt = (
+                select(ProductImageModel)
+                .where(ProductImageModel.product_id.in_(p_ids))
+                .order_by(
+                    ProductImageModel.sort_order.asc(),
+                    ProductImageModel.created_at.asc(),
+                )
+            )
+            i_res = await self.session.execute(i_stmt)
+            images_map: dict[UUID, list[ProductImageDomain]] = {
+                pid: [] for pid in p_ids
+            }
+            for im in i_res.scalars().all():
+                i_domain = ProductImageDomain(
+                    id=im.id,
+                    product_id=im.product_id,
+                    url=im.url,
+                    created_by=im.created_by,
+                    variant_id=im.variant_id,
+                    color=im.color,
+                    alt_text=im.alt_text,
+                    sort_order=im.sort_order,
+                    is_main=im.is_main,
+                    created_at=im.created_at,
+                )
+                images_map[im.product_id].append(i_domain)
+
+            for p in products:
+                p.variants = variants_map.get(p.id, [])
+                p.images = images_map.get(p.id, [])
+
+        return products
+
     async def increment_views(self, product_id: UUID) -> None:
         stmt = (
             update(ProductModel)
@@ -401,6 +517,7 @@ class SqlAlchemyProductRepository:
             base_price=product.base_price,
             price_usd=product.price_usd,
             price_eur=product.price_eur,
+            price_cny=product.price_cny,
             material=product.material,
             density=product.density,
             composition=product.composition,
@@ -447,6 +564,7 @@ class SqlAlchemyProductRepository:
         model.base_price = product.base_price
         model.price_usd = product.price_usd
         model.price_eur = product.price_eur
+        model.price_cny = product.price_cny
         model.material = product.material
         model.density = product.density
         model.composition = product.composition
@@ -487,14 +605,20 @@ class SqlAlchemyProductRepository:
             return []
         pattern = f"%{escaped}%"
         stmt = (
-            select(ProductModel, BrandModel)
+            select(ProductModel, BrandModel, UserModel)
             .outerjoin(BrandModel, ProductModel.brand_id == BrandModel.id)
+            .outerjoin(UserModel, ProductModel.creator_id == UserModel.id)
             .where(
                 ProductModel.is_published.is_(True),
                 ProductModel.deleted_at.is_(None),
                 ProductModel.is_hidden == 0,
                 ProductModel.moderation_status == "approved",
                 or_(BrandModel.id.is_(None), BrandModel.is_deleted.is_(False)),
+                or_(
+                    BrandModel.id.is_(None),
+                    BrandModel.products_hidden_override.is_(None),
+                    BrandModel.products_hidden_override == 0,
+                ),
                 or_(
                     ProductModel.title.ilike(pattern, escape="\\"),
                     ProductModel.description.ilike(pattern, escape="\\"),
@@ -506,7 +630,7 @@ class SqlAlchemyProductRepository:
         )
         result = await self.session.execute(stmt)
         rows = result.all()
-        return [self._to_domain(m, b) for m, b in rows]
+        return [self._to_domain(m, b, u) for m, b, u in rows]
 
     async def search_brands(
         self, query: str, limit: int = 10
@@ -526,6 +650,11 @@ class SqlAlchemyProductRepository:
                 ProductModel.is_hidden == 0,
                 ProductModel.moderation_status == "approved",
                 or_(BrandModel.id.is_(None), BrandModel.is_deleted.is_(False)),
+                or_(
+                    BrandModel.id.is_(None),
+                    BrandModel.products_hidden_override.is_(None),
+                    BrandModel.products_hidden_override == 0,
+                ),
                 ProductModel.brand.isnot(None),
                 ProductModel.brand != "",
                 ProductModel.brand.ilike(pattern, escape="\\"),
@@ -557,8 +686,9 @@ class SqlAlchemyProductRepository:
         total_count = count_res.scalar() or 0
 
         data_stmt = (
-            select(ProductModel, BrandModel)
+            select(ProductModel, BrandModel, UserModel)
             .outerjoin(BrandModel, ProductModel.brand_id == BrandModel.id)
+            .outerjoin(UserModel, ProductModel.creator_id == UserModel.id)
             .where(*filters)
             .order_by(ProductModel.created_at.asc())
             .limit(limit)
@@ -566,7 +696,7 @@ class SqlAlchemyProductRepository:
         )
         data_res = await self.session.execute(data_stmt)
         rows = data_res.all()
-        return [self._to_domain(m, b) for m, b in rows], total_count
+        return [self._to_domain(m, b, u) for m, b, u in rows], total_count
 
     async def count_pending_products(self) -> int:
         stmt = select(func.count(ProductModel.id)).where(
@@ -673,8 +803,9 @@ class SqlAlchemyProductRepository:
             order_clause = sort_col.desc()
 
         data_stmt = (
-            select(ProductModel, BrandModel)
+            select(ProductModel, BrandModel, UserModel)
             .outerjoin(BrandModel, ProductModel.brand_id == BrandModel.id)
+            .outerjoin(UserModel, ProductModel.creator_id == UserModel.id)
             .where(*base_filters)
             .order_by(order_clause)
             .limit(limit)
@@ -682,7 +813,7 @@ class SqlAlchemyProductRepository:
         )
         data_res = await self.session.execute(data_stmt)
         rows = data_res.all()
-        products = [self._to_domain(m, b) for m, b in rows]
+        products = [self._to_domain(m, b, u) for m, b, u in rows]
 
         if products:
             p_ids = [p.id for p in products]
@@ -812,11 +943,18 @@ class SqlAlchemyProductVariantRepository:
         stmt = (
             select(ProductVariantModel)
             .join(ProductModel, ProductVariantModel.product_id == ProductModel.id)
+            .outerjoin(BrandModel, ProductModel.brand_id == BrandModel.id)
             .where(
                 ProductModel.is_published.is_(True),
                 ProductModel.deleted_at.is_(None),
                 ProductModel.is_hidden == 0,
                 ProductModel.moderation_status == "approved",
+                or_(BrandModel.id.is_(None), BrandModel.is_deleted.is_(False)),
+                or_(
+                    BrandModel.id.is_(None),
+                    BrandModel.products_hidden_override.is_(None),
+                    BrandModel.products_hidden_override == 0,
+                ),
                 or_(
                     ProductVariantModel.sku.ilike(pattern, escape="\\"),
                     ProductVariantModel.color_name.ilike(pattern, escape="\\"),

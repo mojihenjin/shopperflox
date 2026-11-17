@@ -188,6 +188,8 @@ class CatalogService:
         self,
         *,
         category_id: UUID | None = None,
+        brand_id: UUID | None = None,
+        brand_slug: str | None = None,
         min_price: Decimal | None = None,
         max_price: Decimal | None = None,
         search: str | None = None,
@@ -200,6 +202,8 @@ class CatalogService:
         async with self.uow:
             return await self.uow.products.list_catalog(
                 category_id=category_id,
+                brand_id=brand_id,
+                brand_slug=brand_slug,
                 min_price=min_price,
                 max_price=max_price,
                 search=search,
@@ -209,6 +213,12 @@ class CatalogService:
                 limit=limit,
                 offset=offset,
             )
+
+    async def list_creator_self_worked_products(
+        self, creator_id: UUID
+    ) -> list[ProductDomain]:
+        async with self.uow:
+            return await self.uow.products.list_self_worked_by_creator(creator_id)
 
     async def get_product_detail(
         self, slug: str, *, actor: UserDomain | None = None
@@ -236,15 +246,26 @@ class CatalogService:
                 if not has_access:
                     raise EntityNotFoundError("Product not found")
 
-            if product.is_hidden == 2:
-                has_access = actor is not None and (
-                    actor.id == product.creator_id
-                    or actor.id == product.created_by
-                    or bool(
-                        {"*", "catalog:manage", "mod:update", "mod:approve_manager"}
-                        & set(actor.global_permissions)
-                    )
-                )
+            if product.effective_hidden == 2:
+                has_access = False
+                if actor is not None:
+                    if (
+                        actor.id == product.creator_id
+                        or actor.id == product.created_by
+                        or bool(
+                            {"*", "catalog:manage", "mod:update", "mod:approve_manager"}
+                            & set(actor.global_permissions)
+                        )
+                    ):
+                        has_access = True
+                    elif product.brand_id is not None and getattr(
+                        self.uow, "brands", None
+                    ):
+                        member = await self.uow.brands.get_member(
+                            product.brand_id, actor.id
+                        )
+                        if member is not None:
+                            has_access = True
                 if not has_access:
                     raise EntityNotFoundError("Product not found")
 
@@ -357,6 +378,7 @@ class CatalogService:
         base_price: Decimal,
         price_usd: Decimal | None = None,
         price_eur: Decimal | None = None,
+        price_cny: Decimal | None = None,
         brand_id: UUID | None = None,
         brand: str | None = None,
         is_self_worked: bool = False,
@@ -373,6 +395,13 @@ class CatalogService:
         variants: list[dict[str, Any]] | None = None,
     ) -> ProductDomain:
         self._check_creator_permission(actor)
+        if is_self_worked and not brand_id:
+            if not (
+                {"*", "creator:*", "creator:products"} & set(actor.global_permissions)
+            ):
+                raise PermissionDeniedError(
+                    "Для создания self-worked товаров требуется право creator:products"
+                )
         title = title.strip()
         slug = slug.strip()
         clean_brand = brand.strip() if brand else None
@@ -409,6 +438,8 @@ class CatalogService:
             product = ProductDomain(
                 category_id=category_id,
                 creator_id=actor.id,
+                creator_login=actor.login if is_self_worked else None,
+                creator_verified=actor.verified_profile if is_self_worked else False,
                 brand_id=brand_id,
                 title=title,
                 slug=slug,
@@ -419,6 +450,7 @@ class CatalogService:
                 base_price=base_price,
                 price_usd=price_usd,
                 price_eur=price_eur,
+                price_cny=price_cny,
                 material=material.strip() if material else None,
                 density=density.strip() if density else None,
                 composition=composition.strip() if composition else None,
@@ -501,6 +533,7 @@ class CatalogService:
         base_price: Decimal | None = None,
         price_usd: Decimal | None = ...,  # type: ignore[assignment]
         price_eur: Decimal | None = ...,  # type: ignore[assignment]
+        price_cny: Decimal | None = ...,  # type: ignore[assignment]
         material: str | None = ...,  # type: ignore[assignment]
         density: str | None = ...,  # type: ignore[assignment]
         composition: str | None = ...,  # type: ignore[assignment]
@@ -520,6 +553,24 @@ class CatalogService:
                 raise EntityNotFoundError("Product not found")
 
             await self._check_product_modify_permission(actor, product)
+
+            effective_brand_id = product.brand_id if brand_id is ... else brand_id
+            if is_self_worked is True and not effective_brand_id:
+                if not (
+                    {"*", "creator:*", "creator:products"}
+                    & set(actor.global_permissions)
+                ):
+                    raise PermissionDeniedError(
+                        "Для создания self-worked товаров требуется право creator:products"
+                    )
+            if product.is_self_worked and not product.brand_id:
+                if not (
+                    {"*", "catalog:manage", "creator:*", "creator:products"}
+                    & set(actor.global_permissions)
+                ):
+                    raise PermissionDeniedError(
+                        "Для создания self-worked товаров требуется право creator:products"
+                    )
 
             is_substantial = False
 
@@ -624,6 +675,9 @@ class CatalogService:
 
             if price_eur is not ...:
                 product.price_eur = price_eur
+
+            if price_cny is not ...:
+                product.price_cny = price_cny
 
             if attributes is not None:
                 product.attributes = attributes

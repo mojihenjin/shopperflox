@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .catalog import ProductResponse
+
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -62,3 +64,13 @@ class UserAddressResponse(BaseModel):
     postal_code: str
     is_default: bool
     created_at: datetime
+
+
+class PublicUserProfileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    login: str
+    verified_profile: bool = False
+    created_at: datetime
+    products: list[ProductResponse] = Field(default_factory=list)

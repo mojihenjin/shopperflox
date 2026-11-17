@@ -59,6 +59,7 @@ class ProductCreateRequest(BaseModel):
     base_price: Decimal = Field(ge=0)
     price_usd: Decimal | None = Field(default=None, ge=0)
     price_eur: Decimal | None = Field(default=None, ge=0)
+    price_cny: Decimal | None = Field(default=None, ge=0)
 
     material: str | None = Field(default=None, max_length=255)
     density: str | None = Field(default=None, max_length=128)
@@ -86,6 +87,7 @@ class ProductUpdateRequest(BaseModel):
     base_price: Decimal | None = Field(default=None, ge=0)
     price_usd: Decimal | None = Field(default=None, ge=0)
     price_eur: Decimal | None = Field(default=None, ge=0)
+    price_cny: Decimal | None = Field(default=None, ge=0)
 
     material: str | None = Field(default=None, max_length=255)
     density: str | None = Field(default=None, max_length=128)
@@ -185,6 +187,9 @@ class ProductResponse(BaseModel):
     base_price: Decimal
     price_usd: Decimal | None = None
     price_eur: Decimal | None = None
+    price_cny: Decimal | None = None
+    creator_login: str | None = None
+    creator_verified: bool = False
 
     material: str | None = None
     density: str | None = None
@@ -217,3 +222,4 @@ class ProductDetailResponse(BaseModel):
 
 
 ProductListResponse = ProductResponse
+ProductListItem = ProductResponse

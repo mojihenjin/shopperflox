@@ -1,6 +1,7 @@
 from decimal import Decimal
 from uuid import UUID
 
+import pytest
 from uuid6 import uuid7
 
 from src.domain.models import (
@@ -117,7 +118,6 @@ def test_product_domain_multi_currency_and_characteristics():
 
 
 def test_product_domain_negative_currency_validation():
-    import pytest
 
     from src.domain.exceptions import DomainValidationError
 
@@ -143,6 +143,26 @@ def test_product_domain_negative_currency_validation():
             price_eur=Decimal("-1.00"),
             created_by=author_id,
         )
+
+    with pytest.raises(DomainValidationError, match="price_cny"):
+        ProductDomain(
+            category_id=cat_id,
+            title="Invalid CNY",
+            slug="invalid-cny",
+            base_price=Decimal("100"),
+            price_cny=Decimal("-1.00"),
+            created_by=author_id,
+        )
+
+    valid_prod = ProductDomain(
+        category_id=cat_id,
+        title="Valid Multi-currency",
+        slug="valid-multicurrency",
+        base_price=Decimal("100"),
+        price_cny=Decimal("720.50"),
+        created_by=author_id,
+    )
+    assert valid_prod.price_cny == Decimal("720.50")
 
 
 def test_product_image_domain_with_color():

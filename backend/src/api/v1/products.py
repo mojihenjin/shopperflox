@@ -30,6 +30,8 @@ router = APIRouter(tags=["Products"])
 @router.get("/products", response_model=BaseResponse[list[ProductResponse]])
 async def list_products(
     category_id: UUID | None = Query(default=None),
+    brand_id: UUID | None = Query(default=None),
+    brand_slug: str | None = Query(default=None),
     min_price: Decimal | None = Query(default=None, ge=0),
     max_price: Decimal | None = Query(default=None, ge=0),
     search: str | None = Query(default=None),
@@ -42,6 +44,8 @@ async def list_products(
 ):
     products, total = await catalog_service.list_products(
         category_id=category_id,
+        brand_id=brand_id,
+        brand_slug=brand_slug,
         min_price=min_price,
         max_price=max_price,
         search=search,
@@ -96,6 +100,7 @@ async def create_product(
         base_price=req.base_price,
         price_usd=req.price_usd,
         price_eur=req.price_eur,
+        price_cny=req.price_cny,
         material=req.material,
         density=req.density,
         composition=req.composition,
@@ -133,6 +138,7 @@ async def update_product(
         base_price=req.base_price,
         price_usd=req.price_usd if "price_usd" in req.model_fields_set else ...,
         price_eur=req.price_eur if "price_eur" in req.model_fields_set else ...,
+        price_cny=req.price_cny if "price_cny" in req.model_fields_set else ...,
         material=req.material if "material" in req.model_fields_set else ...,
         density=req.density if "density" in req.model_fields_set else ...,
         composition=req.composition if "composition" in req.model_fields_set else ...,

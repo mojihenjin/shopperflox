@@ -49,6 +49,13 @@ class UserService:
             personal = await self.uow.personal.get_by_user_id(target_user_id)
             return target_user, personal
 
+    async def get_by_login(self, login: str) -> UserDomain:
+        async with self.uow:
+            user = await self.uow.users.get_by_login(login)
+            if user is None or user.is_deleted:
+                raise EntityNotFoundError("User not found")
+            return user
+
     async def update_personal(
         self,
         *,
