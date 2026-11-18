@@ -53,6 +53,14 @@ export interface UserProfileResponse {
   personal?: UserPersonalResponse | null;
 }
 
+export interface PublicUserProfileResponse {
+  id: string;
+  login: string;
+  verified_profile?: boolean;
+  created_at: string;
+  products: ProductResponse[];
+}
+
 export interface RegisterRequest {
   login: string;
   password: string;
@@ -127,6 +135,8 @@ export interface ProductResponse {
   price_usd?: string | null;
   price_eur?: string | null;
   price_cny?: string | null;
+  creator_login?: string | null;
+  creator_verified?: boolean;
   material?: string | null;
   density?: string | null;
   composition?: string | null;

@@ -235,7 +235,7 @@ export function CreatorEditProductPage() {
 
   const hasGlobalCreatorProducts = useMemo(() => {
     const perms = currentUser?.global_permissions || [];
-    return perms.includes('*') || perms.includes('creator:products') || perms.some((p) => p.startsWith('creator:'));
+    return perms.includes('*') || perms.includes('creator:products');
   }, [currentUser?.global_permissions]);
 
   // Fetch categories
@@ -890,7 +890,7 @@ export function CreatorEditProductPage() {
                         {b.brand.name} ({b.role === 'representative' ? 'ПРЕДСТАВИТЕЛЬ' : 'МОДЕРАТОР'})
                       </option>
                     ))}
-                    {hasGlobalCreatorProducts && (
+                    {(hasGlobalCreatorProducts || product?.is_self_worked) && (
                       <option value="self-worked">
                         self-worked (личный выпуск автора)
                       </option>

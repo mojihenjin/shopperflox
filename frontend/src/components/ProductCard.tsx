@@ -162,12 +162,21 @@ export function ProductCard({
           </button>
         )}
 
-        {/* Brand tag on photo if present */}
-        {product.brand && (
+        {/* Brand or Self-worked tag on photo */}
+        {product.is_self_worked && !product.brand_id ? (
+          <div className="absolute top-2 left-2 bg-[#3F2021]/90 text-[#F2E9DB] px-1.5 py-0.5 text-[9px] font-sans uppercase tracking-widest flex items-center gap-1">
+            <span>SELF-WORKED</span>
+            {product.creator_verified && (
+              <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-[#F2E9DB] text-[#3F2021] text-[8px] font-bold leading-none">
+                ✓
+              </span>
+            )}
+          </div>
+        ) : product.brand ? (
           <div className="absolute top-2 left-2 bg-[#3F2021]/80 text-[#F2E9DB] px-1.5 py-0.5 text-[9px] font-sans uppercase tracking-widest">
             {product.brand}
           </div>
-        )}
+        ) : null}
 
         {/* Minimalist 2px multi-segment indicator along bottom edge */}
         {gallery.length > 1 && (
@@ -197,7 +206,24 @@ export function ProductCard({
               isCompact ? 'text-[9px] tracking-wider' : 'text-[11px] tracking-widest'
             }`}
           >
-            {product.brand_slug ? (
+            {product.is_self_worked && !product.brand_id ? (
+              product.creator_login ? (
+                <Link
+                  to={`/users/${product.creator_login}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="truncate hover:underline hover:text-[#3F2021] inline-flex items-center gap-1"
+                >
+                  <span>SELF-WORKED · @{product.creator_login}</span>
+                  {product.creator_verified && (
+                    <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-[#3F2021] text-[#F2E9DB] text-[8px] font-bold leading-none">
+                      ✓
+                    </span>
+                  )}
+                </Link>
+              ) : (
+                <span className="truncate">SELF-WORKED</span>
+              )
+            ) : product.brand_slug ? (
               <Link
                 to={`/brands/${product.brand_slug}`}
                 onClick={(e) => e.stopPropagation()}

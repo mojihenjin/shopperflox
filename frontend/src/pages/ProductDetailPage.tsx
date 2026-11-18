@@ -612,15 +612,18 @@ export function ProductDetailPage() {
                     <Link to={`/brands/${product.brand_slug}`} className="hover:text-[#3F2021] underline underline-offset-2">
                       {product.brand || 'НЕ УКАЗАНО'}
                     </Link>
-
+                  ) : product.is_self_worked && product.creator_login ? (
+                    <Link to={`/users/${product.creator_login}`} className="hover:text-[#3F2021] underline underline-offset-2">
+                      @{product.creator_login}
+                    </Link>
                   ) : (
                     product.brand || 'НЕ УКАЗАНО'
                   )} ]
                 </span>
               </div>
 
-              {/* Issuer Brand Block */}
-              {product.brand_id && (
+              {/* Issuer Brand Block or Self-worked Author Card */}
+              {product.brand_id ? (
                 <div className="flex items-center justify-between gap-4 p-3.5 bg-[#FFFFFF] border border-[#3F2021]/20 rounded-none">
                   <div className="flex items-center gap-3">
                     {product.brand_logo_url ? (
@@ -674,7 +677,51 @@ export function ProductDetailPage() {
                     </a>
                   )}
                 </div>
-              )}
+              ) : product.is_self_worked ? (
+                <div className="flex items-center justify-between gap-4 p-3.5 bg-[#FFFFFF] border border-[#3F2021]/20 rounded-none">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 border border-[#3F2021]/20 bg-[#F2E9DB] flex items-center justify-center font-serif text-sm font-bold text-[#3F2021] rounded-none shrink-0 select-none">
+                      {((product.creator_login || 'A')[0]).toUpperCase()}
+                    </div>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5">
+                        {product.creator_login ? (
+                          <Link
+                            to={`/users/${product.creator_login}`}
+                            className="font-serif text-sm font-bold uppercase tracking-wider text-[#3F2021] hover:underline underline-offset-2"
+                          >
+                            @{product.creator_login}
+                          </Link>
+                        ) : (
+                          <span className="font-serif text-sm font-bold uppercase tracking-wider text-[#3F2021]">
+                            АВТОРСКИЙ ВЫПУСК
+                          </span>
+                        )}
+                        {product.creator_verified && (
+                          <span
+                            className="w-4 h-4 rounded-full bg-[#3F2021] text-[#F2E9DB] inline-flex items-center justify-center text-[10px] font-bold select-none leading-none shrink-0"
+                            title="Автор верифицирован"
+                          >
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-sans uppercase tracking-widest text-[#3F2021]/60">
+                        SELF-WORKED · САМОСТОЯТЕЛЬНЫЙ АВТОР
+                      </span>
+                    </div>
+                  </div>
+
+                  {product.creator_login && (
+                    <Link
+                      to={`/users/${product.creator_login}`}
+                      className="text-[11px] font-sans uppercase tracking-wider text-[#3F2021] underline underline-offset-4 hover:opacity-70 whitespace-nowrap font-semibold"
+                    >
+                      ПРОФИЛЬ АВТОРА ↗
+                    </Link>
+                  )}
+                </div>
+              ) : null}
 
               {/* Mandatory Field 2: Title */}
               <h1 className="font-serif text-3xl sm:text-4xl uppercase tracking-wider text-[#3F2021] leading-snug">

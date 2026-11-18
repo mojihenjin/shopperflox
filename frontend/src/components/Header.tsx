@@ -73,9 +73,9 @@ export function Header() {
   const isAdmin =
     permissions.includes('*') ||
     permissions.includes('admin:access');
-  const isCreator =
+  const canCreateSelfWorked =
     permissions.includes('*') ||
-    permissions.some((p) => p.startsWith('creator:') || p === 'creator');
+    permissions.includes('creator:products');
   const canModerate =
     permissions.includes('*') ||
     permissions.includes('mod:approve_manager');
@@ -94,7 +94,7 @@ export function Header() {
   const canCreateBrand =
     permissions.includes('*') ||
     permissions.includes('creator:brand') ||
-    isCreator ||
+    canCreateSelfWorked ||
     canManageCatalog;
   const hasBrandAccess =
     canCreateBrand ||
@@ -103,7 +103,7 @@ export function Header() {
   const isBrandActiveManager = myBrands.some(
     (b) => !b.brand.is_deleted && (b.role === 'representative' || b.role === 'moderator')
   );
-  const canCreateProduct = isCreator || isBrandActiveManager;
+  const canCreateProduct = canCreateSelfWorked || isBrandActiveManager;
 
   const rootCategories = (categoriesData?.data || []).filter(
     (c) => c.parent_id === null || c.parent_id === undefined

@@ -20,6 +20,7 @@ import type {
   ProductImageResponse,
   ProductImageReorderItem,
   ProductResponse,
+  PublicUserProfileResponse,
   RegisterRequest,
   RegisterResponse,
   RefreshTokenRequest,
@@ -86,6 +87,11 @@ export const usersApi = {
     apiFetch<UserPersonalResponse>('/api/v1/users/me/personal', {
       method: 'PATCH',
       body: JSON.stringify(data),
+    }),
+
+  getPublicProfile: (login: string) =>
+    apiFetch<PublicUserProfileResponse>(`/api/v1/users/${encodeURIComponent(login)}`, {
+      method: 'GET',
     }),
 };
 

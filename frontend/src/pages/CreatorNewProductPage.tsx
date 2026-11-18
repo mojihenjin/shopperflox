@@ -75,7 +75,7 @@ export function CreatorNewProductPage() {
 
   const hasGlobalCreatorProducts = useMemo(() => {
     const perms = user?.global_permissions || [];
-    return perms.includes('*') || perms.includes('creator:products') || perms.some((p) => p.startsWith('creator:'));
+    return perms.includes('*') || perms.includes('creator:products');
   }, [user?.global_permissions]);
 
   // Form State
@@ -557,6 +557,30 @@ export function CreatorNewProductPage() {
   // Preview data helpers
   const firstPhotoWithPreview =
     colorBlocks.flatMap((c) => c.photos)[0]?.previewUrl || null;
+
+  if (isAuthenticated && !hasGlobalCreatorProducts && activeMyBrands.length === 0) {
+    return (
+      <div className="w-full bg-[#F2E9DB] min-h-[60vh] flex flex-col items-center justify-center px-4 py-24 text-center space-y-4">
+        <span className="text-[11px] font-sans uppercase tracking-widest text-[#3F2021]/60">
+          ( 403 / НЕДОСТАТОЧНО ПРАВ )
+        </span>
+        <h1 className="font-serif text-3xl uppercase tracking-wider text-[#3F2021]">
+          СОЗДАНИЕ ТОВАРОВ НЕДОСТУПНО
+        </h1>
+        <p className="text-xs font-sans uppercase tracking-wider text-[#3F2021]/60 max-w-md">
+          Для выпуска личных товаров (self-worked) требуется право creator:products, либо участие в подтверждённой команде бренда.
+        </p>
+        <div className="pt-2">
+          <Link
+            to="/catalog"
+            className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-6 py-2.5 text-xs font-sans uppercase tracking-widest font-semibold transition-colors rounded-none inline-block"
+          >
+            ← ВЕРНУТЬСЯ В КАТАЛОГ
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full bg-[#F2E9DB] min-h-[90vh] py-10 md:py-16 px-4 md:px-8">
