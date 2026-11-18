@@ -8,6 +8,8 @@ export interface PaginationMetadata {
 
 export interface ApiErrorDetail {
   message?: string;
+  detail?: string;
+  msg?: string;
   field?: string;
   code?: string;
   [key: string]: unknown;

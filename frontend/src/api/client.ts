@@ -4,15 +4,25 @@ import type { ApiErrorDetail, BaseResponse, TokenPairResponse, UnpackedResponse 
 export class ApiError extends Error {
   statusCode: number;
   errors: ApiErrorDetail[];
+  data?: unknown;
+  response?: {
+    status: number;
+    data: unknown;
+  };
 
-  constructor(statusCode: number, errors: ApiErrorDetail[] = [], message?: string) {
+  constructor(statusCode: number, errors: ApiErrorDetail[] = [], message?: string, data?: unknown) {
     const defaultMsg = errors.length > 0
-      ? errors.map((e) => e.message || JSON.stringify(e)).join(', ')
+      ? errors.map((e) => e.detail || e.message || e.msg || JSON.stringify(e)).join(', ')
       : `API Error with status ${statusCode}`;
     super(message || defaultMsg);
     this.name = 'ApiError';
     this.statusCode = statusCode;
     this.errors = errors;
+    this.data = data;
+    this.response = {
+      status: statusCode,
+      data,
+    };
   }
 }
 
@@ -148,10 +158,23 @@ export async function apiFetch<T>(
   const hasErrors = Array.isArray(json.errors) && json.errors.length > 0;
 
   if (isErrorStatus || hasErrors) {
+    const primaryError = json.errors?.[0];
+    const rawDetail =
+      (primaryError && typeof primaryError === 'object' && (primaryError.detail || primaryError.message || primaryError.msg)) ||
+      (json as unknown as { detail?: string }).detail;
+
+    const extractedMessage =
+      typeof rawDetail === 'string' && rawDetail.trim()
+        ? rawDetail.trim()
+        : rawDetail
+        ? JSON.stringify(rawDetail)
+        : `API Error ${json.status_code || response.status}`;
+
     throw new ApiError(
       json.status_code || response.status,
       json.errors || [],
-      json.errors?.[0]?.message || 'Ошибка выполнения запроса'
+      extractedMessage,
+      json
     );
   }
 
