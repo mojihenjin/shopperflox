@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-do
 import { authApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { getReturnTo } from '../utils/navigation';
-import type { ApiError } from '../api/client';
+import { formatApiError } from '../utils/errorMapper';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -39,8 +39,7 @@ export function LoginPage() {
         navigate(returnTo, { replace: true });
       }
     } catch (err) {
-      const apiErr = err as ApiError;
-      setErrorMessage(apiErr.message || 'Ошибка входа. Проверьте данные.');
+      setErrorMessage(formatApiError(err, 'ОШИБКА ВХОДА. ПРОВЕРЬТЕ ДАННЫЕ.'));
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +58,7 @@ export function LoginPage() {
         </div>
 
         {errorMessage && (
-          <div className="mb-6 p-3 border border-sf-dark bg-sf-dark/5 text-sf-dark text-xs uppercase tracking-wider">
+          <div className="mb-6 p-3 border border-sf-dark bg-sf-dark/5 text-sf-dark text-xs uppercase tracking-wider whitespace-pre-line">
             {errorMessage}
           </div>
         )}

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi, usersApi, brandsApi, addressesApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
+import { formatApiError } from '../utils/errorMapper';
 import type { ApiError } from '../api/client';
 
 export function ProfilePage() {
@@ -105,8 +106,7 @@ export function ProfilePage() {
         throw new Error('Не удалось получить токен верификации');
       }
     } catch (err) {
-      const apiErr = err as ApiError;
-      setEmailError(apiErr.message || 'Ошибка отправки кода. Проверьте адрес почты.');
+      setEmailError(formatApiError(err, 'ОШИБКА ОТПРАВКИ КОДА. ПРОВЕРЬТЕ АДРЕС ПОЧТЫ.'));
     } finally {
       setIsEmailLoading(false);
     }
@@ -154,8 +154,7 @@ export function ProfilePage() {
         setEmailSuccessMsg(null);
       }, 1500);
     } catch (err) {
-      const apiErr = err as ApiError;
-      setEmailError(apiErr.message || 'Неверный или просроченный код подтверждения.');
+      setEmailError(formatApiError(err, 'НЕВЕРНЫЙ ИЛИ ПРОСРОЧЕННЫЙ КОД ПОДТВЕРЖДЕНИЯ.'));
     } finally {
       setIsEmailLoading(false);
     }
@@ -178,7 +177,7 @@ export function ProfilePage() {
       setIsEditingPersonal(false);
     },
     onError: (err: ApiError) => {
-      setPersonalError(err.message || 'Ошибка обновления персональных данных');
+      setPersonalError(formatApiError(err, 'ОШИБКА ОБНОВЛЕНИЯ ПЕРСОНАЛЬНЫХ ДАННЫХ'));
     },
   });
 
@@ -224,7 +223,7 @@ export function ProfilePage() {
       setTimeout(() => setAddressSuccessMsg(null), 3000);
     },
     onError: (err: ApiError) => {
-      setAddressError(err.message || 'Ошибка при добавлении адреса');
+      setAddressError(formatApiError(err, 'ОШИБКА ПРИ ДОБАВЛЕНИИ АДРЕСА'));
     },
   });
 
@@ -234,7 +233,7 @@ export function ProfilePage() {
       queryClient.invalidateQueries({ queryKey: ['userAddresses'] });
     },
     onError: (err: ApiError) => {
-      setAddressError(err.message || 'Ошибка назначения адреса по умолчанию');
+      setAddressError(formatApiError(err, 'ОШИБКА НАЗНАЧЕНИЯ АДРЕСА ПО УМОЛЧАНИЮ'));
     },
   });
 
@@ -244,7 +243,7 @@ export function ProfilePage() {
       queryClient.invalidateQueries({ queryKey: ['userAddresses'] });
     },
     onError: (err: ApiError) => {
-      setAddressError(err.message || 'Ошибка удаления адреса');
+      setAddressError(formatApiError(err, 'ОШИБКА УДАЛЕНИЯ АДРЕСА'));
     },
   });
 
@@ -316,7 +315,7 @@ export function ProfilePage() {
               {isEmailFormOpen && (
                 <div className="mt-3 p-4 bg-[#F2E9DB]/60 border border-sf-dark/20 space-y-3">
                   {emailError && (
-                    <div className="text-[11px] text-red-700 bg-red-100/60 p-2 border border-red-700/20 font-sans">
+                    <div className="text-[11px] text-red-700 bg-red-100/60 p-2 border border-red-700/20 font-sans whitespace-pre-line">
                       {emailError}
                     </div>
                   )}
@@ -471,7 +470,7 @@ export function ProfilePage() {
             </div>
 
             {personalError && (
-              <div className="text-xs text-red-700 bg-red-100/60 p-2.5 border border-red-700/20 font-sans">
+              <div className="text-xs text-red-700 bg-red-100/60 p-2.5 border border-red-700/20 font-sans whitespace-pre-line">
                 {personalError}
               </div>
             )}
@@ -594,7 +593,7 @@ export function ProfilePage() {
             </div>
 
             {addressError && (
-              <div className="text-xs text-red-700 bg-red-100/60 p-2.5 border border-red-700/20 font-sans">
+              <div className="text-xs text-red-700 bg-red-100/60 p-2.5 border border-red-700/20 font-sans whitespace-pre-line">
                 {addressError}
               </div>
             )}

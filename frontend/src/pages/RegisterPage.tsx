@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-do
 import { authApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { getReturnTo } from '../utils/navigation';
-import type { ApiError } from '../api/client';
+import { formatApiError } from '../utils/errorMapper';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -73,8 +73,7 @@ export function RegisterPage() {
         }
       }
     } catch (err) {
-      const apiErr = err as ApiError;
-      setErrorMessage(apiErr.message || 'Ошибка регистрации. Проверьте данные.');
+      setErrorMessage(formatApiError(err, 'ОШИБКА РЕГИСТРАЦИИ. ПРОВЕРЬТЕ ДАННЫЕ.'));
     } finally {
       setIsLoading(false);
     }
@@ -112,8 +111,7 @@ export function RegisterPage() {
         navigate(returnTo !== '/' ? `/login?redirect=${encodeURIComponent(returnTo)}` : '/login');
       }
     } catch (err) {
-      const apiErr = err as ApiError;
-      setErrorMessage(apiErr.message || 'Неверный код или срок его действия истек.');
+      setErrorMessage(formatApiError(err, 'НЕВЕРНЫЙ КОД ИЛИ СРОК ЕГО ДЕЙСТВИЯ ИСТЁК.'));
     } finally {
       setIsLoading(false);
     }
@@ -138,7 +136,7 @@ export function RegisterPage() {
         )}
 
         {errorMessage && (
-          <div className="mb-6 p-3 border border-sf-dark bg-sf-dark/5 text-sf-dark text-xs uppercase tracking-wider">
+          <div className="mb-6 p-3 border border-sf-dark bg-sf-dark/5 text-sf-dark text-xs uppercase tracking-wider whitespace-pre-line">
             {errorMessage}
           </div>
         )}
