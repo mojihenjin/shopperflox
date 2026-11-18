@@ -139,6 +139,16 @@ export function CreatorNewProductPage() {
   ]);
   const [customSizeInputs, setCustomSizeInputs] = useState<Record<string, string>>({});
 
+  // Photos DnD state
+  const [draggedPhoto, setDraggedPhoto] = useState<{ colorId: string; photoId: string } | null>(null);
+  const [dragOverPhotoId, setDragOverPhotoId] = useState<string | null>(null);
+  const [dragOverColorId, setDragOverColorId] = useState<string | null>(null);
+
+  const allPhotosList = useMemo(
+    () => colorBlocks.flatMap((c) => c.photos),
+    [colorBlocks]
+  );
+
   // Visibility and Edition
   const [isHidden, setIsHidden] = useState<0 | 1 | 2>(0);
   const [isLimited, setIsLimited] = useState(false);
@@ -271,6 +281,42 @@ export function CreatorNewProductPage() {
         };
       })
     );
+  };
+
+  const handleReorderPhotos = (
+    sourceColorId: string,
+    sourcePhotoId: string,
+    targetColorId: string,
+    targetPhotoId?: string
+  ) => {
+    setColorBlocks((prev) => {
+      const next = prev.map((cb) => ({
+        ...cb,
+        photos: [...cb.photos],
+      }));
+
+      const sourceBlock = next.find((cb) => cb.id === sourceColorId);
+      const targetBlock = next.find((cb) => cb.id === targetColorId);
+      if (!sourceBlock || !targetBlock) return prev;
+
+      const sourceIdx = sourceBlock.photos.findIndex((p) => p.id === sourcePhotoId);
+      if (sourceIdx === -1) return prev;
+
+      const [movedPhoto] = sourceBlock.photos.splice(sourceIdx, 1);
+
+      if (!targetPhotoId) {
+        targetBlock.photos.push(movedPhoto);
+      } else {
+        const targetIdx = targetBlock.photos.findIndex((p) => p.id === targetPhotoId);
+        if (targetIdx === -1) {
+          targetBlock.photos.push(movedPhoto);
+        } else {
+          targetBlock.photos.splice(targetIdx, 0, movedPhoto);
+        }
+      }
+
+      return next;
+    });
   };
 
   // Sizes Management for a Color Block
@@ -840,7 +886,30 @@ export function CreatorNewProductPage() {
                       </div>
 
                       {cb.photos.length === 0 ? (
-                        <label className="block border-2 border-dashed border-[#3F2021]/30 p-6 text-center cursor-pointer hover:border-[#3F2021] transition-colors">
+                        <label
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setDragOverColorId(cb.id);
+                          }}
+                          onDragLeave={() => {
+                            if (dragOverColorId === cb.id) setDragOverColorId(null);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setDragOverColorId(null);
+                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                              handlePhotoFilesSelected(cb.id, e.dataTransfer.files);
+                            } else if (draggedPhoto) {
+                              handleReorderPhotos(draggedPhoto.colorId, draggedPhoto.photoId, cb.id);
+                              setDraggedPhoto(null);
+                            }
+                          }}
+                          className={`block border-2 border-dashed p-6 text-center cursor-pointer transition-colors rounded-none ${
+                            dragOverColorId === cb.id
+                              ? 'border-[#3F2021] bg-[#3F2021]/10'
+                              : 'border-[#3F2021]/30 hover:border-[#3F2021]'
+                          }`}
+                        >
                           <input
                             type="file"
                             multiple
@@ -859,55 +928,161 @@ export function CreatorNewProductPage() {
                           </div>
                         </label>
                       ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                          {cb.photos.map((photo, pIdx) => (
-                            <div
-                              key={photo.id}
-                              className="relative aspect-[2/3] bg-[#E5DBCB] border border-[#3F2021]/30 overflow-hidden group flex flex-col justify-between"
+                        <div
+                          className="space-y-3"
+                          onDragOver={(e) => {
+                            if (e.dataTransfer.types.includes('Files')) {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'copy';
+                            }
+                          }}
+                          onDrop={(e) => {
+                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                              e.preventDefault();
+                              handlePhotoFilesSelected(cb.id, e.dataTransfer.files);
+                            }
+                          }}
+                        >
+                          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                            {cb.photos.map((photo, pIdx) => {
+                              const isFirstOverall = allPhotosList[0]?.id === photo.id;
+                              const isDraggingThis = draggedPhoto?.photoId === photo.id;
+                              const isHoveringThis = dragOverPhotoId === photo.id;
+
+                              return (
+                                <div
+                                  key={photo.id}
+                                  draggable={true}
+                                  onDragStart={(e) => {
+                                    e.dataTransfer.setData('text/plain', photo.id);
+                                    e.dataTransfer.effectAllowed = 'move';
+                                    setDraggedPhoto({ colorId: cb.id, photoId: photo.id });
+                                  }}
+                                  onDragEnd={() => {
+                                    setDraggedPhoto(null);
+                                    setDragOverPhotoId(null);
+                                  }}
+                                  onDragOver={(e) => {
+                                    if (draggedPhoto) {
+                                      e.preventDefault();
+                                      e.dataTransfer.dropEffect = 'move';
+                                    }
+                                  }}
+                                  onDragEnter={() => {
+                                    if (draggedPhoto && draggedPhoto.photoId !== photo.id) {
+                                      setDragOverPhotoId(photo.id);
+                                    }
+                                  }}
+                                  onDragLeave={() => {
+                                    if (dragOverPhotoId === photo.id) {
+                                      setDragOverPhotoId(null);
+                                    }
+                                  }}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    if (draggedPhoto && draggedPhoto.photoId !== photo.id) {
+                                      handleReorderPhotos(
+                                        draggedPhoto.colorId,
+                                        draggedPhoto.photoId,
+                                        cb.id,
+                                        photo.id
+                                      );
+                                    }
+                                    setDraggedPhoto(null);
+                                    setDragOverPhotoId(null);
+                                  }}
+                                  className={`relative aspect-[2/3] bg-[#E5DBCB] border overflow-hidden group flex flex-col justify-between cursor-grab active:cursor-grabbing transition-all rounded-none ${
+                                    isDraggingThis
+                                      ? 'opacity-30 border-dashed border-[#3F2021]'
+                                      : isHoveringThis
+                                      ? 'border-2 border-[#3F2021] scale-[1.03] bg-[#3F2021]/15 ring-2 ring-[#3F2021]'
+                                      : 'border-[#3F2021]/30 hover:border-[#3F2021]'
+                                  }`}
+                                >
+                                  <img
+                                    src={photo.previewUrl}
+                                    alt="preview"
+                                    className="w-full h-full object-cover"
+                                  />
+
+                                  {/* Main Cover Badge */}
+                                  {isFirstOverall && (
+                                    <span className="absolute top-1 left-1 bg-[#3F2021] text-[#F2E9DB] px-1.5 py-0.5 text-[9px] font-sans uppercase font-bold tracking-wider z-10 select-none">
+                                      ОСНОВНОЕ
+                                    </span>
+                                  )}
+
+                                  {/* Action Overlay */}
+                                  <div className="absolute inset-0 bg-[#3F2021]/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-1.5 text-[#F2E9DB]">
+                                    <div className="flex justify-between items-center text-[10px] font-mono">
+                                      <span>#{pIdx + 1}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemovePhoto(cb.id, photo.id)}
+                                        className="hover:text-sf-coral font-bold px-1"
+                                        title="Удалить"
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+
+                                    <div className="flex justify-center gap-2 text-xs font-mono">
+                                      <button
+                                        type="button"
+                                        disabled={pIdx === 0}
+                                        onClick={() => handleMovePhoto(cb.id, pIdx, 'left')}
+                                        className="px-2 py-0.5 bg-[#F2E9DB] text-[#3F2021] disabled:opacity-30 hover:bg-[#FFFFFF]"
+                                        title="Переместить влево"
+                                      >
+                                        ←
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={pIdx === cb.photos.length - 1}
+                                        onClick={() => handleMovePhoto(cb.id, pIdx, 'right')}
+                                        className="px-2 py-0.5 bg-[#F2E9DB] text-[#3F2021] disabled:opacity-30 hover:bg-[#FFFFFF]"
+                                        title="Переместить вправо"
+                                      >
+                                        →
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+
+                            {/* Dropzone tile to add more photos */}
+                            <label
+                              onDragOver={(e) => {
+                                if (e.dataTransfer.types.includes('Files')) {
+                                  e.preventDefault();
+                                  e.dataTransfer.dropEffect = 'copy';
+                                }
+                              }}
+                              onDrop={(e) => {
+                                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                  e.preventDefault();
+                                  handlePhotoFilesSelected(cb.id, e.dataTransfer.files);
+                                }
+                              }}
+                              className="border-2 border-dashed border-[#3F2021]/30 aspect-[2/3] flex flex-col items-center justify-center p-3 text-center cursor-pointer hover:border-[#3F2021] hover:bg-[#3F2021]/5 transition-colors bg-[#F2E9DB]/20 rounded-none"
                             >
-                              <img
-                                src={photo.previewUrl}
-                                alt="preview"
-                                className="w-full h-full object-cover"
+                              <input
+                                type="file"
+                                multiple
+                                accept="image/jpeg,image/png,image/webp"
+                                onChange={(e) => {
+                                  handlePhotoFilesSelected(cb.id, e.target.files);
+                                  e.target.value = '';
+                                }}
+                                className="hidden"
                               />
-
-                              {/* Action Overlay */}
-                              <div className="absolute inset-0 bg-[#3F2021]/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-1.5 text-[#F2E9DB]">
-                                <div className="flex justify-between items-center text-[10px] font-mono">
-                                  <span>#{pIdx + 1}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemovePhoto(cb.id, photo.id)}
-                                    className="hover:text-sf-coral font-bold px-1"
-                                    title="Удалить"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-
-                                <div className="flex justify-center gap-2 text-xs font-mono">
-                                  <button
-                                    type="button"
-                                    disabled={pIdx === 0}
-                                    onClick={() => handleMovePhoto(cb.id, pIdx, 'left')}
-                                    className="px-2 py-0.5 bg-[#F2E9DB] text-[#3F2021] disabled:opacity-30 hover:bg-[#FFFFFF]"
-                                    title="Переместить влево"
-                                  >
-                                    ←
-                                  </button>
-                                  <button
-                                    type="button"
-                                    disabled={pIdx === cb.photos.length - 1}
-                                    onClick={() => handleMovePhoto(cb.id, pIdx, 'right')}
-                                    className="px-2 py-0.5 bg-[#F2E9DB] text-[#3F2021] disabled:opacity-30 hover:bg-[#FFFFFF]"
-                                    title="Переместить вправо"
-                                  >
-                                    →
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                              <span className="text-xl font-mono text-[#3F2021]">+</span>
+                              <span className="text-[10px] font-sans uppercase tracking-wider text-[#3F2021]/70 mt-1">
+                                ДОБАВИТЬ ЕЩЁ
+                              </span>
+                            </label>
+                          </div>
                         </div>
                       )}
                     </div>

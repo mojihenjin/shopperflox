@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi, categoriesApi, brandsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
-import type { ProductUpdateRequest, ProductVariantResponse } from '../types/api';
+import type { ProductUpdateRequest, ProductVariantResponse, ProductDetailResponse, ProductImageReorderItem } from '../types/api';
 import type { ApiError } from '../api/client';
 
 const PRESET_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'ONE SIZE'];
@@ -314,60 +314,213 @@ export function CreatorEditProductPage() {
   const images = productData?.data?.images || [];
   const totalStock = variants.reduce((sum, v) => sum + (v.stock_quantity ?? 0), 0);
 
-  // Available variant colors for quick selection
-  const variantColors = useMemo(() => {
+  // Photos state: color grouping, DnD and uploading
+  const [extraColors, setExtraColors] = useState<string[]>([]);
+  const [isAddingColorBlock, setIsAddingColorBlock] = useState(false);
+  const [newColorBlockName, setNewColorBlockName] = useState('');
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoSuccess, setPhotoSuccess] = useState<string | null>(null);
+  const [draggedImageId, setDraggedImageId] = useState<string | null>(null);
+  const [dragOverImageId, setDragOverImageId] = useState<string | null>(null);
+  const [dragOverColorKey, setDragOverColorKey] = useState<string | null>(null);
+
+  // Compute all unique color blocks for photos
+  const colorBlocksList = useMemo(() => {
     const set = new Set<string>();
     variants.forEach((v) => {
       const c = v.color_name || v.color;
       if (c && c.trim()) set.add(c.trim());
     });
-    return Array.from(set);
-  }, [variants]);
+    images.forEach((img) => {
+      if (img.color && img.color.trim()) set.add(img.color.trim());
+    });
+    extraColors.forEach((c) => {
+      if (c && c.trim()) set.add(c.trim());
+    });
 
-  // Photo upload & management state
-  const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [photoColor, setPhotoColor] = useState('');
-  const [photoIsMain, setPhotoIsMain] = useState(false);
-  const [photoError, setPhotoError] = useState<string | null>(null);
-  const [photoSuccess, setPhotoSuccess] = useState<string | null>(null);
+    const list = Array.from(set);
+    const hasGeneral = images.some((img) => !img.color || !img.color.trim());
+    if (hasGeneral || list.length === 0) {
+      list.push('__GENERAL__');
+    }
+    return list;
+  }, [variants, images, extraColors]);
 
-  const uploadPhotoMutation = useMutation({
-    mutationFn: async () => {
-      setPhotoError(null);
-      setPhotoSuccess(null);
-      if (!product?.id) throw new Error('Товар не найден');
-      if (!selectedPhotoFile) throw new Error('Выберите файл изображения');
+  // Upload handler for photos in a specific color block
+  const handleUploadFilesForColor = async (colorKey: string, files: FileList | null) => {
+    if (!files || files.length === 0 || !product?.id) return;
+    setPhotoError(null);
+    setPhotoSuccess(null);
+    setIsUploadingPhotos(true);
 
-      const formData = new FormData();
-      formData.append('file', selectedPhotoFile);
-      if (photoColor.trim()) {
-        formData.append('color', photoColor.trim());
+    const isGeneral = colorKey === '__GENERAL__';
+    const colorVal = isGeneral ? null : colorKey;
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 5 * 1024 * 1024) {
+          setPhotoError(`Файл ${file.name} превышает лимит 5 МБ`);
+          continue;
+        }
+        const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!allowed.includes(file.type)) {
+          setPhotoError(`Файл ${file.name} имеет неподдерживаемый формат (JPEG, PNG, WebP)`);
+          continue;
+        }
+
+        setUploadProgress(`Загрузка фото (${i + 1} из ${files.length})...`);
+        const formData = new FormData();
+        formData.append('file', file);
+        if (colorVal) {
+          formData.append('color', colorVal);
+        }
+        formData.append('sort_order', String(images.length + i));
+        if (images.length === 0 && i === 0) {
+          formData.append('is_main', 'true');
+        }
+
+        await productsApi.uploadImage(product.id, formData);
       }
-      formData.append('sort_order', String(images.length + 1));
-      if (photoIsMain) {
-        formData.append('is_main', 'true');
-      }
 
-      return productsApi.uploadImage(product.id, formData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['product', slug] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      setPhotoSuccess('Фотография успешно загружена!');
-      setSelectedPhotoFile(null);
-      if (photoPreview) {
-        URL.revokeObjectURL(photoPreview);
-        setPhotoPreview(null);
-      }
-      setPhotoColor('');
-      setPhotoIsMain(false);
+      await queryClient.invalidateQueries({ queryKey: ['product', slug] });
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
+      setPhotoSuccess('Фотографии успешно загружены!');
       setTimeout(() => setPhotoSuccess(null), 3000);
-    },
-    onError: (err: ApiError) => {
-      setPhotoError(err.message || 'Ошибка загрузки фотографии');
-    },
-  });
+    } catch (err: unknown) {
+      setPhotoError(err instanceof Error ? err.message : 'Ошибка при загрузке фотографий');
+    } finally {
+      setIsUploadingPhotos(false);
+      setUploadProgress(null);
+    }
+  };
+
+  // Reorder images and persist immediately via PATCH /api/v1/products/{id}/images/reorder
+  const handleReorderImages = async (draggedId: string, targetId: string) => {
+    if (!product?.id) return;
+    const sourceIdx = images.findIndex((img) => img.id === draggedId);
+    const targetIdx = images.findIndex((img) => img.id === targetId);
+    if (sourceIdx === -1 || targetIdx === -1 || sourceIdx === targetIdx) return;
+
+    const newImages = [...images];
+    const [moved] = newImages.splice(sourceIdx, 1);
+
+    // If target has color, adopt target color
+    const targetImg = newImages[targetIdx < sourceIdx ? targetIdx : targetIdx - 1] || newImages[targetIdx];
+    if (targetImg) {
+      moved.color = targetImg.color;
+    }
+
+    newImages.splice(targetIdx, 0, moved);
+
+    const reorderedPayload: ProductImageReorderItem[] = newImages.map((img, idx) => ({
+      image_id: img.id,
+      sort_order: idx,
+      color: img.color ?? null,
+    }));
+
+    // Optimistic cache update
+    queryClient.setQueryData<ProductDetailResponse>(['product', slug], (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        images: newImages.map((img, idx) => ({
+          ...img,
+          sort_order: idx,
+          is_main: idx === 0,
+        })),
+      };
+    });
+
+    try {
+      const res = await productsApi.reorderImages(product.id, reorderedPayload);
+      if (res.data) {
+        queryClient.setQueryData<ProductDetailResponse>(['product', slug], (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            images: res.data,
+          };
+        });
+      }
+      setPhotoSuccess('Порядок фотографий сохранён');
+      setTimeout(() => setPhotoSuccess(null), 2500);
+    } catch (err: unknown) {
+      queryClient.invalidateQueries({ queryKey: ['product', slug] });
+      setPhotoError(err instanceof Error ? err.message : 'Ошибка при сохранении порядка фотографий');
+    }
+  };
+
+  // Move image by direction button (← / →)
+  const handleMoveImageRelative = async (imgId: string, direction: 'left' | 'right') => {
+    if (!product?.id) return;
+    const idx = images.findIndex((img) => img.id === imgId);
+    if (idx === -1) return;
+    const targetIdx = direction === 'left' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= images.length) return;
+    const targetId = images[targetIdx].id;
+    await handleReorderImages(imgId, targetId);
+  };
+
+  // Move image to an empty color block
+  const handleMoveImageToColorBlock = async (draggedId: string, targetColorKey: string) => {
+    if (!product?.id) return;
+    const sourceIdx = images.findIndex((img) => img.id === draggedId);
+    if (sourceIdx === -1) return;
+
+    const newImages = [...images];
+    const [moved] = newImages.splice(sourceIdx, 1);
+    moved.color = targetColorKey === '__GENERAL__' ? null : targetColorKey;
+    newImages.push(moved);
+
+    const reorderedPayload: ProductImageReorderItem[] = newImages.map((img, idx) => ({
+      image_id: img.id,
+      sort_order: idx,
+      color: img.color ?? null,
+    }));
+
+    queryClient.setQueryData<ProductDetailResponse>(['product', slug], (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        images: newImages.map((img, idx) => ({
+          ...img,
+          sort_order: idx,
+          is_main: idx === 0,
+        })),
+      };
+    });
+
+    try {
+      const res = await productsApi.reorderImages(product.id, reorderedPayload);
+      if (res.data) {
+        queryClient.setQueryData<ProductDetailResponse>(['product', slug], (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            images: res.data,
+          };
+        });
+      }
+      setPhotoSuccess('Фото перемещено в новый цвет');
+      setTimeout(() => setPhotoSuccess(null), 2500);
+    } catch (err: unknown) {
+      queryClient.invalidateQueries({ queryKey: ['product', slug] });
+      setPhotoError(err instanceof Error ? err.message : 'Ошибка при перемещении фото');
+    }
+  };
+
+  const handleAddExtraColorBlock = () => {
+    const trimmed = newColorBlockName.trim();
+    if (!trimmed) return;
+    if (!extraColors.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      setExtraColors((prev) => [...prev, trimmed]);
+    }
+    setNewColorBlockName('');
+    setIsAddingColorBlock(false);
+  };
 
   const deletePhotoMutation = useMutation({
     mutationFn: async (imageId: string) => {
@@ -1167,22 +1320,73 @@ export function CreatorEditProductPage() {
             </div>
           </div>
 
-          {/* Section 6: Photos & Gallery */}
+          {/* Section 6: Photos & Gallery with DnD and Color Blocks */}
           <div className="bg-[#FFFFFF] border border-[#3F2021] p-6 space-y-6 rounded-none">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#3F2021]/20 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#3F2021]/20 pb-3">
               <div>
                 <span className="text-xs font-sans font-semibold uppercase tracking-wider text-[#3F2021]">
                   ( 6. ФОТОГРАФИИ И ГАЛЕРЕЯ )
                 </span>
                 <p className="text-[11px] font-sans text-[#3F2021]/60 uppercase tracking-wider mt-0.5">
-                  Управление изображениями и цветовыми привязками
+                  Группировка по цветам и Drag-and-Drop сортировка карточек
                 </p>
               </div>
-              <span className="text-xs font-mono uppercase text-[#3F2021]/80">
-                ВСЕГО ФОТО: {images.length}
-              </span>
+
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-mono uppercase text-[#3F2021]/80">
+                  ВСЕГО ФОТО: {images.length}
+                </span>
+
+                {!isAddingColorBlock ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingColorBlock(true)}
+                    className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-3 py-1.5 text-xs font-sans uppercase tracking-wider font-semibold transition-colors rounded-none"
+                  >
+                    + ДОБАВИТЬ ЦВЕТ
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="НАЗВАНИЕ ЦВЕТА"
+                      value={newColorBlockName}
+                      onChange={(e) => setNewColorBlockName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddExtraColorBlock();
+                        }
+                      }}
+                      className="bg-[#FFFFFF] border border-[#3F2021]/40 px-2.5 py-1 text-xs font-sans tracking-wider outline-none rounded-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddExtraColorBlock}
+                      className="bg-[#3F2021] text-[#F2E9DB] px-2.5 py-1 text-xs font-sans uppercase font-semibold rounded-none"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddingColorBlock(false);
+                        setNewColorBlockName('');
+                      }}
+                      className="text-xs font-sans text-[#3F2021]/60 hover:text-[#3F2021] px-1"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
+            {uploadProgress && (
+              <div className="p-3 bg-[#3F2021] text-[#F2E9DB] text-xs font-sans uppercase tracking-wider text-center font-semibold rounded-none">
+                {uploadProgress}
+              </div>
+            )}
             {photoError && (
               <div className="p-3 text-xs text-red-700 bg-red-100/60 border border-red-700/20 font-sans">
                 {photoError}
@@ -1194,153 +1398,258 @@ export function CreatorEditProductPage() {
               </div>
             )}
 
-            {/* Existing Photos Grid */}
-            {images.length === 0 ? (
-              <div className="p-8 text-center border border-[#3F2021]/20 bg-[#F2E9DB]/30 space-y-2">
-                <div className="text-xs font-sans uppercase tracking-widest text-[#3F2021]/60">
-                  ( НЕТ ЗАГРУЖЕННЫХ ФОТОГРАФИЙ )
-                </div>
-                <p className="text-[11px] font-sans uppercase text-[#3F2021]/50">
-                  Загрузите изображения модели и привяжите их к цветам вариаций
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {images.map((img) => (
+            {/* Color Blocks */}
+            <div className="space-y-6">
+              {colorBlocksList.map((colorKey) => {
+                const isGeneral = colorKey === '__GENERAL__';
+                const displayName = isGeneral ? 'ОБЩИЕ ФОТО (БЕЗ ЦВЕТА)' : colorKey;
+                const colorPhotos = images.filter((img) =>
+                  isGeneral
+                    ? !img.color || !img.color.trim()
+                    : img.color?.trim().toLowerCase() === colorKey.trim().toLowerCase()
+                );
+
+                return (
                   <div
-                    key={img.id}
-                    className="border border-[#3F2021]/30 bg-[#F2E9DB]/20 p-2 flex flex-col justify-between space-y-2"
+                    key={colorKey}
+                    className="border border-[#3F2021]/30 p-5 bg-[#F2E9DB]/20 space-y-4 rounded-none"
                   >
-                    <div className="relative aspect-[2/3] w-full bg-[#E5E5E5] border border-[#3F2021]/20 overflow-hidden">
-                      <img
-                        src={img.url}
-                        alt={img.alt_text || product?.title || 'Фото товара'}
-                        className="w-full h-full object-cover"
-                      />
-                      {img.is_main && (
-                        <span className="absolute top-1 left-1 bg-[#3F2021] text-[#F2E9DB] px-1.5 py-0.5 text-[9px] font-sans uppercase font-bold tracking-wider">
-                          ОСНОВНОЕ
+                    {/* Color Header */}
+                    <div className="flex items-center justify-between gap-3 border-b border-[#3F2021]/20 pb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-sans uppercase tracking-wider text-[#3F2021] font-semibold">
+                          ФОТОГРАФИИ ЦВЕТА «{displayName}» ({colorPhotos.length})
                         </span>
-                      )}
+                      </div>
+
+                      <label className="cursor-pointer bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-3 py-1 text-xs font-sans uppercase tracking-wider font-semibold transition-colors rounded-none">
+                        + ВЫБРАТЬ ФАЙЛЫ
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/jpeg,image/png,image/webp"
+                          disabled={isUploadingPhotos}
+                          onChange={(e) => {
+                            handleUploadFilesForColor(colorKey, e.target.files);
+                            e.target.value = '';
+                          }}
+                          className="hidden"
+                        />
+                      </label>
                     </div>
 
-                    <div className="space-y-1">
-                      {img.color ? (
-                        <div className="text-[10px] font-sans uppercase tracking-wider text-[#3F2021] font-semibold truncate">
-                          ЦВЕТ: {img.color}
-                        </div>
-                      ) : (
-                        <div className="text-[10px] font-sans uppercase tracking-wider text-[#3F2021]/50">
-                          ОБЩЕЕ ФОТО
-                        </div>
-                      )}
-
-                      <button
-                        type="button"
-                        disabled={deletePhotoMutation.isPending}
-                        onClick={() => deletePhotoMutation.mutate(img.id)}
-                        className="w-full text-center text-[10px] font-sans uppercase tracking-wider text-red-700 hover:text-red-900 border border-red-700/30 hover:border-red-700 py-1 transition-colors"
+                    {/* Photos Upload Zone */}
+                    {colorPhotos.length === 0 ? (
+                      <label
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setDragOverColorKey(colorKey);
+                        }}
+                        onDragLeave={() => {
+                          if (dragOverColorKey === colorKey) setDragOverColorKey(null);
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setDragOverColorKey(null);
+                          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                            handleUploadFilesForColor(colorKey, e.dataTransfer.files);
+                          } else if (draggedImageId) {
+                            handleMoveImageToColorBlock(draggedImageId, colorKey);
+                            setDraggedImageId(null);
+                          }
+                        }}
+                        className={`block border-2 border-dashed p-6 text-center cursor-pointer transition-colors rounded-none ${
+                          dragOverColorKey === colorKey
+                            ? 'border-[#3F2021] bg-[#3F2021]/10'
+                            : 'border-[#3F2021]/30 hover:border-[#3F2021]'
+                        }`}
                       >
-                        УДАЛИТЬ ×
-                      </button>
-                    </div>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/jpeg,image/png,image/webp"
+                          disabled={isUploadingPhotos}
+                          onChange={(e) => {
+                            handleUploadFilesForColor(colorKey, e.target.files);
+                            e.target.value = '';
+                          }}
+                          className="hidden"
+                        />
+                        <div className="text-xs font-sans uppercase tracking-wider text-[#3F2021]/70">
+                          КЛИКНИТЕ ИЛИ ПЕРЕТАЩИТЕ СЮДА ФОТОГРАФИИ ДЛЯ ЭТОГО ЦВЕТА
+                        </div>
+                        <div className="text-[10px] font-sans uppercase tracking-widest text-[#3F2021]/50 mt-1">
+                          ( JPEG, PNG, WEBP ДО 5 МБ, ПРОПОРЦИЯ 2:3 )
+                        </div>
+                      </label>
+                    ) : (
+                      <div
+                        className="space-y-3"
+                        onDragOver={(e) => {
+                          if (e.dataTransfer.types.includes('Files')) {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'copy';
+                          }
+                        }}
+                        onDrop={(e) => {
+                          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                            e.preventDefault();
+                            handleUploadFilesForColor(colorKey, e.dataTransfer.files);
+                          }
+                        }}
+                      >
+                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                          {colorPhotos.map((img) => {
+                            const isFirstOverall = images[0]?.id === img.id;
+                            const isDraggingThis = draggedImageId === img.id;
+                            const isHoveringThis = dragOverImageId === img.id;
+                            const overallIdx = images.findIndex((i) => i.id === img.id);
+
+                            return (
+                              <div
+                                key={img.id}
+                                draggable={true}
+                                onDragStart={(e) => {
+                                  e.dataTransfer.setData('text/plain', img.id);
+                                  e.dataTransfer.effectAllowed = 'move';
+                                  setDraggedImageId(img.id);
+                                }}
+                                onDragEnd={() => {
+                                  setDraggedImageId(null);
+                                  setDragOverImageId(null);
+                                }}
+                                onDragOver={(e) => {
+                                  if (draggedImageId) {
+                                    e.preventDefault();
+                                    e.dataTransfer.dropEffect = 'move';
+                                  }
+                                }}
+                                onDragEnter={() => {
+                                  if (draggedImageId && draggedImageId !== img.id) {
+                                    setDragOverImageId(img.id);
+                                  }
+                                }}
+                                onDragLeave={() => {
+                                  if (dragOverImageId === img.id) {
+                                    setDragOverImageId(null);
+                                  }
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  if (draggedImageId && draggedImageId !== img.id) {
+                                    handleReorderImages(draggedImageId, img.id);
+                                  }
+                                  setDraggedImageId(null);
+                                  setDragOverImageId(null);
+                                }}
+                                className={`relative aspect-[2/3] bg-[#E5DBCB] border overflow-hidden group flex flex-col justify-between cursor-grab active:cursor-grabbing transition-all rounded-none ${
+                                  isDraggingThis
+                                    ? 'opacity-30 border-dashed border-[#3F2021]'
+                                    : isHoveringThis
+                                    ? 'border-2 border-[#3F2021] scale-[1.03] bg-[#3F2021]/15 ring-2 ring-[#3F2021]'
+                                    : 'border-[#3F2021]/30 hover:border-[#3F2021]'
+                                }`}
+                              >
+                                <img
+                                  src={img.url}
+                                  alt={img.alt_text || product?.title || 'Фото товара'}
+                                  className="w-full h-full object-cover"
+                                />
+
+                                {/* Main Cover Badge */}
+                                {isFirstOverall && (
+                                  <span className="absolute top-1 left-1 bg-[#3F2021] text-[#F2E9DB] px-1.5 py-0.5 text-[9px] font-sans uppercase font-bold tracking-wider z-10 select-none">
+                                    ОСНОВНОЕ
+                                  </span>
+                                )}
+
+                                {/* Action Overlay */}
+                                <div className="absolute inset-0 bg-[#3F2021]/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-1.5 text-[#F2E9DB]">
+                                  <div className="flex justify-between items-center text-[10px] font-mono">
+                                    <span className="select-none">#{overallIdx + 1}</span>
+                                    <button
+                                      type="button"
+                                      disabled={deletePhotoMutation.isPending}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        deletePhotoMutation.mutate(img.id);
+                                      }}
+                                      className="hover:text-sf-coral font-bold px-1"
+                                      title="Удалить фото"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+
+                                  <div className="flex justify-center gap-2 text-xs font-mono">
+                                    <button
+                                      type="button"
+                                      disabled={overallIdx === 0}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoveImageRelative(img.id, 'left');
+                                      }}
+                                      className="px-2 py-0.5 bg-[#F2E9DB] text-[#3F2021] disabled:opacity-30 hover:bg-[#FFFFFF]"
+                                      title="Переместить влево"
+                                    >
+                                      ←
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={overallIdx === images.length - 1}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoveImageRelative(img.id, 'right');
+                                      }}
+                                      className="px-2 py-0.5 bg-[#F2E9DB] text-[#3F2021] disabled:opacity-30 hover:bg-[#FFFFFF]"
+                                      title="Переместить вправо"
+                                    >
+                                      →
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {/* Dropzone tile to add more photos */}
+                          <label
+                            onDragOver={(e) => {
+                              if (e.dataTransfer.types.includes('Files')) {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = 'copy';
+                              }
+                            }}
+                            onDrop={(e) => {
+                              if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                e.preventDefault();
+                                handleUploadFilesForColor(colorKey, e.dataTransfer.files);
+                              }
+                            }}
+                            className="border-2 border-dashed border-[#3F2021]/30 aspect-[2/3] flex flex-col items-center justify-center p-3 text-center cursor-pointer hover:border-[#3F2021] hover:bg-[#3F2021]/5 transition-colors bg-[#F2E9DB]/20 rounded-none"
+                          >
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/jpeg,image/png,image/webp"
+                              disabled={isUploadingPhotos}
+                              onChange={(e) => {
+                                handleUploadFilesForColor(colorKey, e.target.files);
+                                e.target.value = '';
+                              }}
+                              className="hidden"
+                            />
+                            <span className="text-xl font-mono text-[#3F2021]">+</span>
+                            <span className="text-[10px] font-sans uppercase tracking-wider text-[#3F2021]/70 mt-1">
+                              ДОБАВИТЬ ЕЩЁ
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
-
-            {/* Upload New Photo Form */}
-            <div className="border-t border-[#3F2021]/15 pt-5 space-y-4">
-              <div className="text-xs font-sans font-semibold uppercase tracking-wider text-[#3F2021]">
-                ( ЗАГРУЗИТЬ НОВОЕ ИЗОБРАЖЕНИЕ )
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-                {/* File picker */}
-                <div>
-                  <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1">
-                    ФАЙЛ ФОТОГРАФИИ *
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null;
-                      setSelectedPhotoFile(file);
-                      if (photoPreview) URL.revokeObjectURL(photoPreview);
-                      if (file) {
-                        setPhotoPreview(URL.createObjectURL(file));
-                      } else {
-                        setPhotoPreview(null);
-                      }
-                    }}
-                    className="w-full text-xs font-sans file:mr-3 file:py-2 file:px-3 file:border-0 file:text-xs file:font-sans file:uppercase file:bg-[#3F2021] file:text-[#F2E9DB] file:cursor-pointer text-[#3F2021]"
-                  />
-                </div>
-
-                {/* Color Selector / Input */}
-                <div>
-                  <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1">
-                    ПРИВЯЗКА К ЦВЕТУ
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      list="variant-colors-list"
-                      placeholder="ОБЩЕЕ ФОТО ИЛИ ЦВЕТ"
-                      value={photoColor}
-                      onChange={(e) => setPhotoColor(e.target.value)}
-                      className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none"
-                    />
-                    <datalist id="variant-colors-list">
-                      {variantColors.map((c) => (
-                        <option key={c} value={c} />
-                      ))}
-                    </datalist>
-                  </div>
-                </div>
-
-                {/* Main Checkbox & Upload Button */}
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={photoIsMain}
-                      onChange={(e) => setPhotoIsMain(e.target.checked)}
-                      className="w-4 h-4 rounded-none accent-[#3F2021] border-[#3F2021] cursor-pointer"
-                    />
-                    <span className="text-xs font-sans uppercase tracking-wider font-semibold text-[#3F2021]">
-                      СДЕЛАТЬ ГЛАВНЫМ ФОТО
-                    </span>
-                  </label>
-
-                  <button
-                    type="button"
-                    disabled={uploadPhotoMutation.isPending || !selectedPhotoFile}
-                    onClick={() => uploadPhotoMutation.mutate()}
-                    className="w-full bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-4 py-2 text-xs font-sans uppercase tracking-wider font-semibold transition-colors rounded-none disabled:opacity-40 cursor-pointer"
-                  >
-                    {uploadPhotoMutation.isPending ? 'ЗАГРУЗКА...' : '+ ЗАГРУЗИТЬ ФОТО'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Local preview if selected */}
-              {photoPreview && (
-                <div className="flex items-center gap-3 pt-2">
-                  <span className="text-[10px] font-sans uppercase text-[#3F2021]/60">
-                    ПРЕДПРОСМОТР:
-                  </span>
-                  <img
-                    src={photoPreview}
-                    alt="Предпросмотр"
-                    className="w-16 h-20 object-cover border border-[#3F2021]/30"
-                  />
-                  <span className="text-xs font-mono text-[#3F2021]">
-                    {selectedPhotoFile?.name} ({(selectedPhotoFile?.size ? (selectedPhotoFile.size / 1024).toFixed(0) : 0)} КБ)
-                  </span>
-                </div>
-              )}
+                );
+              })}
             </div>
           </div>
 
