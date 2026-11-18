@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi, cartApi, favoritesApi, brandsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { formatImageUrl, formatPrice, formatDate } from '../utils/format';
+import { formatApiError } from '../utils/errorMapper';
 import type { FitFeedback, ProductVariantResponse } from '../types/api';
 import type { ApiError } from '../api/client';
 
@@ -261,7 +262,7 @@ export function ProductDetailPage() {
       setTimeout(() => setFeedbackNotice(null), 3500);
     },
     onError: (err: ApiError) => {
-      setFeedbackNotice(err.message || 'Не удалось обновить видимость товара');
+      setFeedbackNotice(formatApiError(err, 'НЕ УДАЛОСЬ ОБНОВИТЬ ВИДИМОСТЬ ТОВАРА'));
       setTimeout(() => setFeedbackNotice(null), 3500);
     },
   });
@@ -277,7 +278,7 @@ export function ProductDetailPage() {
       navigate('/');
     },
     onError: (err: ApiError) => {
-      setFeedbackNotice(err.message || 'Ошибка при удалении товара');
+      setFeedbackNotice(formatApiError(err, 'ОШИБКА ПРИ УДАЛЕНИИ ТОВАРА'));
       setShowDeleteConfirm(false);
       setTimeout(() => setFeedbackNotice(null), 3500);
     },
@@ -318,7 +319,7 @@ export function ProductDetailPage() {
       setTimeout(() => setFeedbackNotice(null), 3500);
     },
     onError: (err: ApiError) => {
-      setFeedbackNotice(err.message || 'Ошибка при добавлении в корзину');
+      setFeedbackNotice(formatApiError(err, 'ОШИБКА ПРИ ДОБАВЛЕНИИ В КОРЗИНУ'));
       setTimeout(() => setFeedbackNotice(null), 3500);
     },
   });
@@ -345,7 +346,7 @@ export function ProductDetailPage() {
       setTimeout(() => setReviewSuccess(null), 4000);
     },
     onError: (err: ApiError) => {
-      setReviewError(err.message || 'Не удалось отправить отзыв');
+      setReviewError(formatApiError(err, 'НЕ УДАЛОСЬ ОТПРАВИТЬ ОТЗЫВ'));
     },
   });
 
@@ -452,7 +453,7 @@ export function ProductDetailPage() {
 
       <div className="w-full max-w-none px-4 md:px-8 py-8 md:py-14">
         {feedbackNotice && (
-          <div className="mb-8 p-3.5 bg-[#3F2021] text-[#F2E9DB] text-xs font-sans uppercase tracking-widest text-center rounded-none">
+          <div className="mb-8 p-3.5 bg-[#3F2021] text-[#F2E9DB] text-xs font-sans uppercase tracking-widest text-center rounded-none whitespace-pre-line">
             {feedbackNotice}
           </div>
         )}
@@ -1151,7 +1152,7 @@ export function ProductDetailPage() {
                     )}
 
                     {reviewError && (
-                      <div className="p-3 border border-[#3F2021] bg-[#FF8562]/10 text-[#3F2021] text-xs uppercase tracking-wider rounded-none">
+                      <div className="p-3 border border-[#3F2021] bg-[#FF8562]/10 text-[#3F2021] text-xs uppercase tracking-wider rounded-none whitespace-pre-line">
                         {reviewError}
                       </div>
                     )}

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { categoriesApi, productsApi, brandsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
+import { formatApiError } from '../utils/errorMapper';
 import type { VariantCreateItem } from '../types/api';
 
 interface UploadPhotoItem {
@@ -518,9 +519,7 @@ export function CreatorNewProductPage() {
         navigate(`/products/${product.slug}`);
       }, 600);
     } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error ? err.message : 'Не удалось опубликовать товар';
-      setFormError(errorMsg);
+      setFormError(formatApiError(err, 'НЕ УДАЛОСЬ ОПУБЛИКОВАТЬ ТОВАР'));
       setIsPublishing(false);
       setPublishProgress(null);
     }
@@ -560,7 +559,7 @@ export function CreatorNewProductPage() {
         </div>
 
         {formError && (
-          <div className="p-4 bg-[#3F2021] text-[#F2E9DB] text-xs font-sans uppercase tracking-wider">
+          <div className="p-4 bg-[#3F2021] text-[#F2E9DB] text-xs font-sans uppercase tracking-wider whitespace-pre-line">
             {formError}
           </div>
         )}

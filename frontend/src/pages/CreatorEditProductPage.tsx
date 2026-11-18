@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi, categoriesApi, brandsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
+import { formatApiError } from '../utils/errorMapper';
 import type { ProductUpdateRequest, ProductVariantResponse, ProductDetailResponse, ProductImageReorderItem } from '../types/api';
 import type { ApiError } from '../api/client';
 
@@ -390,7 +391,7 @@ export function CreatorEditProductPage() {
       setPhotoSuccess('Фотографии успешно загружены!');
       setTimeout(() => setPhotoSuccess(null), 3000);
     } catch (err: unknown) {
-      setPhotoError(err instanceof Error ? err.message : 'Ошибка при загрузке фотографий');
+      setPhotoError(formatApiError(err, 'ОШИБКА ПРИ ЗАГРУЗКЕ ФОТОГРАФИЙ'));
     } finally {
       setIsUploadingPhotos(false);
       setUploadProgress(null);
@@ -449,7 +450,7 @@ export function CreatorEditProductPage() {
       setTimeout(() => setPhotoSuccess(null), 2500);
     } catch (err: unknown) {
       queryClient.invalidateQueries({ queryKey: ['product', slug] });
-      setPhotoError(err instanceof Error ? err.message : 'Ошибка при сохранении порядка фотографий');
+      setPhotoError(formatApiError(err, 'ОШИБКА ПРИ СОХРАНЕНИИ ПОРЯДКА ФОТОГРАФИЙ'));
     }
   };
 
@@ -508,7 +509,7 @@ export function CreatorEditProductPage() {
       setTimeout(() => setPhotoSuccess(null), 2500);
     } catch (err: unknown) {
       queryClient.invalidateQueries({ queryKey: ['product', slug] });
-      setPhotoError(err instanceof Error ? err.message : 'Ошибка при перемещении фото');
+      setPhotoError(formatApiError(err, 'ОШИБКА ПРИ ПЕРЕМЕЩЕНИИ ФОТО'));
     }
   };
 
@@ -532,7 +533,7 @@ export function CreatorEditProductPage() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (err: ApiError) => {
-      setPhotoError(err.message || 'Ошибка удаления фотографии');
+      setPhotoError(formatApiError(err, 'ОШИБКА УДАЛЕНИЯ ФОТОГРАФИИ'));
     },
   });
 
@@ -628,7 +629,7 @@ export function CreatorEditProductPage() {
       }, 2000);
     },
     onError: (err: ApiError) => {
-      setAddVariantError(err.message || 'Ошибка создания вариации');
+      setAddVariantError(formatApiError(err, 'ОШИБКА СОЗДАНИЯ ВАРИАЦИИ'));
     },
   });
 
@@ -649,7 +650,7 @@ export function CreatorEditProductPage() {
       }, 1000);
     },
     onError: (err: ApiError) => {
-      setErrorMessage(err.message || 'Ошибка при сохранении изменений');
+      setErrorMessage(formatApiError(err, 'ОШИБКА ПРИ СОХРАНЕНИИ ИЗМЕНЕНИЙ'));
     },
   });
 
@@ -782,7 +783,7 @@ export function CreatorEditProductPage() {
           </div>
         )}
         {errorMessage && (
-          <div className="p-4 bg-[#FF8562]/10 border border-[#FF8562] text-xs font-sans uppercase tracking-wider text-[#3F2021]">
+          <div className="p-4 bg-[#FF8562]/10 border border-[#FF8562] text-xs font-sans uppercase tracking-wider text-[#3F2021] whitespace-pre-line">
             {errorMessage}
           </div>
         )}
@@ -1228,7 +1229,7 @@ export function CreatorEditProductPage() {
                   </div>
 
                   {addVariantError && (
-                    <div className="p-3 text-xs text-red-700 bg-red-100/60 border border-red-700/20 font-sans">
+                    <div className="p-3 text-xs text-red-700 bg-red-100/60 border border-red-700/20 font-sans whitespace-pre-line">
                       {addVariantError}
                     </div>
                   )}
@@ -1388,7 +1389,7 @@ export function CreatorEditProductPage() {
               </div>
             )}
             {photoError && (
-              <div className="p-3 text-xs text-red-700 bg-red-100/60 border border-red-700/20 font-sans">
+              <div className="p-3 text-xs text-red-700 bg-red-100/60 border border-red-700/20 font-sans whitespace-pre-line">
                 {photoError}
               </div>
             )}

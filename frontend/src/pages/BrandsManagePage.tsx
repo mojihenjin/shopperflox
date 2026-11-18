@@ -4,6 +4,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { brandsApi } from '../api/brands';
 import { useAuthStore } from '../store/auth';
 import { formatImageUrl, formatDate } from '../utils/format';
+import { formatApiError } from '../utils/errorMapper';
 import type { ApiError } from '../api/client';
 import type { BrandMemberResponse } from '../types/api';
 
@@ -147,7 +148,7 @@ export function BrandsManagePage() {
       }, 1500);
     },
     onError: (err: ApiError) => {
-      setCreateError(err.message || 'Ошибка создания бренда');
+      setCreateError(formatApiError(err, 'ОШИБКА СОЗДАНИЯ БРЕНДА'));
     },
   });
 
@@ -179,7 +180,7 @@ export function BrandsManagePage() {
       setTimeout(() => setProfileMessage(null), 3000);
     },
     onError: (err: ApiError) => {
-      setProfileError(err.message || 'Ошибка обновления профиля бренда');
+      setProfileError(formatApiError(err, 'ОШИБКА ОБНОВЛЕНИЯ ПРОФИЛЯ БРЕНДА'));
     },
   });
 
@@ -205,7 +206,7 @@ export function BrandsManagePage() {
       setTimeout(() => setMemberMessage(null), 3000);
     },
     onError: (err: ApiError) => {
-      setMemberError(err.message || 'Ошибка добавления участника');
+      setMemberError(formatApiError(err, 'ОШИБКА ДОБАВЛЕНИЯ УЧАСТНИКА'));
     },
   });
 
@@ -225,7 +226,7 @@ export function BrandsManagePage() {
       setTimeout(() => setActionNotice(null), 3000);
     },
     onError: (err: ApiError) => {
-      setActionNotice(err.message || 'Ошибка смены роли');
+      setActionNotice(formatApiError(err, 'ОШИБКА СМЕНЫ РОЛИ'));
       setTimeout(() => setActionNotice(null), 3000);
     },
   });
@@ -247,7 +248,7 @@ export function BrandsManagePage() {
       setTimeout(() => setActionNotice(null), 3000);
     },
     onError: (err: ApiError) => {
-      setActionNotice(err.message || 'Ошибка удаления участника');
+      setActionNotice(formatApiError(err, 'ОШИБКА УДАЛЕНИЯ УЧАСТНИКА'));
       setTimeout(() => setActionNotice(null), 3000);
     },
   });
@@ -272,7 +273,7 @@ export function BrandsManagePage() {
     },
     onError: (err: ApiError) => {
       setShowSelfRemovalConfirm(false);
-      setActionNotice(err.message || 'Ошибка при снятии роли');
+      setActionNotice(formatApiError(err, 'ОШИБКА ПРИ СНЯТИИ РОЛИ'));
       setTimeout(() => setActionNotice(null), 4000);
     },
   });
@@ -294,7 +295,7 @@ export function BrandsManagePage() {
     },
     onError: (err: ApiError) => {
       setShowDeleteBrandConfirm(false);
-      setActionNotice(err.message || 'Ошибка снятия бренда с продажи');
+      setActionNotice(formatApiError(err, 'ОШИБКА СНЯТИЯ БРЕНДА С ПРОДАЖИ'));
       setTimeout(() => setActionNotice(null), 4000);
     },
   });
@@ -346,7 +347,7 @@ export function BrandsManagePage() {
 
         {/* Global Action Notice */}
         {actionNotice && (
-          <div className="p-3.5 bg-[#3F2021] text-[#F2E9DB] text-xs font-sans uppercase tracking-widest text-center font-semibold rounded-none border border-[#3F2021]">
+          <div className="p-3.5 bg-[#3F2021] text-[#F2E9DB] text-xs font-sans uppercase tracking-widest text-center font-semibold rounded-none border border-[#3F2021] whitespace-pre-line">
             {actionNotice}
           </div>
         )}
@@ -364,7 +365,7 @@ export function BrandsManagePage() {
             </div>
 
             {createError && (
-              <div className="text-xs text-red-700 bg-red-100/60 p-3 border border-red-700/20 font-sans">
+              <div className="text-xs text-red-700 bg-red-100/60 p-3 border border-red-700/20 font-sans whitespace-pre-line">
                 {createError}
               </div>
             )}
@@ -766,7 +767,7 @@ export function BrandsManagePage() {
                       </div>
                     )}
                     {profileError && (
-                      <div className="text-xs text-red-700 bg-red-100/60 p-2.5 border border-red-700/20 font-sans">
+                      <div className="text-xs text-red-700 bg-red-100/60 p-2.5 border border-red-700/20 font-sans whitespace-pre-line">
                         {profileError}
                       </div>
                     )}
@@ -850,7 +851,7 @@ export function BrandsManagePage() {
                       </div>
                     )}
                     {memberError && (
-                      <div className="text-xs text-red-700 bg-red-100/60 p-2.5 border border-red-700/20 font-sans">
+                      <div className="text-xs text-red-700 bg-red-100/60 p-2.5 border border-red-700/20 font-sans whitespace-pre-line">
                         {memberError}
                       </div>
                     )}

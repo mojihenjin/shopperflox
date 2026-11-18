@@ -1,13 +1,16 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { cartApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { formatPrice } from '../utils/format';
+import { formatApiError } from '../utils/errorMapper';
 
 export function CartPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
+  const [cartError, setCartError] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['cart'],
@@ -18,22 +21,34 @@ export function CartPage() {
   const updateItemMutation = useMutation({
     mutationFn: ({ variantId, quantity }: { variantId: string; quantity: number }) =>
       cartApi.updateItem(variantId, quantity),
+    onMutate: () => setCartError(null),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+    onError: (err) => {
+      setCartError(formatApiError(err, 'ОШИБКА ОБНОВЛЕНИЯ КОЛИЧЕСТВА'));
     },
   });
 
   const removeItemMutation = useMutation({
     mutationFn: (variantId: string) => cartApi.removeItem(variantId),
+    onMutate: () => setCartError(null),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+    onError: (err) => {
+      setCartError(formatApiError(err, 'ОШИБКА УДАЛЕНИЯ ТОВАРА ИЗ КОРЗИНЫ'));
     },
   });
 
   const clearCartMutation = useMutation({
     mutationFn: () => cartApi.clear(),
+    onMutate: () => setCartError(null),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+    onError: (err) => {
+      setCartError(formatApiError(err, 'ОШИБКА ОЧИСТКИ КОРЗИНЫ'));
     },
   });
 
@@ -81,6 +96,19 @@ export function CartPage() {
           </button>
         )}
       </div>
+
+      {cartError && (
+        <div className="mb-8 p-4 bg-[#3F2021] text-[#F2E9DB] text-xs font-sans uppercase tracking-wider flex items-center justify-between whitespace-pre-line rounded-none">
+          <span>{cartError}</span>
+          <button
+            type="button"
+            onClick={() => setCartError(null)}
+            className="text-[#F2E9DB]/70 hover:text-[#F2E9DB] text-sm ml-4 cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="py-24 text-center text-xs font-sans uppercase tracking-widest text-sf-muted">

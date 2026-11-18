@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { moderationApi, categoriesApi, productsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { formatImageUrl, formatPrice, formatDate } from '../utils/format';
+import { formatApiError } from '../utils/errorMapper';
 import type { ProductResponse, ModerationRequestType, BrandResponse } from '../types/api';
 import type { ApiError } from '../api/client';
 
@@ -46,7 +47,7 @@ function ModerationRequestCard({ product, categoryName, onActionSuccess }: Reque
       onActionSuccess(`ЗАЯВКА НА ТОВАР «${product.title}» ОДОБРЕНА ✓`);
     },
     onError: (err: ApiError) => {
-      onActionSuccess(err.message || 'Ошибка при одобрении товара');
+      onActionSuccess(formatApiError(err, 'ОШИБКА ПРИ ОДОБРЕНИИ ТОВАРА'));
     },
   });
 
@@ -62,7 +63,7 @@ function ModerationRequestCard({ product, categoryName, onActionSuccess }: Reque
       onActionSuccess(`ЗАЯВКА НА ТОВАР «${product.title}» ОТКЛОНЕНА`);
     },
     onError: (err: ApiError) => {
-      onActionSuccess(err.message || 'Ошибка при отклонении товара');
+      onActionSuccess(formatApiError(err, 'ОШИБКА ПРИ ОТКЛОНЕНИИ ТОВАРА'));
     },
   });
 
@@ -389,7 +390,7 @@ function BrandModerationCard({ brand, onActionSuccess }: BrandCardProps) {
       onActionSuccess(`БРЕНД «${brand.name}» ОДОБРЕН ✓`);
     },
     onError: (err: ApiError) => {
-      onActionSuccess(err.message || 'Ошибка при одобрении бренда');
+      onActionSuccess(formatApiError(err, 'ОШИБКА ПРИ ОДОБРЕНИИ БРЕНДА'));
     },
   });
 
@@ -404,7 +405,7 @@ function BrandModerationCard({ brand, onActionSuccess }: BrandCardProps) {
       onActionSuccess(`ЗАЯВКА НА БРЕНД «${brand.name}» ОТКЛОНЕНА`);
     },
     onError: (err: ApiError) => {
-      onActionSuccess(err.message || 'Ошибка при отклонении бренда');
+      onActionSuccess(formatApiError(err, 'ОШИБКА ПРИ ОТКЛОНЕНИИ БРЕНДА'));
     },
   });
 
@@ -632,7 +633,7 @@ export function ModerationRequestsPage() {
 
         {/* Notices */}
         {feedbackNotice && (
-          <div className="p-4 bg-[#3F2021] text-[#F2E9DB] text-xs font-sans uppercase tracking-wider text-center rounded-none">
+          <div className="p-4 bg-[#3F2021] text-[#F2E9DB] text-xs font-sans uppercase tracking-wider text-center rounded-none whitespace-pre-line">
             {feedbackNotice}
           </div>
         )}
