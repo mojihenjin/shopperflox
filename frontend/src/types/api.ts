@@ -247,6 +247,16 @@ export interface ProductImageResponse {
   created_at: string;
 }
 
+export interface ProductImageReorderItem {
+  image_id: string;
+  sort_order: number;
+  color?: string | null;
+}
+
+export interface ProductImageReorderRequest {
+  items: ProductImageReorderItem[];
+}
+
 export interface ProductDetailResponse {
   product: ProductResponse;
   variants: ProductVariantResponse[];

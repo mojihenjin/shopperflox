@@ -18,6 +18,7 @@ import type {
   ProductVariantResponse,
   ProductDetailResponse,
   ProductImageResponse,
+  ProductImageReorderItem,
   ProductResponse,
   RegisterRequest,
   RegisterResponse,
@@ -183,6 +184,12 @@ export const productsApi = {
   deleteImage: (productId: string, imageId: string) =>
     apiFetch<null>(`/api/v1/products/${productId}/images/${imageId}`, {
       method: 'DELETE',
+    }),
+
+  reorderImages: (productId: string, items: ProductImageReorderItem[]) =>
+    apiFetch<ProductImageResponse[]>(`/api/v1/products/${productId}/images/reorder`, {
+      method: 'PATCH',
+      body: JSON.stringify({ items }),
     }),
 
   createVariant: (productId: string, data: ProductVariantCreateRequest) =>
