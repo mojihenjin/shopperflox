@@ -656,7 +656,7 @@ export function CreatorEditProductPage() {
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                  className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none"
                 />
               </div>
 
@@ -731,7 +731,7 @@ export function CreatorEditProductPage() {
                       value={brand}
                       onChange={(e) => setBrand(e.target.value)}
                       placeholder="self-worked"
-                      className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                      className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none"
                     />
                   </div>
                 )}
@@ -746,7 +746,7 @@ export function CreatorEditProductPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="ОПИСАНИЕ И ОСОБЕННОСТИ МОДЕЛИ..."
-                  className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none resize-y"
+                  className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none resize-y"
                 />
               </div>
             </div>
@@ -819,7 +819,7 @@ export function CreatorEditProductPage() {
                   value={material}
                   onChange={(e) => setMaterial(e.target.value)}
                   placeholder="100% ХЛОПОК, ШЕРСТЬ..."
-                  className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                  className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none"
                 />
               </div>
 
@@ -832,7 +832,7 @@ export function CreatorEditProductPage() {
                   value={density}
                   onChange={(e) => setDensity(e.target.value)}
                   placeholder="450 Г/М², HEAVYWEIGHT..."
-                  className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                  className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none"
                 />
               </div>
 
@@ -845,7 +845,7 @@ export function CreatorEditProductPage() {
                   value={composition}
                   onChange={(e) => setComposition(e.target.value)}
                   placeholder="80% ХЛОПОК, 20% ПОЛИЭСТЕР..."
-                  className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                  className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none"
                 />
               </div>
 
@@ -858,7 +858,7 @@ export function CreatorEditProductPage() {
                   value={printMethod}
                   onChange={(e) => setPrintMethod(e.target.value)}
                   placeholder="ШЕЛКОГРАФИЯ, ВЫШИВКА..."
-                  className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                  className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none"
                 />
               </div>
             </div>
@@ -872,7 +872,7 @@ export function CreatorEditProductPage() {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="СТИРКА ПРИ 30°C НАИЗНАНКУ..."
-                className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none resize-none"
+                className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none resize-none"
               />
             </div>
           </div>
@@ -1095,7 +1095,7 @@ export function CreatorEditProductPage() {
                         value={newSku}
                         onChange={(e) => setNewSku(e.target.value)}
                         placeholder="ITEM-BLACK-M"
-                        className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2 text-xs font-mono uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                        className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2 text-xs font-mono tracking-wider text-[#3F2021] outline-none rounded-none"
                       />
                     </div>
 
@@ -1107,7 +1107,7 @@ export function CreatorEditProductPage() {
                         <select
                           value={newSize}
                           onChange={(e) => setNewSize(e.target.value)}
-                          className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                          className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none"
                         >
                           {PRESET_SIZES.map((s) => (
                             <option key={s} value={s}>
@@ -1127,7 +1127,7 @@ export function CreatorEditProductPage() {
                         value={newColorName}
                         onChange={(e) => setNewColorName(e.target.value)}
                         placeholder="ЧЕРНЫЙ / BLACK"
-                        className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                        className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none"
                       />
                     </div>
 
@@ -1290,7 +1290,7 @@ export function CreatorEditProductPage() {
                       placeholder="ОБЩЕЕ ФОТО ИЛИ ЦВЕТ"
                       value={photoColor}
                       onChange={(e) => setPhotoColor(e.target.value)}
-                      className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+                      className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none"
                     />
                     <datalist id="variant-colors-list">
                       {variantColors.map((c) => (

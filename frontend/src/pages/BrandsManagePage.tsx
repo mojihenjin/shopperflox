@@ -391,7 +391,7 @@ export function BrandsManagePage() {
                   placeholder="НАПРИМЕР: ARCHIVE STUDIO"
                   value={createName}
                   onChange={(e) => setCreateName(e.target.value)}
-                  className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3.5 py-2 text-xs font-sans uppercase tracking-wider text-[#000000] outline-none rounded-none"
+                  className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3.5 py-2 text-xs font-sans tracking-wider text-[#000000] outline-none rounded-none"
                 />
               </div>
 
@@ -787,7 +787,7 @@ export function BrandsManagePage() {
                           disabled={!isRepresentative || selectedBrand.is_deleted}
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3.5 py-2 text-xs font-sans uppercase tracking-wider text-[#000000] outline-none disabled:opacity-60 rounded-none"
+                          className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3.5 py-2 text-xs font-sans tracking-wider text-[#000000] outline-none disabled:opacity-60 rounded-none"
                         />
                       </div>
 

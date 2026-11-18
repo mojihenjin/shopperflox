@@ -293,7 +293,7 @@ export function CreatorNewProductPage() {
   };
 
   const handleAddCustomSize = (colorId: string) => {
-    const val = (customSizeInputs[colorId] || '').trim().toUpperCase();
+    const val = (customSizeInputs[colorId] || '').trim();
     if (!val) return;
     setColorBlocks((prev) =>
       prev.map((c) => {
@@ -545,7 +545,7 @@ export function CreatorNewProductPage() {
                   placeholder="НАПР. ОВЕРСАЙЗ ХУДИ «CYBER FLOCK»"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3.5 py-2.5 text-xs font-sans uppercase tracking-wider text-[#000000] outline-none"
+                  className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3.5 py-2.5 text-xs font-sans tracking-wider text-[#000000] outline-none"
                 />
               </div>
 
@@ -579,7 +579,7 @@ export function CreatorNewProductPage() {
                   placeholder="Особенности кроя, концепция дропа, философия изделия..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] p-3 text-xs font-sans uppercase tracking-wider text-[#000000] outline-none leading-relaxed"
+                  className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] p-3 text-xs font-sans tracking-wider text-[#000000] outline-none leading-relaxed"
                 />
               </div>
 
@@ -617,7 +617,7 @@ export function CreatorNewProductPage() {
                       placeholder="self-worked"
                       value={brand}
                       onChange={(e) => setBrand(e.target.value)}
-                      className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3.5 py-2 text-xs font-sans uppercase tracking-wider text-[#000000] outline-none rounded-none"
+                      className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3.5 py-2 text-xs font-sans tracking-wider text-[#000000] outline-none rounded-none"
                     />
                   </div>
                 )}
@@ -705,7 +705,7 @@ export function CreatorNewProductPage() {
                     placeholder="НАПР. ФУТЕР 3-НИТКА ПЕТЛЯ"
                     value={material}
                     onChange={(e) => setMaterial(e.target.value)}
-                    className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3 py-2 text-xs font-sans uppercase tracking-wider text-[#000000] outline-none"
+                    className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3 py-2 text-xs font-sans tracking-wider text-[#000000] outline-none"
                   />
                 </div>
 
@@ -718,7 +718,7 @@ export function CreatorNewProductPage() {
                     placeholder="НАПР. 460 Г/М²"
                     value={density}
                     onChange={(e) => setDensity(e.target.value)}
-                    className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3 py-2 text-xs font-sans uppercase tracking-wider text-[#000000] outline-none"
+                    className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3 py-2 text-xs font-sans tracking-wider text-[#000000] outline-none"
                   />
                 </div>
 
@@ -731,7 +731,7 @@ export function CreatorNewProductPage() {
                     placeholder="НАПР. 100% ХЛОПОК"
                     value={composition}
                     onChange={(e) => setComposition(e.target.value)}
-                    className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3 py-2 text-xs font-sans uppercase tracking-wider text-[#000000] outline-none"
+                    className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3 py-2 text-xs font-sans tracking-wider text-[#000000] outline-none"
                   />
                 </div>
 
@@ -744,7 +744,7 @@ export function CreatorNewProductPage() {
                     placeholder="НАПР. ШЕЛКОГРАФИЯ + ВЫШИВКА"
                     value={printMethod}
                     onChange={(e) => setPrintMethod(e.target.value)}
-                    className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3 py-2 text-xs font-sans uppercase tracking-wider text-[#000000] outline-none"
+                    className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3 py-2 text-xs font-sans tracking-wider text-[#000000] outline-none"
                   />
                 </div>
               </div>
@@ -758,7 +758,7 @@ export function CreatorNewProductPage() {
                   placeholder="Особенности кроя (оверсайз, спущенное плечо), рекомендации по стирке..."
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] p-3 text-xs font-sans uppercase tracking-wider text-[#000000] outline-none leading-relaxed"
+                  className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] p-3 text-xs font-sans tracking-wider text-[#000000] outline-none leading-relaxed"
                 />
               </div>
             </div>
@@ -803,7 +803,7 @@ export function CreatorNewProductPage() {
                           placeholder="НАЗВАНИЕ ЦВЕТА (НАПР. БОРДОВЫЙ)"
                           value={cb.name}
                           onChange={(e) => handleColorNameChange(cb.id, e.target.value)}
-                          className="flex-1 max-w-xs bg-[#FFFFFF] border border-[#3F2021]/40 px-3 py-1.5 text-xs font-sans uppercase tracking-wider text-[#000000] outline-none"
+                          className="flex-1 max-w-xs bg-[#FFFFFF] border border-[#3F2021]/40 px-3 py-1.5 text-xs font-sans tracking-wider text-[#000000] outline-none"
                         />
                       </div>
 
@@ -947,7 +947,7 @@ export function CreatorNewProductPage() {
                               [cb.id]: e.target.value,
                             }))
                           }
-                          className="flex-1 bg-[#FFFFFF] border border-[#3F2021]/30 px-2.5 py-1 text-xs font-sans uppercase outline-none"
+                          className="flex-1 bg-[#FFFFFF] border border-[#3F2021]/30 px-2.5 py-1 text-xs font-sans outline-none"
                         />
                         <button
                           type="button"

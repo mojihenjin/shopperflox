@@ -1216,7 +1216,7 @@ export function ProductDetailPage() {
                         value={reviewComment}
                         onChange={(e) => setReviewComment(e.target.value)}
                         placeholder="ПОДЕЛИТЕСЬ ВАШИМИ ВПЕЧАТЛЕНИЯМИ О ПОСАДКЕ И МАТЕРИАЛАХ..."
-                        className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-2.5 text-xs font-sans uppercase tracking-wider outline-none text-[#3F2021] resize-none rounded-none"
+                        className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-2.5 text-xs font-sans tracking-wider outline-none text-[#3F2021] resize-none rounded-none"
                       />
                     </div>
 

@@ -76,7 +76,7 @@ export function BrandsListPage() {
               placeholder="ПО НАЗВАНИЮ ИЛИ SLUG..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-transparent text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none"
+              className="w-full bg-transparent text-xs font-sans tracking-wider text-[#3F2021] outline-none"
             />
           </div>
           {search && (
