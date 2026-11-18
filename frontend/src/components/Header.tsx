@@ -241,7 +241,7 @@ export function Header() {
                 }}
                 onFocus={() => setIsSearchOpen(true)}
                 placeholder="ПОИСК: БРЕНД, МОДЕЛЬ, АРТИКУЛ..."
-                className={`w-full px-3 py-2 text-[12px] md:text-[13px] tracking-wider uppercase font-sans outline-none transition-colors duration-200 ${
+                className={`w-full px-3 py-2 text-[12px] md:text-[13px] tracking-wider font-sans outline-none transition-colors duration-200 ${
                   isOverHero
                     ? 'bg-[#3F2021] border border-[#F2E9DB]/30 text-[#F2E9DB] placeholder:text-[#F2E9DB]/50 focus:border-[#F2E9DB]'
                     : 'bg-[#F2E9DB] border border-sf-dark/30 focus:border-sf-dark placeholder:text-sf-muted/70 text-sf-black'
