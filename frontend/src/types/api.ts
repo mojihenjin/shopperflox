@@ -126,6 +126,7 @@ export interface ProductResponse {
   base_price: string;
   price_usd?: string | null;
   price_eur?: string | null;
+  price_cny?: string | null;
   material?: string | null;
   density?: string | null;
   composition?: string | null;
@@ -167,6 +168,7 @@ export interface ProductCreateRequest {
   base_price: number | string;
   price_usd?: number | string | null;
   price_eur?: number | string | null;
+  price_cny?: number | string | null;
   material?: string | null;
   density?: string | null;
   composition?: string | null;
@@ -190,6 +192,7 @@ export interface ProductUpdateRequest {
   base_price?: number | string | null;
   price_usd?: number | string | null;
   price_eur?: number | string | null;
+  price_cny?: number | string | null;
   material?: string | null;
   density?: string | null;
   composition?: string | null;

@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi, cartApi, favoritesApi, brandsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
-import { formatImageUrl, formatPrice, formatDate } from '../utils/format';
+import { formatImageUrl, formatPrice, formatDate, formatProductPrice } from '../utils/format';
+import { useCurrencyStore } from '../store/currency';
 import { formatApiError } from '../utils/errorMapper';
 import type { FitFeedback, ProductVariantResponse } from '../types/api';
 import type { ApiError } from '../api/client';
@@ -14,6 +15,7 @@ export function ProductDetailPage() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const { isAuthenticated, user: authUser } = useAuthStore();
+  const { currency } = useCurrencyStore();
 
   const currentPath = `${location.pathname}${location.search}`;
   const loginRedirectUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
@@ -400,6 +402,12 @@ export function ProductDetailPage() {
   const eurPriceText = product.price_eur
     ? `€ ${Number(product.price_eur).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : 'НЕ УКАЗАНО';
+  const cnyPriceText = product.price_cny
+    ? `¥ ${Number(product.price_cny).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : 'НЕ УКАЗАНО';
+  const primaryPriceText = activeVariant?.price_override
+    ? formatPrice(activeVariant.price_override)
+    : formatProductPrice(product, currency);
 
   const stockQuantity = activeVariant?.stock_quantity ?? 0;
   const totalStockAcrossAllVariants = variants.reduce((sum, v) => sum + (v.stock_quantity ?? 0), 0);
@@ -604,6 +612,7 @@ export function ProductDetailPage() {
                     <Link to={`/brands/${product.brand_slug}`} className="hover:text-[#3F2021] underline underline-offset-2">
                       {product.brand || 'НЕ УКАЗАНО'}
                     </Link>
+
                   ) : (
                     product.brand || 'НЕ УКАЗАНО'
                   )} ]
@@ -672,7 +681,7 @@ export function ProductDetailPage() {
                 {product.title || 'НЕ УКАЗАНО'}
               </h1>
 
-              {/* Mandatory Field 3: Price in RUB, USD, EUR */}
+              {/* Mandatory Field 3: Price in RUB, USD, EUR, CNY */}
               {product.brand_is_deleted && (
                 <div className="p-3.5 bg-[#3F2021] text-[#F2E9DB] border border-[#3F2021] text-xs font-sans uppercase tracking-widest text-center font-semibold rounded-none">
                   ( ВНИМАНИЕ ) ЗАКАЗ НЕВОЗМОЖЕН, БРЕНД СНЯЛСЯ С ПРОДАЖИ
@@ -681,10 +690,10 @@ export function ProductDetailPage() {
 
               <div className="space-y-2 border-b border-[#3F2021]/15 pb-4">
                 <div className="font-serif text-3xl font-bold text-[#3F2021]">
-                  {rubPriceText}
+                  {primaryPriceText}
                 </div>
                 <div className="text-xs font-mono uppercase tracking-wider text-[#3F2021]/80">
-                  ₽: {rubPriceText} · $: {usdPriceText} · €: {eurPriceText}
+                  ₽: {rubPriceText} · $: {usdPriceText} · €: {eurPriceText} · ¥: {cnyPriceText}
                 </div>
               </div>
 

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ProductResponse } from '../types/api';
-import { formatImageUrl, formatPrice } from '../utils/format';
+import { formatImageUrl, formatProductPrice } from '../utils/format';
+import { useCurrencyStore } from '../store/currency';
 
 export type GridColumns = 2 | 4 | 6 | 8;
 
@@ -29,6 +30,7 @@ export function ProductCard({
   className = '',
 }: ProductCardProps) {
   const navigate = useNavigate();
+  const { currency } = useCurrencyStore();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
   const timerRef = useRef<number | null>(null);
@@ -232,7 +234,7 @@ export function ProductCard({
         >
           <span className="truncate text-[#3F2021]/70">{displayVariations}</span>
           <span className="font-bold whitespace-nowrap text-[#3F2021]">
-            {formatPrice(product.base_price)}
+            {formatProductPrice(product, currency)}
           </span>
         </div>
 

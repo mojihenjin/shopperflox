@@ -3,8 +3,16 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { categoriesApi, cartApi, searchApi, authApi, notificationsApi, moderationApi, brandsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
+import { useCurrencyStore, type CurrencyCode } from '../store/currency';
 import { useDebounce } from '../hooks/useDebounce';
 import { NotificationsDrawer } from './NotificationsDrawer';
+
+const CURRENCIES: { code: CurrencyCode; label: string }[] = [
+  { code: 'RUB', label: 'RUB ₽' },
+  { code: 'USD', label: 'USD $' },
+  { code: 'EUR', label: 'EUR €' },
+  { code: 'CNY', label: 'CNY ¥' },
+];
 
 export function Header() {
   const navigate = useNavigate();
@@ -58,6 +66,8 @@ export function Header() {
     queryFn: () => categoriesApi.list(),
     staleTime: 5 * 60 * 1000,
   });
+
+  const { currency: activeCurrency, setCurrency: setActiveCurrency } = useCurrencyStore();
 
   const permissions = user?.global_permissions || [];
   const isAdmin =
@@ -205,15 +215,45 @@ export function Header() {
           : 'bg-[#F2E9DB] border-b border-sf-dark/15 text-sf-dark'
       }`}
     >
-      {/* Top Banner / Philosophy slogan */}
+      {/* Top Banner / Philosophy slogan & Currency Switcher */}
       <div
-        className={`transition-colors duration-200 text-[11px] font-sans tracking-widest uppercase py-1.5 px-4 text-center border-b ${
+        className={`transition-colors duration-200 text-[10px] md:text-[11px] font-sans tracking-widest uppercase py-1.5 px-4 md:px-8 border-b flex flex-wrap items-center justify-between gap-3 ${
           isOverHero
             ? 'bg-[#2B1516] text-[#F2E9DB]/90 border-[#F2E9DB]/20'
             : 'bg-sf-dark text-sf-cream border-sf-cream/20'
         }`}
       >
-        <span>SHOPPERFLOX — ОДЕЖДА И АКСЕССУАРЫ &nbsp;|&nbsp; ПОДДЕРЖКА: support@shopper.flox</span>
+        <span className="hidden sm:inline text-left text-[10px] tracking-widest opacity-75">
+          ПОДДЕРЖКА: support@shopper.flox
+        </span>
+        <span className="mx-auto sm:mx-0 font-medium">
+          SHOPPERFLOX — ЭКОСИСТЕМА АВТОРСКИХ ИЗДЕЛИЙ
+        </span>
+        <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
+          <span className="hidden md:inline text-[10px] tracking-wider opacity-60">
+            ВАЛЮТА:
+          </span>
+          <div className="inline-flex border border-[#F2E9DB]/30 divide-x divide-[#F2E9DB]/30">
+            {CURRENCIES.map((c) => {
+              const isActive = activeCurrency === c.code;
+              return (
+                <button
+                  key={c.code}
+                  type="button"
+                  onClick={() => setActiveCurrency(c.code)}
+                  className={`px-2 py-0.5 text-[10px] font-mono tracking-wider transition-colors cursor-pointer rounded-none ${
+                    isActive
+                      ? 'bg-[#F2E9DB] text-[#3F2021] font-bold'
+                      : 'bg-transparent text-[#F2E9DB]/80 hover:text-[#F2E9DB] hover:bg-[#F2E9DB]/10'
+                  }`}
+                  title={`Показывать цены в ${c.code}`}
+                >
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <div className="w-full max-w-none px-4 md:px-8">

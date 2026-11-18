@@ -4,6 +4,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { categoriesApi, productsApi, brandsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { formatApiError } from '../utils/errorMapper';
+import { autoConvertCurrencies } from '../utils/currencyConverter';
 import type { VariantCreateItem } from '../types/api';
 
 interface UploadPhotoItem {
@@ -118,6 +119,33 @@ export function CreatorNewProductPage() {
   const [basePrice, setBasePrice] = useState('');
   const [priceUsd, setPriceUsd] = useState('');
   const [priceEur, setPriceEur] = useState('');
+  const [priceCny, setPriceCny] = useState('');
+  const [isConvertingCurrencies, setIsConvertingCurrencies] = useState(false);
+  const [conversionNotice, setConversionNotice] = useState<string | null>(null);
+
+  const handleAutoConvertCurrencies = async () => {
+    setConversionNotice(null);
+    setIsConvertingCurrencies(true);
+    try {
+      const res = await autoConvertCurrencies({
+        rub: basePrice,
+        usd: priceUsd,
+        eur: priceEur,
+        cny: priceCny,
+      });
+      setBasePrice(res.rub);
+      setPriceUsd(res.usd);
+      setPriceEur(res.eur);
+      setPriceCny(res.cny);
+      setConversionNotice(`✓ Валюты рассчитаны на основе ${res.sourceCurrency}: ${res.rateInfo}`);
+      setTimeout(() => setConversionNotice(null), 4000);
+    } catch (err: unknown) {
+      setConversionNotice(err instanceof Error ? err.message : 'Ошибка автоперевода валют');
+      setTimeout(() => setConversionNotice(null), 4000);
+    } finally {
+      setIsConvertingCurrencies(false);
+    }
+  };
 
   // Characteristics
   const [material, setMaterial] = useState('');
@@ -459,6 +487,7 @@ export function CreatorNewProductPage() {
         base_price: numBasePrice,
         price_usd: priceUsd ? parseFloat(priceUsd) : null,
         price_eur: priceEur ? parseFloat(priceEur) : null,
+        price_cny: priceCny ? parseFloat(priceCny) : null,
         material: material.trim() || null,
         density: density.trim() || null,
         composition: composition.trim() || null,
@@ -671,16 +700,32 @@ export function CreatorNewProductPage() {
 
             {/* 2. Мультивалютная цена */}
             <div className="bg-[#FFFFFF] border border-[#3F2021] p-6 space-y-5">
-              <div className="border-b border-[#3F2021]/15 pb-3">
-                <span className="text-[10px] font-sans font-semibold uppercase tracking-widest text-[#3F2021]/60">
-                  ( РАЗДЕЛ 2 )
-                </span>
-                <h2 className="font-serif text-xl uppercase tracking-wider text-[#3F2021]">
-                  МУЛЬТИВАЛЮТНАЯ СТОИМОСТЬ
-                </h2>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#3F2021]/15 pb-3">
+                <div>
+                  <span className="text-[10px] font-sans font-semibold uppercase tracking-widest text-[#3F2021]/60">
+                    ( РАЗДЕЛ 2 )
+                  </span>
+                  <h2 className="font-serif text-xl uppercase tracking-wider text-[#3F2021]">
+                    МУЛЬТИВАЛЮТНАЯ СТОИМОСТЬ
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  disabled={isConvertingCurrencies}
+                  onClick={handleAutoConvertCurrencies}
+                  className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-3.5 py-1.5 text-xs font-sans uppercase tracking-wider font-semibold transition-colors rounded-none disabled:opacity-50 cursor-pointer self-start sm:self-auto"
+                >
+                  {isConvertingCurrencies ? 'ПЕРЕСЧЁТ...' : '⇄ АВТОПЕРЕВОД ВАЛЮТ'}
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {conversionNotice && (
+                <div className="p-3 bg-[#3F2021] text-[#F2E9DB] text-xs font-sans uppercase tracking-wider text-center font-semibold rounded-none">
+                  {conversionNotice}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-sans uppercase tracking-wider text-[#3F2021] font-semibold">
                     ЦЕНА В ₽ (RUB) *
@@ -723,6 +768,21 @@ export function CreatorNewProductPage() {
                     placeholder="45.50"
                     value={priceEur}
                     onChange={(e) => setPriceEur(e.target.value)}
+                    className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3 py-2 text-xs font-sans text-[#000000] outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-sans uppercase tracking-wider text-[#3F2021]/80">
+                    ЦЕНА В ЮАНЯХ (CNY ¥)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="360.00"
+                    value={priceCny}
+                    onChange={(e) => setPriceCny(e.target.value)}
                     className="w-full bg-[#F2E9DB]/30 border border-[#3F2021]/40 focus:border-[#3F2021] px-3 py-2 text-xs font-sans text-[#000000] outline-none"
                   />
                 </div>
@@ -1379,10 +1439,11 @@ export function CreatorNewProductPage() {
                   <div className="font-sans font-bold text-xl text-[#3F2021]">
                     {basePrice ? `${Number(basePrice).toLocaleString('ru-RU')} ₽` : '0 ₽'}
                   </div>
-                  {(priceUsd || priceEur) && (
+                  {(priceUsd || priceEur || priceCny) && (
                     <div className="text-xs font-mono text-[#3F2021]/70 space-x-2">
                       {priceUsd && <span>${priceUsd}</span>}
                       {priceEur && <span>€{priceEur}</span>}
+                      {priceCny && <span>¥{priceCny}</span>}
                     </div>
                   )}
                 </div>

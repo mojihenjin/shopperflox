@@ -1,8 +1,51 @@
+export type CurrencyCode = 'RUB' | 'USD' | 'EUR' | 'CNY';
+
+export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
+  RUB: '₽',
+  USD: '$',
+  EUR: '€',
+  CNY: '¥',
+};
+
 export function formatPrice(price: string | number | null | undefined): string {
   if (price === null || price === undefined || price === '') return '0 ₽';
   const num = typeof price === 'string' ? parseFloat(price) : price;
   if (isNaN(num)) return '0 ₽';
   return `${Math.round(num).toLocaleString('ru-RU')} ₽`;
+}
+
+export function formatProductPrice(
+  product: {
+    base_price?: number | string | null;
+    price_usd?: number | string | null;
+    price_eur?: number | string | null;
+    price_cny?: number | string | null;
+  },
+  currency: CurrencyCode = 'RUB'
+): string {
+  if (currency === 'USD' && product.price_usd != null && product.price_usd !== '') {
+    const num = Number(product.price_usd);
+    return isNaN(num)
+      ? `$ ${product.price_usd}`
+      : `$ ${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  if (currency === 'EUR' && product.price_eur != null && product.price_eur !== '') {
+    const num = Number(product.price_eur);
+    return isNaN(num)
+      ? `€ ${product.price_eur}`
+      : `€ ${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  if (currency === 'CNY' && product.price_cny != null && product.price_cny !== '') {
+    const num = Number(product.price_cny);
+    return isNaN(num)
+      ? `¥ ${product.price_cny}`
+      : `¥ ${num.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  // Fallback to RUB
+  return formatPrice(product.base_price);
 }
 
 export function formatImageUrl(url?: string | null, fallbackText = 'SHOPPERFLOX'): string {

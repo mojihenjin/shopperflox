@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi, categoriesApi, brandsApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { formatApiError } from '../utils/errorMapper';
+import { autoConvertCurrencies } from '../utils/currencyConverter';
 import type { ProductUpdateRequest, ProductVariantResponse, ProductDetailResponse, ProductImageReorderItem } from '../types/api';
 import type { ApiError } from '../api/client';
 
@@ -191,6 +192,9 @@ export function CreatorEditProductPage() {
   const [basePrice, setBasePrice] = useState('');
   const [priceUsd, setPriceUsd] = useState('');
   const [priceEur, setPriceEur] = useState('');
+  const [priceCny, setPriceCny] = useState('');
+  const [isConvertingCurrencies, setIsConvertingCurrencies] = useState(false);
+  const [conversionNotice, setConversionNotice] = useState<string | null>(null);
   const [material, setMaterial] = useState('');
   const [density, setDensity] = useState('');
   const [composition, setComposition] = useState('');
@@ -261,6 +265,7 @@ export function CreatorEditProductPage() {
       setBasePrice(product.base_price ? String(product.base_price) : '');
       setPriceUsd(product.price_usd ? String(product.price_usd) : '');
       setPriceEur(product.price_eur ? String(product.price_eur) : '');
+      setPriceCny(product.price_cny ? String(product.price_cny) : '');
       setMaterial(product.material || '');
       setDensity(product.density || '');
       setComposition(product.composition || '');
@@ -272,6 +277,28 @@ export function CreatorEditProductPage() {
       setIsInitialized(true);
     }
   }, [product, isInitialized]);
+
+  const handleAutoConvertCurrencies = async () => {
+    setConversionNotice(null);
+    setIsConvertingCurrencies(true);
+    try {
+      const res = await autoConvertCurrencies({
+        rub: basePrice,
+        usd: priceUsd,
+        eur: priceEur,
+        cny: priceCny,
+      });
+      setBasePrice(res.rub);
+      setPriceUsd(res.usd);
+      setPriceEur(res.eur);
+      setPriceCny(res.cny);
+      setConversionNotice(`✓ Валюты рассчитаны на основе ${res.sourceCurrency}: ${res.rateInfo}`);
+    } catch {
+      setConversionNotice('× Не удалось конвертировать валюты. Проверьте введённую цену.');
+    } finally {
+      setIsConvertingCurrencies(false);
+    }
+  };
 
   // Compute permissions
   const permissions = useMemo(() => {
@@ -689,6 +716,7 @@ export function CreatorEditProductPage() {
       base_price: basePrice.trim(),
       price_usd: priceUsd.trim() ? priceUsd.trim() : null,
       price_eur: priceEur.trim() ? priceEur.trim() : null,
+      price_cny: priceCny.trim() ? priceCny.trim() : null,
       material: material.trim() || null,
       density: density.trim() || null,
       composition: composition.trim() || null,
@@ -908,11 +936,27 @@ export function CreatorEditProductPage() {
 
           {/* Section: Стоимость */}
           <div className="border border-[#3F2021]/30 p-6 bg-[#F2E9DB] space-y-6">
-            <div className="text-xs font-sans font-semibold uppercase tracking-widest text-[#3F2021] border-b border-[#3F2021]/15 pb-2">
-              ( 2. ЦЕНООБРАЗОВАНИЕ )
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#3F2021]/15 pb-2">
+              <div className="text-xs font-sans font-semibold uppercase tracking-widest text-[#3F2021]">
+                ( 2. ЦЕНООБРАЗОВАНИЕ )
+              </div>
+              <button
+                type="button"
+                disabled={isConvertingCurrencies}
+                onClick={handleAutoConvertCurrencies}
+                className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-3.5 py-1.5 text-xs font-sans uppercase tracking-wider font-semibold transition-colors rounded-none disabled:opacity-50 cursor-pointer self-start sm:self-auto"
+              >
+                {isConvertingCurrencies ? 'ПЕРЕСЧЁТ...' : '⇄ АВТОПЕРЕВОД ВАЛЮТ'}
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {conversionNotice && (
+              <div className="p-3 bg-[#3F2021] text-[#F2E9DB] text-xs font-sans uppercase tracking-wider text-center font-semibold rounded-none">
+                {conversionNotice}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1.5">
                   БАЗОВАЯ ЦЕНА (₽ RUB) *
@@ -950,6 +994,20 @@ export function CreatorEditProductPage() {
                   step="0.01"
                   value={priceEur}
                   onChange={(e) => setPriceEur(e.target.value)}
+                  placeholder="НЕ УКАЗАНО"
+                  className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-mono tracking-wider text-[#3F2021] outline-none rounded-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-[#3F2021] mb-1.5">
+                  ЦЕНА В ЮАНЯХ (CNY ¥)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={priceCny}
+                  onChange={(e) => setPriceCny(e.target.value)}
                   placeholder="НЕ УКАЗАНО"
                   className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] p-3 text-xs font-mono tracking-wider text-[#3F2021] outline-none rounded-none"
                 />
