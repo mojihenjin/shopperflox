@@ -134,7 +134,7 @@ export function AdminCategoriesTab({ onFeedback }: AdminCategoriesTabProps) {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="ПОИСК ПО НАЗВАНИЮ КАТЕГОРИИ..."
-              className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+              className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none"
             />
             <button
               type="submit"
@@ -223,7 +223,7 @@ export function AdminCategoriesTab({ onFeedback }: AdminCategoriesTabProps) {
                 placeholder="ВЕРХНЯЯ ОДЕЖДА"
                 value={createName}
                 onChange={(e) => setCreateName(e.target.value)}
-                className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-sans uppercase text-[#3F2021] outline-none"
+                className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-sans text-[#3F2021] outline-none"
               />
             </div>
 
@@ -236,7 +236,7 @@ export function AdminCategoriesTab({ onFeedback }: AdminCategoriesTabProps) {
                 placeholder="OUTERWEAR"
                 value={createSlug}
                 onChange={(e) => setCreateSlug(e.target.value)}
-                className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-mono uppercase text-[#3F2021] outline-none"
+                className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-mono text-[#3F2021] outline-none"
               />
             </div>
 
@@ -383,7 +383,7 @@ export function AdminCategoriesTab({ onFeedback }: AdminCategoriesTabProps) {
                           required
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-1.5 text-xs font-sans uppercase text-[#3F2021] outline-none"
+                          className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-1.5 text-xs font-sans text-[#3F2021] outline-none"
                         />
                       </div>
 
@@ -395,7 +395,7 @@ export function AdminCategoriesTab({ onFeedback }: AdminCategoriesTabProps) {
                           type="text"
                           value={editSlug}
                           onChange={(e) => setEditSlug(e.target.value)}
-                          className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-1.5 text-xs font-mono uppercase text-[#3F2021] outline-none"
+                          className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-1.5 text-xs font-mono text-[#3F2021] outline-none"
                         />
                       </div>
 

@@ -205,7 +205,7 @@ export function AdminBrandsTab({ onFeedback }: AdminBrandsTabProps) {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="ПОИСК БРЕНДА ПО НАЗВАНИЮ ИЛИ SLUG..."
-              className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+              className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none"
             />
             <button
               type="submit"
@@ -376,7 +376,7 @@ export function AdminBrandsTab({ onFeedback }: AdminBrandsTabProps) {
                 placeholder="VORTEX APPAREL"
                 value={brandNameInput}
                 onChange={(e) => setBrandNameInput(e.target.value)}
-                className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-sans outline-none uppercase text-[#3F2021]"
+                className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-sans outline-none text-[#3F2021]"
               />
             </div>
 
@@ -389,7 +389,7 @@ export function AdminBrandsTab({ onFeedback }: AdminBrandsTabProps) {
                 placeholder="HTTPS://BRAND.COM"
                 value={brandHisUrlInput}
                 onChange={(e) => setBrandHisUrlInput(e.target.value)}
-                className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-sans outline-none uppercase text-[#3F2021]"
+                className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-sans outline-none text-[#3F2021]"
               />
             </div>
 
@@ -730,7 +730,7 @@ export function AdminBrandsTab({ onFeedback }: AdminBrandsTabProps) {
                         placeholder="@LOGIN ПОЛЬЗОВАТЕЛЯ..."
                         value={newMemberLogin}
                         onChange={(e) => setNewMemberLogin(e.target.value)}
-                        className="bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-1.5 text-xs font-mono uppercase text-[#3F2021] outline-none"
+                        className="bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-1.5 text-xs font-mono text-[#3F2021] outline-none"
                       />
                       <select
                         value={newMemberRole}

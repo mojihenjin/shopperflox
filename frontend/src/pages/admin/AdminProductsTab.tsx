@@ -115,7 +115,7 @@ export function AdminProductsTab({ onFeedback }: AdminProductsTabProps) {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="ПОИСК ПО НАЗВАНИЮ, БРЕНДУ ИЛИ SKU..."
-              className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+              className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none"
             />
             <button
               type="submit"

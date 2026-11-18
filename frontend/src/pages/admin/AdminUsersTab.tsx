@@ -174,7 +174,7 @@ export function AdminUsersTab({ onFeedback }: AdminUsersTabProps) {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="ПОИСК ПО @LOGIN ИЛИ EMAIL..."
-              className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-sans uppercase tracking-wider text-[#3F2021] outline-none rounded-none"
+              className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] px-3 py-2 text-xs font-sans tracking-wider text-[#3F2021] outline-none rounded-none"
             />
             <button
               type="submit"
@@ -336,7 +336,7 @@ export function AdminUsersTab({ onFeedback }: AdminUsersTabProps) {
                           type="text"
                           value={newLoginInput}
                           onChange={(e) => setNewLoginInput(e.target.value)}
-                          className="bg-[#F2E9DB]/40 border border-[#3F2021] px-2 py-1 text-sm font-mono font-bold text-[#3F2021] outline-none uppercase"
+                          className="bg-[#F2E9DB]/40 border border-[#3F2021] px-2 py-1 text-sm font-mono font-bold text-[#3F2021] outline-none"
                         />
                         <button
                           type="button"
@@ -544,7 +544,7 @@ export function AdminUsersTab({ onFeedback }: AdminUsersTabProps) {
                         placeholder="КАСТОМНОЕ ПРАВО (НАПР. brand:slug)..."
                         value={customPermInput}
                         onChange={(e) => setCustomPermInput(e.target.value)}
-                        className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] px-2.5 py-1 text-xs font-mono uppercase outline-none"
+                        className="w-full bg-[#FFFFFF] border border-[#3F2021]/30 focus:border-[#3F2021] px-2.5 py-1 text-xs font-mono outline-none"
                       />
                       <button
                         type="button"
@@ -591,7 +591,7 @@ export function AdminUsersTab({ onFeedback }: AdminUsersTabProps) {
                       placeholder="УКАЖИТЕ ПРИЧИНУ БАНА (ОБЯЗАТЕЛЬНО)..."
                       value={banReasonInput}
                       onChange={(e) => setBanReasonInput(e.target.value)}
-                      className="w-full bg-[#FFFFFF] border border-red-700/40 focus:border-red-700 px-3 py-2 text-xs font-sans uppercase outline-none text-[#3F2021]"
+                      className="w-full bg-[#FFFFFF] border border-red-700/40 focus:border-red-700 px-3 py-2 text-xs font-sans outline-none text-[#3F2021]"
                     />
                     <div className="flex items-center gap-3">
                       <button
