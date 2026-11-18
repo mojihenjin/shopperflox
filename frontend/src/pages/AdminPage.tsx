@@ -74,8 +74,8 @@ export function AdminPage() {
       {/* 2. Global Feedback Banner */}
       {feedback && (
         <div className="p-4 bg-[#3F2021] text-[#F2E9DB] border border-[#3F2021] flex items-center justify-between">
-          <span className="text-xs font-sans uppercase tracking-wider font-semibold">
-            ✓ {feedback}
+          <span className="text-xs font-sans uppercase tracking-wider font-semibold whitespace-pre-line">
+            {feedback}
           </span>
           <button
             type="button"

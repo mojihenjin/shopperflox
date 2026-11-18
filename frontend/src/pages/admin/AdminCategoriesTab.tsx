@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../api/admin';
+import { formatApiError } from '../../utils/errorMapper';
 import type { CategoryResponse } from '../../types/api';
 import type { ApiError } from '../../api/client';
 
@@ -69,7 +70,7 @@ export function AdminCategoriesTab({ onFeedback }: AdminCategoriesTabProps) {
       onFeedback(`Категория «${res.data?.name}» успешно создана`);
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка создания категории');
+      onFeedback(formatApiError(err, 'ОШИБКА СОЗДАНИЯ КАТЕГОРИИ'));
     },
   });
 
@@ -91,7 +92,7 @@ export function AdminCategoriesTab({ onFeedback }: AdminCategoriesTabProps) {
       onFeedback(`Категория «${res.data?.name}» обновлена`);
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка обновления категории');
+      onFeedback(formatApiError(err, 'ОШИБКА ОБНОВЛЕНИЯ КАТЕГОРИИ'));
     },
   });
 
@@ -105,7 +106,7 @@ export function AdminCategoriesTab({ onFeedback }: AdminCategoriesTabProps) {
       onFeedback('Категория успешно удалена');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка удаления категории');
+      onFeedback(formatApiError(err, 'ОШИБКА УДАЛЕНИЯ КАТЕГОРИИ'));
     },
   });
 

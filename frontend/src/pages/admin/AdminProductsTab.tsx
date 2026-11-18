@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { adminApi } from '../../api/admin';
 import { productsApi } from '../../api/endpoints';
 import { formatDate, formatImageUrl, formatPrice } from '../../utils/format';
+import { formatApiError } from '../../utils/errorMapper';
 import type { ProductResponse } from '../../types/api';
 import type { ApiError } from '../../api/client';
 
@@ -66,7 +67,7 @@ export function AdminProductsTab({ onFeedback }: AdminProductsTabProps) {
       onFeedback('Видимость товара обновлена');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка обновления видимости товара');
+      onFeedback(formatApiError(err, 'ОШИБКА ОБНОВЛЕНИЯ ВИДИМОСТИ ТОВАРА'));
     },
   });
 
@@ -79,7 +80,7 @@ export function AdminProductsTab({ onFeedback }: AdminProductsTabProps) {
       onFeedback('Товар отправлен на переодобрение модераторами (pending)');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка отправки товара на переодобрение');
+      onFeedback(formatApiError(err, 'ОШИБКА ОТПРАВКИ ТОВАРА НА ПЕРЕОДОБРЕНИЕ'));
     },
   });
 
@@ -93,7 +94,7 @@ export function AdminProductsTab({ onFeedback }: AdminProductsTabProps) {
       onFeedback('Товар успешно удалён');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка удаления товара');
+      onFeedback(formatApiError(err, 'ОШИБКА УДАЛЕНИЯ ТОВАРА'));
     },
   });
 

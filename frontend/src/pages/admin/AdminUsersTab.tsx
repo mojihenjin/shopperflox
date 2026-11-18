@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../api/admin';
 import { formatDate } from '../../utils/format';
+import { formatApiError } from '../../utils/errorMapper';
 import type { AdminUserResponse } from '../../types/api';
 import type { ApiError } from '../../api/client';
 
@@ -88,7 +89,7 @@ export function AdminUsersTab({ onFeedback }: AdminUsersTabProps) {
       else if (vars.data.global_permissions) onFeedback('Привилегии пользователя обновлены');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка обновления пользователя');
+      onFeedback(formatApiError(err, 'ОШИБКА ОБНОВЛЕНИЯ ПОЛЬЗОВАТЕЛЯ'));
     },
   });
 
@@ -102,7 +103,7 @@ export function AdminUsersTab({ onFeedback }: AdminUsersTabProps) {
       onFeedback('Пользователь успешно заблокирован');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка блокировки пользователя');
+      onFeedback(formatApiError(err, 'ОШИБКА БЛОКИРОВКИ ПОЛЬЗОВАТЕЛЯ'));
     },
   });
 
@@ -113,7 +114,7 @@ export function AdminUsersTab({ onFeedback }: AdminUsersTabProps) {
       onFeedback('Пользователь успешно разблокирован');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка разблокировки');
+      onFeedback(formatApiError(err, 'ОШИБКА РАЗБЛОКИРОВКИ'));
     },
   });
 
@@ -124,7 +125,7 @@ export function AdminUsersTab({ onFeedback }: AdminUsersTabProps) {
       onFeedback('✓ Новый пароль сгенерирован и отправлен на email пользователя');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка сброса пароля');
+      onFeedback(formatApiError(err, 'ОШИБКА СБРОСА ПАРОЛЯ'));
     },
   });
 
@@ -136,7 +137,7 @@ export function AdminUsersTab({ onFeedback }: AdminUsersTabProps) {
       onFeedback('Пользователь удалён');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка удаления пользователя');
+      onFeedback(formatApiError(err, 'ОШИБКА УДАЛЕНИЯ ПОЛЬЗОВАТЕЛЯ'));
     },
   });
 

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../api/admin';
 import { brandsApi } from '../../api/brands';
 import { formatDate, formatImageUrl } from '../../utils/format';
+import { formatApiError } from '../../utils/errorMapper';
 import type { AdminBrandResponse, BrandMemberResponse } from '../../types/api';
 import type { ApiError } from '../../api/client';
 
@@ -97,7 +98,7 @@ export function AdminBrandsTab({ onFeedback }: AdminBrandsTabProps) {
       onFeedback(`Бренд «${newBrand?.name}» успешно создан`);
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка создания бренда');
+      onFeedback(formatApiError(err, 'ОШИБКА СОЗДАНИЯ БРЕНДА'));
     },
   });
 
@@ -110,7 +111,7 @@ export function AdminBrandsTab({ onFeedback }: AdminBrandsTabProps) {
       onFeedback('Статус верификации бренда обновлён');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка изменения верификации бренда');
+      onFeedback(formatApiError(err, 'ОШИБКА ИЗМЕНЕНИЯ ВЕРИФИКАЦИИ БРЕНДА'));
     },
   });
 
@@ -122,7 +123,7 @@ export function AdminBrandsTab({ onFeedback }: AdminBrandsTabProps) {
       onFeedback('Бренд отправлен на переодобрение (статус изменён на pending)');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка отправки бренда на переодобрение');
+      onFeedback(formatApiError(err, 'ОШИБКА ОТПРАВКИ БРЕНДА НА ПЕРЕОДОБРЕНИЕ'));
     },
   });
 
@@ -136,7 +137,7 @@ export function AdminBrandsTab({ onFeedback }: AdminBrandsTabProps) {
       onFeedback('Все товары бренда успешно переведены в скрытый статус (is_hidden = 2)');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка скрытия товаров бренда');
+      onFeedback(formatApiError(err, 'ОШИБКА СКРЫТИЯ ТОВАРОВ БРЕНДА'));
     },
   });
 
@@ -149,7 +150,7 @@ export function AdminBrandsTab({ onFeedback }: AdminBrandsTabProps) {
       onFeedback('Бренд успешно удалён');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка удаления бренда');
+      onFeedback(formatApiError(err, 'ОШИБКА УДАЛЕНИЯ БРЕНДА'));
     },
   });
 
@@ -170,7 +171,7 @@ export function AdminBrandsTab({ onFeedback }: AdminBrandsTabProps) {
       onFeedback('Участник бренда успешно добавлен / роль обновлена');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка добавления участника');
+      onFeedback(formatApiError(err, 'ОШИБКА ДОБАВЛЕНИЯ УЧАСТНИКА'));
     },
   });
 
@@ -183,7 +184,7 @@ export function AdminBrandsTab({ onFeedback }: AdminBrandsTabProps) {
       onFeedback('Участник исключён из команды бренда');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка исключения участника');
+      onFeedback(formatApiError(err, 'ОШИБКА ИСКЛЮЧЕНИЯ УЧАСТНИКА'));
     },
   });
 

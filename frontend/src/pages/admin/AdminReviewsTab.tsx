@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { adminApi } from '../../api/admin';
 import { formatDate } from '../../utils/format';
+import { formatApiError } from '../../utils/errorMapper';
 import type { AdminReviewResponse } from '../../types/api';
 import type { ApiError } from '../../api/client';
 
@@ -64,7 +65,7 @@ export function AdminReviewsTab({ onFeedback }: AdminReviewsTabProps) {
       onFeedback('Отзыв успешно удалён');
     },
     onError: (err: ApiError) => {
-      onFeedback(err.message || 'Ошибка удаления отзыва');
+      onFeedback(formatApiError(err, 'ОШИБКА УДАЛЕНИЯ ОТЗЫВА'));
     },
   });
 
