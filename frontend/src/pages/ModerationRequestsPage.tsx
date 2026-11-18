@@ -341,7 +341,7 @@ function ModerationRequestCard({ product, categoryName, onActionSuccess }: Reque
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   placeholder="Причина отклонения (необязательно, будет показана автору)..."
-                  className="w-full bg-[#F2E9DB] border border-[#3F2021]/30 focus:border-[#3F2021] p-2.5 text-xs font-sans uppercase tracking-wider outline-none text-[#3F2021] resize-none rounded-none"
+                  className="w-full bg-[#F2E9DB] border border-[#3F2021]/30 focus:border-[#3F2021] p-2.5 text-xs font-sans tracking-wider outline-none text-[#3F2021] resize-none rounded-none"
                 />
                 <div className="flex items-center gap-3">
                   <button
@@ -487,7 +487,7 @@ function BrandModerationCard({ brand, onActionSuccess }: BrandCardProps) {
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="Например: Некорректный логотип или недостоверный ресурс бренда..."
-              className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2.5 text-xs font-sans outline-none rounded-none uppercase text-[#3F2021]"
+              className="w-full bg-[#F2E9DB]/20 border border-[#3F2021]/30 focus:border-[#3F2021] p-2.5 text-xs font-sans outline-none rounded-none text-[#3F2021]"
             />
             <div className="flex items-center gap-3">
               <button
