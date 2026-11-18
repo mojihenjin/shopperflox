@@ -1,18 +1,23 @@
-import { useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { brandsApi } from '../api/brands';
 import { productsApi, favoritesApi } from '../api/endpoints';
 import { ProductCard } from '../components/ProductCard';
+import { QueueAndAnalyticsView } from '../components/QueueAndAnalyticsView';
 import { useAuthStore } from '../store/auth';
 import { formatImageUrl } from '../utils/format';
 
 export function BrandDetailPage() {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { isAuthenticated, user: authUser } = useAuthStore();
   const permissions = authUser?.global_permissions || [];
   const canModerate = permissions.includes('*') || permissions.includes('mod:approve_manager');
+
+  const initialTab = searchParams.get('tab') === 'queue' ? 'queue' : 'catalog';
+  const [activeTab, setActiveTab] = useState<'catalog' | 'queue'>(initialTab);
 
   // 1. Fetch Brand Data
   const {
@@ -80,6 +85,26 @@ export function BrandDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['favorites'] });
     },
   });
+
+  // 4. Current user brands query (to determine if manager)
+  const { data: myBrandsData } = useQuery({
+    queryKey: ['myBrands'],
+    queryFn: () => brandsApi.my(),
+    enabled: isAuthenticated,
+  });
+
+  const isBrandManager = useMemo(() => {
+    if (!brand) return false;
+    if (permissions.includes('*')) return true;
+    const myBrands = myBrandsData?.data || [];
+    return myBrands.some(
+      (b) =>
+        b.brand.id === brand.id &&
+        (b.role === 'representative' ||
+          b.role === 'moderator' ||
+          b.role === 'queue_manager')
+    );
+  }, [brand, permissions, myBrandsData]);
 
   if (isBrandLoading) {
     return (
@@ -207,6 +232,44 @@ export function BrandDetailPage() {
           </div>
         </div>
 
+        {/* Manager Navigation Tabs: Collection vs Queue & Stats */}
+        {isBrandManager && !brand.is_deleted && (
+          <div className="flex border-b border-[#3F2021]/20 gap-2 sm:gap-6 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('catalog');
+                const next = new URLSearchParams(searchParams);
+                next.delete('tab');
+                setSearchParams(next);
+              }}
+              className={`pb-3 text-xs font-sans uppercase tracking-widest font-semibold transition-colors cursor-pointer border-b-2 -mb-[2px] ${
+                activeTab === 'catalog'
+                  ? 'border-[#3F2021] text-[#3F2021]'
+                  : 'border-transparent text-[#3F2021]/50 hover:text-[#3F2021]'
+              }`}
+            >
+              ( 1. КОЛЛЕКЦИЯ БРЕНДА )
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('queue');
+                const next = new URLSearchParams(searchParams);
+                next.set('tab', 'queue');
+                setSearchParams(next);
+              }}
+              className={`pb-3 text-xs font-sans uppercase tracking-widest font-semibold transition-colors cursor-pointer border-b-2 -mb-[2px] ${
+                activeTab === 'queue'
+                  ? 'border-[#3F2021] text-[#3F2021]'
+                  : 'border-transparent text-[#3F2021]/50 hover:text-[#3F2021]'
+              }`}
+            >
+              ( 2. ОЧЕРЕДЬ И СТАТИСТИКА ↗ )
+            </button>
+          </div>
+        )}
+
         {/* IF DELETED: Editorial Notice (NO CATALOG) */}
         {brand.is_deleted ? (
           <div className="p-8 md:p-14 bg-[#3F2021] text-[#F2E9DB] border border-[#3F2021] text-center space-y-4 rounded-none my-8">
@@ -228,8 +291,16 @@ export function BrandDetailPage() {
               </Link>
             </div>
           </div>
+        ) : activeTab === 'queue' ? (
+          /* IF QUEUE TAB SELECTED: Embedded Queue & Analytics View */
+          <div className="pt-2">
+            <QueueAndAnalyticsView
+              brandId={brand.id}
+              brandName={brand.name}
+            />
+          </div>
         ) : (
-          /* IF ACTIVE: Products Section */
+          /* IF CATALOG TAB SELECTED: Products Section */
           <div className="space-y-6 pt-4">
             <div className="flex items-center justify-between border-b border-[#3F2021]/15 pb-3">
               <div className="flex items-center gap-3">

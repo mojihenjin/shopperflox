@@ -18,6 +18,7 @@ import { BrandDetailPage } from './pages/BrandDetailPage';
 import { BrandsListPage } from './pages/BrandsListPage';
 import { AdminPage } from './pages/AdminPage';
 import { PublicUserProfilePage } from './pages/PublicUserProfilePage';
+import { QueuePage } from './pages/QueuePage';
 
 export function App() {
   return (
@@ -81,6 +82,14 @@ export function App() {
             <Route path="brands" element={<BrandsListPage />} />
             <Route path="brands/:slug" element={<BrandDetailPage />} />
             <Route path="users/:login" element={<PublicUserProfilePage />} />
+            <Route
+              path="queue"
+              element={
+                <ProtectedRoute>
+                  <QueuePage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="brands/manage"
               element={

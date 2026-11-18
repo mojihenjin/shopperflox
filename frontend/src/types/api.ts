@@ -544,3 +544,92 @@ export interface AdminReviewResponse {
   created_at: string;
 }
 
+// --- Fulfillment Queue & Analytics Types ---
+
+export type FulfillmentStatus =
+  | 'pending'
+  | 'packing'
+  | 'handed_to_post'
+  | 'in_transit'
+  | 'delivered';
+
+export interface QueueCustomerResponse {
+  id: string;
+  login: string;
+  email?: string | null;
+  firstname?: string | null;
+  lastname?: string | null;
+  phone_number?: string | null;
+}
+
+export interface QueueProductResponse {
+  id: string;
+  title: string;
+  slug: string;
+  image_url?: string | null;
+}
+
+export interface QueueShippingAddressResponse {
+  city?: string | null;
+  street?: string | null;
+  postal_code?: string | null;
+}
+
+export interface QueueVariantResponse {
+  id?: string | null;
+  sku: string;
+  color?: string | null;
+  size?: string | null;
+}
+
+export interface QueueItemResponse {
+  id: string;
+  order_id: string;
+  created_at: string;
+  updated_at: string;
+  product: QueueProductResponse;
+  variant: QueueVariantResponse;
+  quantity: number;
+  unit_price: string;
+  currency: string;
+  shipping_address: QueueShippingAddressResponse;
+  customer: QueueCustomerResponse;
+  fulfillment_status: FulfillmentStatus;
+  post_code?: string | null;
+  tracking_url?: string | null;
+}
+
+export interface QueueItemUpdateRequest {
+  fulfillment_status?: FulfillmentStatus | null;
+  post_code?: string | null;
+  tracking_url?: string | null;
+}
+
+export interface VariantSalesStatsResponse {
+  variant_id: string;
+  sku: string;
+  color?: string | null;
+  size?: string | null;
+  stock_quantity?: number;
+  units_sold?: number;
+  revenue: Record<string, string>;
+}
+
+export interface ProductSalesStatsResponse {
+  product_id: string;
+  title: string;
+  slug: string;
+  views_count?: number;
+  units_sold?: number;
+  revenue: Record<string, string>;
+  variants?: VariantSalesStatsResponse[];
+}
+
+export interface SalesAnalyticsResponse {
+  total_views?: number;
+  total_units_sold?: number;
+  total_revenue: Record<string, string>;
+  products: ProductSalesStatsResponse[];
+}
+
+

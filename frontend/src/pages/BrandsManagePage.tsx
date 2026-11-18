@@ -681,10 +681,17 @@ export function BrandsManagePage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                      <Link
+                        to={`/queue?brand=${selectedBrand.id}`}
+                        className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-3.5 py-1.5 text-xs font-sans uppercase tracking-widest font-semibold transition-colors rounded-none inline-block whitespace-nowrap"
+                      >
+                        ОЧЕРЕДЬ И ПРОДАЖИ ↗
+                      </Link>
+
                       <Link
                         to={`/brands/${selectedBrand.slug}`}
-                        className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-3.5 py-1.5 text-xs font-sans uppercase tracking-widest font-semibold transition-colors rounded-none inline-block whitespace-nowrap"
+                        className="border border-[#3F2021] text-[#3F2021] hover:bg-[#3F2021] hover:text-[#F2E9DB] px-3.5 py-1.5 text-xs font-sans uppercase tracking-widest font-semibold transition-colors rounded-none inline-block whitespace-nowrap"
                       >
                         СТРАНИЦА БРЕНДА ↗
                       </Link>

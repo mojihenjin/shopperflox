@@ -104,6 +104,7 @@ export function Header() {
     (b) => !b.brand.is_deleted && (b.role === 'representative' || b.role === 'moderator')
   );
   const canCreateProduct = canCreateSelfWorked || isBrandActiveManager;
+  const canAccessQueue = canCreateSelfWorked || myBrands.length > 0;
 
   const rootCategories = (categoriesData?.data || []).filter(
     (c) => c.parent_id === null || c.parent_id === undefined
@@ -474,6 +475,17 @@ export function Header() {
                 }`}
               >
                 ЗАЯВКИ ({pendingModerationCount})
+              </Link>
+            )}
+
+            {canAccessQueue && (
+              <Link
+                to="/queue"
+                className={`hover:opacity-70 transition-colors duration-200 whitespace-nowrap font-medium uppercase ${
+                  isOverHero ? 'text-[#F2E9DB]' : 'text-sf-dark'
+                }`}
+              >
+                ОЧЕРЕДЬ
               </Link>
             )}
 

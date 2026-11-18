@@ -69,6 +69,10 @@ export function ProfilePage() {
     (b) => !b.brand.is_deleted && (b.role === 'representative' || b.role === 'moderator')
   );
   const canCreateProduct = isCreator || isBrandActiveManager;
+  const canAccessQueue =
+    permissions.includes('*') ||
+    permissions.includes('creator:products') ||
+    myBrands.length > 0;
 
   useEffect(() => {
     if (personal) {
@@ -765,6 +769,14 @@ export function ProfilePage() {
                   className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-4 py-2.5 text-xs font-sans uppercase tracking-wider font-semibold transition-colors"
                 >
                   БРЕНДЫ ↗
+                </Link>
+              )}
+              {canAccessQueue && (
+                <Link
+                  to="/queue"
+                  className="bg-[#3F2021] text-[#F2E9DB] hover:bg-[#2B1516] px-4 py-2.5 text-xs font-sans uppercase tracking-wider font-semibold transition-colors"
+                >
+                  ОЧЕРЕДЬ И ПРОДАЖИ ↗
                 </Link>
               )}
               {isAdmin && (

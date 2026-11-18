@@ -36,6 +36,10 @@ import type {
   VerifyCodeRequest,
   CreateAddressRequest,
   UserAddressResponse,
+  FulfillmentStatus,
+  QueueItemResponse,
+  QueueItemUpdateRequest,
+  SalesAnalyticsResponse,
 } from '../types/api';
 
 export { notificationsApi, moderationApi, brandsApi, adminApi };
@@ -267,4 +271,31 @@ export const ordersApi = {
 
   cancel: (orderId: string) =>
     apiFetch<OrderResponse>(`/api/v1/orders/${orderId}/cancel`, { method: 'POST' }),
+};
+
+export const analyticsApi = {
+  getMy: () =>
+    apiFetch<SalesAnalyticsResponse>('/api/v1/analytics/my', { method: 'GET' }),
+  getByBrand: (brandId: string) =>
+    apiFetch<SalesAnalyticsResponse>(`/api/v1/analytics/brands/${brandId}`, { method: 'GET' }),
+};
+
+export const queueApi = {
+  getMy: (status?: FulfillmentStatus) => {
+    const sp = new URLSearchParams();
+    if (status) sp.set('status', status);
+    const q = sp.toString() ? `?${sp.toString()}` : '';
+    return apiFetch<QueueItemResponse[]>(`/api/v1/queue/my${q}`, { method: 'GET' });
+  },
+  getByBrand: (brandId: string, status?: FulfillmentStatus) => {
+    const sp = new URLSearchParams();
+    if (status) sp.set('status', status);
+    const q = sp.toString() ? `?${sp.toString()}` : '';
+    return apiFetch<QueueItemResponse[]>(`/api/v1/queue/brands/${brandId}${q}`, { method: 'GET' });
+  },
+  updateItem: (itemId: string, data: QueueItemUpdateRequest) =>
+    apiFetch<QueueItemResponse>(`/api/v1/queue/items/${itemId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 };
