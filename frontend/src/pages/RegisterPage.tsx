@@ -25,7 +25,7 @@ export function RegisterPage() {
 
   // Format code as XXX-XXX on change
   const handleCodeChange = (raw: string) => {
-    const cleaned = raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
+    const cleaned = raw.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6);
     if (cleaned.length > 3) {
       setCode(`${cleaned.slice(0, 3)}-${cleaned.slice(3)}`);
     } else {
@@ -159,7 +159,7 @@ export function RegisterPage() {
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
                 placeholder="USER_LOGIN"
-                className="w-full bg-[#F2E9DB] border border-sf-dark/40 focus:border-sf-dark px-3.5 py-2.5 text-xs font-sans uppercase tracking-wider outline-none text-sf-black transition-colors"
+                className="w-full bg-[#F2E9DB] border border-sf-dark/40 focus:border-sf-dark px-3.5 py-2.5 text-xs font-sans tracking-wider outline-none text-sf-black transition-colors"
               />
             </div>
 
@@ -230,7 +230,7 @@ export function RegisterPage() {
                 value={code}
                 onChange={(e) => handleCodeChange(e.target.value)}
                 placeholder="123-456"
-                className="w-full bg-[#F2E9DB] border border-sf-dark text-center tracking-widest text-lg font-mono py-2.5 uppercase outline-none text-sf-black transition-colors"
+                className="w-full bg-[#F2E9DB] border border-sf-dark text-center tracking-widest text-lg font-mono py-2.5 outline-none text-sf-black transition-colors"
               />
             </div>
 

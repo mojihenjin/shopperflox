@@ -80,7 +80,7 @@ export function LoginPage() {
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               placeholder="YOUR_LOGIN"
-              className="w-full bg-[#F2E9DB] border border-sf-dark/40 focus:border-sf-dark px-3.5 py-2.5 text-xs font-sans uppercase tracking-wider outline-none text-sf-black transition-colors"
+              className="w-full bg-[#F2E9DB] border border-sf-dark/40 focus:border-sf-dark px-3.5 py-2.5 text-xs font-sans tracking-wider outline-none text-sf-black transition-colors"
             />
           </div>
 

@@ -337,7 +337,7 @@ export function ProfilePage() {
                         placeholder="NAME@DOMAIN.COM"
                         value={newEmailInput}
                         onChange={(e) => setNewEmailInput(e.target.value)}
-                        className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-1.5 text-xs font-sans outline-none uppercase"
+                        className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-1.5 text-xs font-sans outline-none"
                       />
                       <button
                         type="submit"
@@ -624,7 +624,7 @@ export function ProfilePage() {
                       placeholder="Москва"
                       value={addressCity}
                       onChange={(e) => setAddressCity(e.target.value)}
-                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none uppercase"
+                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none"
                     />
                   </div>
                   <div>
@@ -637,7 +637,7 @@ export function ProfilePage() {
                       placeholder="ул. Тверская, д. 1, кв. 10"
                       value={addressStreet}
                       onChange={(e) => setAddressStreet(e.target.value)}
-                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none uppercase"
+                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none"
                     />
                   </div>
                   <div>
