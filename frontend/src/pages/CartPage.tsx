@@ -274,15 +274,11 @@ export function CartPage() {
 
               <button
                 type="button"
-                onClick={() => alert('Переход к выбору адреса и оплате (Следующий этап)')}
+                onClick={() => navigate('/checkout')}
                 className="w-full bg-sf-dark text-sf-cream hover:bg-sf-black py-3.5 text-xs font-sans font-semibold uppercase tracking-widest transition-colors"
               >
                 ПЕРЕЙТИ К ОФОРМЛЕНИЮ ↗
               </button>
-
-              <div className="text-[10px] uppercase tracking-wider text-sf-muted text-center pt-1">
-                ОПЛАТА ОНЛАЙН ИЛИ ПРИ ПОЛУЧЕНИИ В ПУНКТЕ ВЫДАЧИ
-              </div>
             </div>
           </div>
         </div>
