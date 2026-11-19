@@ -72,7 +72,8 @@ export function Header() {
   const permissions = user?.global_permissions || [];
   const isAdmin =
     permissions.includes('*') ||
-    permissions.includes('admin:access');
+    permissions.includes('admin:access') ||
+    permissions.includes('mod:mail-manager');
   const canCreateSelfWorked =
     permissions.includes('*') ||
     permissions.includes('creator:products');
