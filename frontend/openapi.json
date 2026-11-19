@@ -4494,6 +4494,102 @@
         ]
       }
     },
+    "/api/v1/orders/{order_id}/passport": {
+      "delete": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "Delete Order Passport",
+        "operationId": "delete_order_passport_api_v1_orders__order_id__passport_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_dict_str__bool__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{order_id}/debug-pay": {
+      "post": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "Debug Pay Order",
+        "operationId": "debug_pay_order_api_v1_orders__order_id__debug_pay_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_OrderResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/orders": {
       "get": {
         "tags": [
@@ -4757,6 +4853,289 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseResponse_PaymentResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/post-offices": {
+      "get": {
+        "tags": [
+          "Post Offices"
+        ],
+        "summary": "List Active Post Offices",
+        "operationId": "list_active_post_offices_api_v1_post_offices_get",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "City"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_list_PostOfficeResponse__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/post-offices": {
+      "get": {
+        "tags": [
+          "Admin Post Offices"
+        ],
+        "summary": "List All Post Offices",
+        "operationId": "list_all_post_offices_api_v1_admin_post_offices_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "City"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_list_PostOfficeResponse__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin Post Offices"
+        ],
+        "summary": "Create Post Office",
+        "operationId": "create_post_office_api_v1_admin_post_offices_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostOfficeCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_PostOfficeResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/post-offices/{office_id}": {
+      "patch": {
+        "tags": [
+          "Admin Post Offices"
+        ],
+        "summary": "Update Post Office",
+        "operationId": "update_post_office_api_v1_admin_post_offices__office_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "office_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Office Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostOfficeUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_PostOfficeResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin Post Offices"
+        ],
+        "summary": "Delete Post Office",
+        "operationId": "delete_post_office_api_v1_admin_post_offices__office_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "office_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Office Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseResponse_dict_str__bool__"
                 }
               }
             }
@@ -6184,6 +6563,40 @@
         "type": "object",
         "title": "BaseResponse[PendingCountResponse]"
       },
+      "BaseResponse_PostOfficeResponse_": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PostOfficeResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "default": 200
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "title": "BaseResponse[PostOfficeResponse]"
+      },
       "BaseResponse_ProductDetailResponse_": {
         "properties": {
           "body": {
@@ -7244,6 +7657,44 @@
         "type": "object",
         "title": "BaseResponse[list[OrderResponse]]"
       },
+      "BaseResponse_list_PostOfficeResponse__": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PostOfficeResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code",
+            "default": 200
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "title": "BaseResponse[list[PostOfficeResponse]]"
+      },
       "BaseResponse_list_ProductImageResponse__": {
         "properties": {
           "body": {
@@ -8001,9 +8452,126 @@
       },
       "CheckoutRequest": {
         "properties": {
-          "address_id": {
+          "recipient_firstname": {
             "type": "string",
-            "format": "uuid",
+            "title": "Recipient Firstname",
+            "default": ""
+          },
+          "recipient_lastname": {
+            "type": "string",
+            "title": "Recipient Lastname",
+            "default": ""
+          },
+          "recipient_middlename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Middlename"
+          },
+          "save_to_profile": {
+            "type": "boolean",
+            "title": "Save To Profile",
+            "default": false
+          },
+          "passport_series": {
+            "type": "string",
+            "title": "Passport Series",
+            "default": ""
+          },
+          "passport_number": {
+            "type": "string",
+            "title": "Passport Number",
+            "default": ""
+          },
+          "delivery_type": {
+            "type": "string",
+            "enum": [
+              "address",
+              "post_office"
+            ],
+            "title": "Delivery Type",
+            "default": "address"
+          },
+          "country": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Country",
+            "default": "Россия"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "City",
+            "default": ""
+          },
+          "house": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "House",
+            "default": ""
+          },
+          "apartment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apartment"
+          },
+          "postal_code": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Postal Code",
+            "default": ""
+          },
+          "save_address_to_profile": {
+            "type": "boolean",
+            "title": "Save Address To Profile",
+            "default": false
+          },
+          "post_office_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Office Id"
+          },
+          "address_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Address Id"
           },
           "comment": {
@@ -8021,23 +8589,62 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "address_id"
-        ],
         "title": "CheckoutRequest"
       },
       "CreateAddressRequest": {
         "properties": {
+          "country": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Country",
+            "default": "Россия"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
           "city": {
             "type": "string",
             "maxLength": 100,
             "minLength": 1,
             "title": "City"
           },
-          "street": {
+          "house": {
             "type": "string",
-            "maxLength": 255,
-            "minLength": 1,
+            "maxLength": 64,
+            "title": "House",
+            "default": ""
+          },
+          "apartment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apartment"
+          },
+          "street": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Street"
           },
           "postal_code": {
@@ -8056,7 +8663,6 @@
         "type": "object",
         "required": [
           "city",
-          "street",
           "postal_code"
         ],
         "title": "CreateAddressRequest"
@@ -8111,11 +8717,15 @@
       "FulfillmentStatus": {
         "type": "string",
         "enum": [
+          "awaiting_payment",
           "pending",
           "packing",
           "handed_to_post",
           "in_transit",
-          "delivered"
+          "delivered",
+          "returning",
+          "returned",
+          "cancelled"
         ],
         "title": "FulfillmentStatus"
       },
@@ -8233,7 +8843,14 @@
             "$ref": "#/components/schemas/OrderResponse"
           },
           "payment": {
-            "$ref": "#/components/schemas/PaymentResponse"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaymentResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "confirmation_url": {
             "anyOf": [
@@ -8245,12 +8862,39 @@
               }
             ],
             "title": "Confirmation Url"
+          },
+          "payment_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "billing",
+                  "debug",
+                  "unavailable"
+                ]
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Payment Mode",
+            "default": "unavailable"
+          },
+          "payment_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Url"
           }
         },
         "type": "object",
         "required": [
-          "order",
-          "payment"
+          "order"
         ],
         "title": "OrderCheckoutResponse"
       },
@@ -8368,6 +9012,125 @@
             ],
             "title": "Post Code"
           },
+          "recipient_firstname": {
+            "type": "string",
+            "title": "Recipient Firstname",
+            "default": ""
+          },
+          "recipient_lastname": {
+            "type": "string",
+            "title": "Recipient Lastname",
+            "default": ""
+          },
+          "recipient_middlename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Middlename"
+          },
+          "passport_series": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passport Series"
+          },
+          "passport_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passport Number"
+          },
+          "delivery_type": {
+            "type": "string",
+            "title": "Delivery Type",
+            "default": "address"
+          },
+          "post_office_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Office Id"
+          },
+          "shipping_country": {
+            "type": "string",
+            "title": "Shipping Country",
+            "default": "Россия"
+          },
+          "shipping_region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipping Region"
+          },
+          "shipping_city": {
+            "type": "string",
+            "title": "Shipping City",
+            "default": ""
+          },
+          "shipping_house": {
+            "type": "string",
+            "title": "Shipping House",
+            "default": ""
+          },
+          "shipping_apartment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipping Apartment"
+          },
+          "shipping_postal_code": {
+            "type": "string",
+            "title": "Shipping Postal Code",
+            "default": ""
+          },
+          "is_paid": {
+            "type": "boolean",
+            "title": "Is Paid",
+            "default": false
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -8412,12 +9175,19 @@
       "OrderStatus": {
         "type": "string",
         "enum": [
+          "awaiting_payment",
+          "pending",
+          "packing",
+          "handed_to_post",
+          "in_transit",
+          "delivered",
+          "returning",
+          "returned",
+          "cancelled",
           "pending_payment",
           "paid",
           "processing",
           "shipped",
-          "delivered",
-          "cancelled",
           "refunded"
         ],
         "title": "OrderStatus"
@@ -8537,6 +9307,259 @@
           "pending_count"
         ],
         "title": "PendingCountResponse"
+      },
+      "PostOfficeCreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "country": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Country",
+            "default": "Россия"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "City"
+          },
+          "house": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "House"
+          },
+          "postal_code": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Postal Code"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "city",
+          "house",
+          "postal_code"
+        ],
+        "title": "PostOfficeCreateRequest"
+      },
+      "PostOfficeResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country",
+            "default": "Россия"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "city": {
+            "type": "string",
+            "title": "City"
+          },
+          "house": {
+            "type": "string",
+            "title": "House"
+          },
+          "postal_code": {
+            "type": "string",
+            "title": "Postal Code"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "created_by": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "city",
+          "house",
+          "postal_code",
+          "created_by",
+          "created_at"
+        ],
+        "title": "PostOfficeResponse"
+      },
+      "PostOfficeUpdateRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "house": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "House"
+          },
+          "postal_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postal Code"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PostOfficeUpdateRequest"
       },
       "ProductCreateRequest": {
         "properties": {
@@ -10578,6 +11601,18 @@
             ],
             "title": "Lastname"
           },
+          "middlename": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middlename"
+          },
           "phone_number": {
             "anyOf": [
               {
@@ -10607,12 +11642,51 @@
             "format": "uuid",
             "title": "User Id"
           },
+          "country": {
+            "type": "string",
+            "title": "Country",
+            "default": "Россия"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
           "city": {
             "type": "string",
             "title": "City"
           },
-          "street": {
+          "house": {
             "type": "string",
+            "title": "House",
+            "default": ""
+          },
+          "apartment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apartment"
+          },
+          "street": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Street"
           },
           "postal_code": {
@@ -10634,7 +11708,6 @@
           "id",
           "user_id",
           "city",
-          "street",
           "postal_code",
           "is_default",
           "created_at"
@@ -10718,6 +11791,17 @@
               }
             ],
             "title": "Lastname"
+          },
+          "middlename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middlename"
           },
           "phone_number": {
             "anyOf": [
