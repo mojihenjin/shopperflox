@@ -16,6 +16,7 @@ from src.api.dependencies import (
     get_notification_uow,
     get_order_uow,
     get_payment_gateway,
+    get_post_office_uow,
     get_queue_uow,
     get_review_uow,
     get_task_queue,
@@ -31,6 +32,7 @@ from src.infrastructure.db.uow import (
     SqlAlchemyCatalogUnitOfWork,
     SqlAlchemyNotificationUnitOfWork,
     SqlAlchemyOrderUnitOfWork,
+    SqlAlchemyPostOfficeUnitOfWork,
     SqlAlchemyQueueUnitOfWork,
     SqlAlchemyReviewUnitOfWork,
     SqlAlchemyUserUnitOfWork,
@@ -178,6 +180,9 @@ async def client(test_email_store, test_task_queue, test_file_storage):
     def _get_test_order_uow():
         return SqlAlchemyOrderUnitOfWork(session_factory=factory)
 
+    def _get_test_post_office_uow():
+        return SqlAlchemyPostOfficeUnitOfWork(session_factory=factory)
+
     def _get_test_review_uow():
         return SqlAlchemyReviewUnitOfWork(session_factory=factory)
 
@@ -193,6 +198,7 @@ async def client(test_email_store, test_task_queue, test_file_storage):
     app.dependency_overrides[get_cart_uow] = _get_test_cart_uow
     app.dependency_overrides[get_notification_uow] = _get_test_notification_uow
     app.dependency_overrides[get_order_uow] = _get_test_order_uow
+    app.dependency_overrides[get_post_office_uow] = _get_test_post_office_uow
     app.dependency_overrides[get_review_uow] = _get_test_review_uow
     app.dependency_overrides[get_queue_uow] = _get_test_queue_uow
     app.dependency_overrides[get_analytics_uow] = _get_test_analytics_uow
@@ -213,6 +219,7 @@ async def client(test_email_store, test_task_queue, test_file_storage):
     app.dependency_overrides.pop(get_cart_uow, None)
     app.dependency_overrides.pop(get_notification_uow, None)
     app.dependency_overrides.pop(get_order_uow, None)
+    app.dependency_overrides.pop(get_post_office_uow, None)
     app.dependency_overrides.pop(get_review_uow, None)
     app.dependency_overrides.pop(get_queue_uow, None)
     app.dependency_overrides.pop(get_analytics_uow, None)

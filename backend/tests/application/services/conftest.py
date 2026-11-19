@@ -27,6 +27,7 @@ from src.domain.models import (
     OrderItemDomain,
     OrderStatus,
     PaymentDomain,
+    PostOfficeDomain,
     ProductDomain,
     ProductImageDomain,
     ProductVariantDomain,
@@ -1165,6 +1166,48 @@ class FakeCartUnitOfWork:
         self.rolled_back = True
 
 
+class InMemoryPostOfficeRepository:
+    def __init__(self) -> None:
+        self.store: dict[UUID, PostOfficeDomain] = {}
+
+    async def get_by_id(self, office_id: UUID) -> PostOfficeDomain | None:
+        return self.store.get(office_id)
+
+    async def list_all(
+        self,
+        *,
+        search: str | None = None,
+        city: str | None = None,
+        is_active: bool | None = None,
+    ) -> list[PostOfficeDomain]:
+        results = list(self.store.values())
+        if is_active is not None:
+            results = [o for o in results if o.is_active == is_active]
+        if city:
+            c = city.strip().lower()
+            results = [o for o in results if o.city.strip().lower() == c]
+        if search:
+            s = search.strip().lower()
+            results = [
+                o
+                for o in results
+                if s in o.name.lower()
+                or s in o.city.lower()
+                or s in o.postal_code.lower()
+            ]
+        results.sort(key=lambda x: x.created_at, reverse=True)
+        return results
+
+    async def add(self, office: PostOfficeDomain) -> None:
+        self.store[office.id] = office
+
+    async def update(self, office: PostOfficeDomain) -> None:
+        self.store[office.id] = office
+
+    async def delete(self, office_id: UUID) -> None:
+        self.store.pop(office_id, None)
+
+
 class FakeOrderUnitOfWork:
     def __init__(
         self,
@@ -1173,6 +1216,9 @@ class FakeOrderUnitOfWork:
         products_repo: InMemoryProductRepository | None = None,
         addresses_repo: InMemoryUserAddressRepository | None = None,
         brands_repo: InMemoryBrandRepository | None = None,
+        post_offices_repo: InMemoryPostOfficeRepository | None = None,
+        personal_repo: InMemoryUserPersonalRepository | None = None,
+        users_repo: InMemoryUserRepository | None = None,
     ) -> None:
         self.orders = InMemoryOrderRepository()
         self.carts = carts_repo or InMemoryCartRepository()
@@ -1181,6 +1227,36 @@ class FakeOrderUnitOfWork:
         self.addresses = addresses_repo or InMemoryUserAddressRepository()
         self.payments = InMemoryPaymentRepository()
         self.brands = brands_repo or InMemoryBrandRepository()
+        self.post_offices = post_offices_repo or InMemoryPostOfficeRepository()
+        self.personal = personal_repo or InMemoryUserPersonalRepository()
+        self.users = users_repo or InMemoryUserRepository()
+        self.committed = False
+        self.rolled_back = False
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        if exc_type is not None:
+            await self.rollback()
+
+    async def commit(self) -> None:
+        self.committed = True
+
+    async def rollback(self) -> None:
+        self.rolled_back = True
+
+
+class FakePostOfficeUnitOfWork:
+    def __init__(
+        self, post_offices_repo: InMemoryPostOfficeRepository | None = None
+    ) -> None:
+        self.post_offices = post_offices_repo or InMemoryPostOfficeRepository()
         self.committed = False
         self.rolled_back = False
 
@@ -1242,6 +1318,11 @@ def cart_uow():
 @pytest.fixture
 def order_uow():
     return FakeOrderUnitOfWork()
+
+
+@pytest.fixture
+def post_office_uow():
+    return FakePostOfficeUnitOfWork()
 
 
 @pytest.fixture
