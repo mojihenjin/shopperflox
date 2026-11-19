@@ -66,9 +66,17 @@ class SqlAlchemyQueueRepository:
             unit_price=item_model.unit_price,
             currency="RUB",
             shipping_address=QueueShippingAddress(
-                city=shipping_data.get("city"),
-                street=shipping_data.get("street"),
-                postal_code=shipping_data.get("postal_code"),
+                city=shipping_data.get("city") or order_model.shipping_city,
+                street=shipping_data.get("street")
+                or shipping_data.get("house")
+                or order_model.shipping_house,
+                postal_code=shipping_data.get("postal_code")
+                or order_model.shipping_postal_code,
+                country=shipping_data.get("country") or order_model.shipping_country,
+                region=shipping_data.get("region") or order_model.shipping_region,
+                house=shipping_data.get("house") or order_model.shipping_house,
+                apartment=shipping_data.get("apartment")
+                or order_model.shipping_apartment,
             ),
             customer=QueueCustomerInfo(
                 id=user_model.id,

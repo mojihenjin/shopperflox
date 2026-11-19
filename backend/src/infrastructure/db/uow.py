@@ -12,6 +12,7 @@ from .repositories import (
     SqlAlchemyNotificationRepository,
     SqlAlchemyOrderRepository,
     SqlAlchemyPaymentRepository,
+    SqlAlchemyPostOfficeRepository,
     SqlAlchemyProductImageRepository,
     SqlAlchemyProductRepository,
     SqlAlchemyProductVariantRepository,
@@ -218,6 +219,9 @@ class SqlAlchemyOrderUnitOfWork:
         self.addresses: SqlAlchemyUserAddressRepository
         self.payments: SqlAlchemyPaymentRepository
         self.brands: SqlAlchemyBrandRepository
+        self.post_offices: SqlAlchemyPostOfficeRepository
+        self.personal: SqlAlchemyUserPersonalRepository
+        self.users: SqlAlchemyUserRepository
 
     async def __aenter__(self) -> Self:
         self._session = self._session_factory()
@@ -228,6 +232,9 @@ class SqlAlchemyOrderUnitOfWork:
         self.addresses = SqlAlchemyUserAddressRepository(self._session)
         self.payments = SqlAlchemyPaymentRepository(self._session)
         self.brands = SqlAlchemyBrandRepository(self._session)
+        self.post_offices = SqlAlchemyPostOfficeRepository(self._session)
+        self.personal = SqlAlchemyUserPersonalRepository(self._session)
+        self.users = SqlAlchemyUserRepository(self._session)
         return self
 
     async def __aexit__(
@@ -345,11 +352,13 @@ class SqlAlchemyQueueUnitOfWork:
 
         self.queue: SqlAlchemyQueueRepository
         self.brands: SqlAlchemyBrandRepository
+        self.orders: SqlAlchemyOrderRepository
 
     async def __aenter__(self) -> Self:
         self._session = self._session_factory()
         self.queue = SqlAlchemyQueueRepository(self._session)
         self.brands = SqlAlchemyBrandRepository(self._session)
+        self.orders = SqlAlchemyOrderRepository(self._session)
         return self
 
     async def __aexit__(
@@ -390,6 +399,44 @@ class SqlAlchemyAnalyticsUnitOfWork:
         self._session = self._session_factory()
         self.analytics = SqlAlchemyAnalyticsRepository(self._session)
         self.brands = SqlAlchemyBrandRepository(self._session)
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        try:
+            if exc_type is not None:
+                await self.rollback()
+        finally:
+            if self._session is not None:
+                await self._session.close()
+                self._session = None
+
+    async def commit(self) -> None:
+        if self._session is not None:
+            await self._session.commit()
+
+    async def rollback(self) -> None:
+        if self._session is not None:
+            await self._session.rollback()
+
+
+class SqlAlchemyPostOfficeUnitOfWork:
+    def __init__(
+        self,
+        session_factory: async_sessionmaker[AsyncSession] | None = None,
+    ) -> None:
+        self._session_factory = session_factory or async_session_maker
+        self._session: AsyncSession | None = None
+
+        self.post_offices: SqlAlchemyPostOfficeRepository
+
+    async def __aenter__(self) -> Self:
+        self._session = self._session_factory()
+        self.post_offices = SqlAlchemyPostOfficeRepository(self._session)
         return self
 
     async def __aexit__(

@@ -27,6 +27,10 @@ class QueueShippingAddress:
     city: str | None = None
     street: str | None = None
     postal_code: str | None = None
+    country: str | None = None
+    region: str | None = None
+    house: str | None = None
+    apartment: str | None = None
 
 
 @dataclass(slots=True, kw_only=True)
@@ -36,6 +40,7 @@ class QueueCustomerInfo:
     email: str | None = None
     firstname: str | None = None
     lastname: str | None = None
+    middlename: str | None = None
     phone_number: str | None = None
 
 

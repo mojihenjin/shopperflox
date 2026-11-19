@@ -37,6 +37,10 @@ from .order import (
     ReviewRepositoryProtocol,
     ReviewUnitOfWorkProtocol,
 )
+from .post_office import (
+    PostOfficeRepositoryProtocol,
+    PostOfficeUnitOfWorkProtocol,
+)
 from .queue import (
     FulfillmentQueueRepositoryProtocol,
     QueueUnitOfWorkProtocol,
@@ -77,6 +81,8 @@ __all__ = [
     "PaymentGatewayProtocol",
     "PaymentRepositoryProtocol",
     "PaymentSessionResult",
+    "PostOfficeRepositoryProtocol",
+    "PostOfficeUnitOfWorkProtocol",
     "ProductImageRepositoryProtocol",
     "ProductRepositoryProtocol",
     "ProductVariantRepositoryProtocol",

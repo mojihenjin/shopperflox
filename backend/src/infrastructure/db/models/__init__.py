@@ -16,6 +16,7 @@ from .order import (
     PaymentModel,
     ReviewModel,
 )
+from .post_office import PostOfficeModel
 from .user import (
     UserAddressModel,
     UserBanModel,
@@ -35,6 +36,7 @@ __all__ = [
     "OrderItemModel",
     "OrderModel",
     "PaymentModel",
+    "PostOfficeModel",
     "ProductImageModel",
     "ProductModel",
     "ProductVariantModel",

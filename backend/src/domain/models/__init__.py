@@ -12,6 +12,7 @@ from .favorite import FavoriteDomain
 from .notification import NotificationDomain
 from .order import FulfillmentStatus, OrderDomain, OrderItemDomain, OrderStatus
 from .payment import PaymentDomain, PaymentStatus
+from .post_office import PostOfficeDomain
 from .product import (
     ModerationRequestType,
     ModerationStatus,
@@ -56,6 +57,7 @@ __all__ = [
     "OrderStatus",
     "PaymentDomain",
     "PaymentStatus",
+    "PostOfficeDomain",
     "ProductDomain",
     "ProductImageDomain",
     "ProductSalesStats",

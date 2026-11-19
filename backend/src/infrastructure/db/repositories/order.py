@@ -40,6 +40,22 @@ class SqlAlchemyOrderRepository:
             status=OrderStatus(model.status),
             tracking_number=model.tracking_number,
             post_code=model.post_code,
+            recipient_firstname=getattr(model, "recipient_firstname", ""),
+            recipient_lastname=getattr(model, "recipient_lastname", ""),
+            recipient_middlename=getattr(model, "recipient_middlename", None),
+            passport_series=getattr(model, "passport_series", None),
+            passport_number=getattr(model, "passport_number", None),
+            delivery_type=getattr(model, "delivery_type", "address"),
+            post_office_id=getattr(model, "post_office_id", None),
+            shipping_country=getattr(model, "shipping_country", "Россия"),
+            shipping_region=getattr(model, "shipping_region", None),
+            shipping_city=getattr(model, "shipping_city", ""),
+            shipping_house=getattr(model, "shipping_house", ""),
+            shipping_apartment=getattr(model, "shipping_apartment", None),
+            shipping_postal_code=getattr(model, "shipping_postal_code", ""),
+            is_paid=getattr(model, "is_paid", False),
+            paid_at=getattr(model, "paid_at", None),
+            currency=getattr(model, "currency", "RUB"),
             created_by=model.created_by,
             created_at=model.created_at,
             updated_at=model.updated_at,
@@ -173,6 +189,22 @@ class SqlAlchemyOrderRepository:
             status=str(order.status),
             tracking_number=order.tracking_number,
             post_code=order.post_code,
+            recipient_firstname=order.recipient_firstname,
+            recipient_lastname=order.recipient_lastname,
+            recipient_middlename=order.recipient_middlename,
+            passport_series=order.passport_series,
+            passport_number=order.passport_number,
+            delivery_type=order.delivery_type,
+            post_office_id=order.post_office_id,
+            shipping_country=order.shipping_country,
+            shipping_region=order.shipping_region,
+            shipping_city=order.shipping_city,
+            shipping_house=order.shipping_house,
+            shipping_apartment=order.shipping_apartment,
+            shipping_postal_code=order.shipping_postal_code,
+            is_paid=order.is_paid,
+            paid_at=order.paid_at,
+            currency=order.currency,
             created_by=order.created_by,
             created_at=order.created_at,
             updated_at=order.updated_at,
@@ -239,6 +271,10 @@ class SqlAlchemyOrderRepository:
         model.status = str(order.status)
         model.tracking_number = order.tracking_number
         model.post_code = order.post_code
+        model.passport_series = order.passport_series
+        model.passport_number = order.passport_number
+        model.is_paid = order.is_paid
+        model.paid_at = order.paid_at
         model.updated_at = order.updated_at
         await self.session.flush()
 

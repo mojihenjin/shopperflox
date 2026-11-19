@@ -2,6 +2,7 @@ from typing import Protocol
 from uuid import UUID
 
 from src.domain.interfaces.brand import BrandRepositoryProtocol
+from src.domain.interfaces.order import OrderRepositoryProtocol
 from src.domain.interfaces.uow import UnitOfWorkProtocol
 from src.domain.models import FulfillmentStatus, QueueItemDomain
 
@@ -33,3 +34,4 @@ class FulfillmentQueueRepositoryProtocol(Protocol):
 class QueueUnitOfWorkProtocol(UnitOfWorkProtocol, Protocol):
     queue: FulfillmentQueueRepositoryProtocol
     brands: BrandRepositoryProtocol
+    orders: OrderRepositoryProtocol

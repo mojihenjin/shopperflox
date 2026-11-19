@@ -14,6 +14,7 @@ from .order import (
     SqlAlchemyPaymentRepository,
     SqlAlchemyReviewRepository,
 )
+from .post_office import SqlAlchemyPostOfficeRepository
 from .queue import SqlAlchemyQueueRepository
 from .user import (
     SqlAlchemyUserAddressRepository,
@@ -31,6 +32,7 @@ __all__ = [
     "SqlAlchemyNotificationRepository",
     "SqlAlchemyOrderRepository",
     "SqlAlchemyPaymentRepository",
+    "SqlAlchemyPostOfficeRepository",
     "SqlAlchemyProductImageRepository",
     "SqlAlchemyProductRepository",
     "SqlAlchemyProductVariantRepository",

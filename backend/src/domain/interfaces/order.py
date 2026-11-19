@@ -8,7 +8,12 @@ from src.domain.interfaces.catalog import (
     ProductRepositoryProtocol,
     ProductVariantRepositoryProtocol,
 )
-from src.domain.interfaces.user import UserAddressRepositoryProtocol
+from src.domain.interfaces.post_office import PostOfficeRepositoryProtocol
+from src.domain.interfaces.user import (
+    UserAddressRepositoryProtocol,
+    UserPersonalRepositoryProtocol,
+    UserRepositoryProtocol,
+)
 from src.domain.models import (
     AdminReviewItemDomain,
     OrderDomain,
@@ -105,6 +110,9 @@ class OrderUnitOfWorkProtocol(Protocol):
     addresses: UserAddressRepositoryProtocol
     payments: PaymentRepositoryProtocol
     brands: BrandRepositoryProtocol
+    post_offices: PostOfficeRepositoryProtocol
+    personal: UserPersonalRepositoryProtocol
+    users: UserRepositoryProtocol
 
     async def commit(self) -> None: ...
 

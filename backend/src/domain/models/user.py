@@ -39,6 +39,7 @@ class UserPersonalDomain(BaseDomain):
 
     firstname: str | None = field(default=None)
     lastname: str | None = field(default=None)
+    middlename: str | None = field(default=None)
     phone_number: str | None = field(default=None)
 
     created_at: datetime = field(default_factory=factory_now)
@@ -64,10 +65,20 @@ class UserBanDomain(BaseDomain):
 class UserAddressDomain(BaseDomain):
     id: UUID = field(default_factory=uuid7)
     user_id: UUID
+    country: str = field(default="Россия")
+    region: str | None = field(default=None)
     city: str
-    street: str
+    house: str = field(default="")
+    apartment: str | None = field(default=None)
     postal_code: str
+    street: str | None = field(default=None)
     created_by: UUID
 
     is_default: bool = field(default=False)
     created_at: datetime = field(default_factory=factory_now)
+
+    def __post_init__(self) -> None:
+        if not self.house and self.street:
+            self.house = self.street
+        elif not self.street and self.house:
+            self.street = f"{self.city}, {self.house}"

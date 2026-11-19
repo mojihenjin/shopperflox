@@ -236,6 +236,7 @@ class SqlAlchemyUserPersonalRepository:
             id=model.id,
             firstname=model.firstname,
             lastname=model.lastname,
+            middlename=getattr(model, "middlename", None),
             phone_number=model.phone_number,
             created_by=model.created_by,
             created_at=model.created_at,
@@ -259,6 +260,7 @@ class SqlAlchemyUserPersonalRepository:
             id=personal.id,
             firstname=personal.firstname,
             lastname=personal.lastname,
+            middlename=personal.middlename,
             phone_number=personal.phone_number,
             created_by=personal.created_by,
             created_at=personal.created_at,
@@ -278,6 +280,7 @@ class SqlAlchemyUserPersonalRepository:
             raise EntityNotFoundError("Personal profile not found")
         model.firstname = personal.firstname
         model.lastname = personal.lastname
+        model.middlename = personal.middlename
         model.phone_number = personal.phone_number
         model.updated_at = personal.updated_at
         try:
@@ -293,12 +296,20 @@ class SqlAlchemyUserAddressRepository:
         self.session = session
 
     def _to_domain(self, model: UserAddressModel) -> UserAddressDomain:
+        street_val = getattr(model, "street", None)
+        house_val = getattr(model, "house", "")
+        if not house_val and street_val:
+            house_val = street_val
         return UserAddressDomain(
             id=model.id,
             user_id=model.user_id,
+            country=getattr(model, "country", "Россия"),
+            region=getattr(model, "region", None),
             city=model.city,
-            street=model.street,
+            house=house_val,
+            apartment=getattr(model, "apartment", None),
             postal_code=model.postal_code,
+            street=street_val,
             is_default=model.is_default,
             created_by=model.created_by,
             created_at=model.created_at,
@@ -343,11 +354,19 @@ class SqlAlchemyUserAddressRepository:
         await self.session.flush()
 
     async def add(self, address: UserAddressDomain) -> None:
+        house_val = address.house or address.street or ""
+        street_val = address.street or (
+            f"{address.city}, {address.house}" if address.house else None
+        )
         model = UserAddressModel(
             id=address.id,
             user_id=address.user_id,
+            country=address.country,
+            region=address.region,
             city=address.city,
-            street=address.street,
+            house=house_val,
+            apartment=address.apartment,
+            street=street_val,
             postal_code=address.postal_code,
             is_default=address.is_default,
             created_by=address.created_by,
@@ -365,8 +384,14 @@ class SqlAlchemyUserAddressRepository:
         model = await self.session.get(UserAddressModel, address.id)
         if model is None:
             raise EntityNotFoundError("Address not found")
+        model.country = address.country
+        model.region = address.region
         model.city = address.city
-        model.street = address.street
+        model.house = address.house or address.street or ""
+        model.apartment = address.apartment
+        model.street = address.street or (
+            f"{address.city}, {address.house}" if address.house else None
+        )
         model.postal_code = address.postal_code
         model.is_default = address.is_default
         try:

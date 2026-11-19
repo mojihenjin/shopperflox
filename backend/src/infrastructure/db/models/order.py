@@ -74,14 +74,60 @@ class OrderModel(Base):
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    shipping_address: Mapped[dict[str, Any]] = mapped_column(nullable=False)
+    shipping_address: Mapped[dict[str, Any]] = mapped_column(
+        default=dict, nullable=False
+    )
     status: Mapped[str] = mapped_column(
-        String(32), default="pending_payment", nullable=False
+        String(32), default="awaiting_payment", nullable=False
     )
     tracking_number: Mapped[str | None] = mapped_column(String(128), nullable=True)
     post_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_by: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+    # Recipient
+    recipient_firstname: Mapped[str] = mapped_column(
+        String(128), default="", server_default="", nullable=False
+    )
+    recipient_lastname: Mapped[str] = mapped_column(
+        String(128), default="", server_default="", nullable=False
+    )
+    recipient_middlename: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    # Passport (stored strictly in order, cleared on delivered/returned)
+    passport_series: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    passport_number: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
+    # Delivery & shipping
+    delivery_type: Mapped[str] = mapped_column(
+        String(32), default="address", server_default="address", nullable=False
+    )
+    post_office_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("post_offices.id", ondelete="SET NULL"), nullable=True
+    )
+    shipping_country: Mapped[str] = mapped_column(
+        String(128), default="Россия", server_default="Россия", nullable=False
+    )
+    shipping_region: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    shipping_city: Mapped[str] = mapped_column(
+        String(128), default="", server_default="", nullable=False
+    )
+    shipping_house: Mapped[str] = mapped_column(
+        String(64), default="", server_default="", nullable=False
+    )
+    shipping_apartment: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    shipping_postal_code: Mapped[str] = mapped_column(
+        String(32), default="", server_default="", nullable=False
+    )
+
+    # Payment
+    is_paid: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    paid_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    currency: Mapped[str] = mapped_column(
+        String(16), default="RUB", server_default="RUB", nullable=False
     )
 
     created_at: Mapped[datetime] = mapped_column(nullable=False)
@@ -141,7 +187,7 @@ class OrderItemModel(Base):
             "unit_price >= 0", name="chk_order_items_unit_price_non_negative"
         ),
         CheckConstraint(
-            "fulfillment_status IN ('pending', 'packing', 'handed_to_post', 'in_transit', 'delivered')",
+            "fulfillment_status IN ('awaiting_payment', 'pending', 'packing', 'handed_to_post', 'in_transit', 'delivered', 'returning', 'returned', 'cancelled')",
             name="chk_order_items_fulfillment_status",
         ),
     )

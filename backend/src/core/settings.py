@@ -133,6 +133,38 @@ class Settings(BaseSettings):
         default="stub",
         validation_alias=AliasChoices("PAYMENT_BACKEND", "payment_backend"),
     )
+    billing_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("BILLING_ENABLED", "billing_enabled"),
+    )
+    billing_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("BILLING_URL", "billing_url"),
+    )
+
+    @property
+    def BILLING_ENABLED(self) -> bool:
+        return self.billing_enabled
+
+    @BILLING_ENABLED.setter
+    def BILLING_ENABLED(self, value: bool) -> None:
+        self.billing_enabled = value
+
+    @property
+    def BILLING_URL(self) -> str:
+        return self.billing_url
+
+    @BILLING_URL.setter
+    def BILLING_URL(self, value: str) -> None:
+        self.billing_url = value
+
+    @property
+    def DEBUG(self) -> bool:
+        return self.debug
+
+    @DEBUG.setter
+    def DEBUG(self, value: bool) -> None:
+        self.debug = value
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="UTF-8", extra="ignore"
