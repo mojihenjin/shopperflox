@@ -63,7 +63,8 @@ class UserService:
         target_user_id: UUID,
         firstname: str | None,
         lastname: str | None,
-        phone_number: str | None,
+        phone_number: str | None = None,
+        middlename: str | None = None,
     ) -> UserPersonalDomain:
         async with self.uow:
             actor = await self.uow.users.get_by_id(actor_id)
@@ -90,12 +91,14 @@ class UserService:
                     created_by=actor_id,
                     firstname=firstname,
                     lastname=lastname,
+                    middlename=middlename,
                     phone_number=phone_number,
                 )
                 await self.uow.personal.add(personal)
             else:
                 personal.firstname = firstname
                 personal.lastname = lastname
+                personal.middlename = middlename
                 personal.phone_number = phone_number
                 personal.updated_at = factory_now()
                 await self.uow.personal.update(personal)
@@ -132,8 +135,12 @@ class UserService:
         actor_id: UUID,
         target_user_id: UUID,
         city: str,
-        street: str,
+        street: str | None = None,
+        house: str = "",
+        apartment: str | None = None,
         postal_code: str,
+        country: str = "Россия",
+        region: str | None = None,
         is_default: bool = False,
     ) -> UserAddressDomain:
         async with self.uow:
@@ -163,9 +170,13 @@ class UserService:
 
             address = UserAddressDomain(
                 user_id=target_user_id,
+                country=country,
+                region=region,
                 city=city,
-                street=street,
+                house=house or street or "",
+                apartment=apartment,
                 postal_code=postal_code,
+                street=street,
                 is_default=is_default,
                 created_by=actor_id,
             )

@@ -9,6 +9,7 @@ from .moderation import UserModerationService
 from .notification import NotificationService
 from .order import OrderService
 from .payment import PaymentService
+from .post_office import PostOfficeService
 from .queue import QueueService
 from .review import ReviewService
 from .user import UserService
@@ -25,6 +26,7 @@ __all__ = [
     "NotificationService",
     "OrderService",
     "PaymentService",
+    "PostOfficeService",
     "QueueService",
     "ReviewService",
     "UserModerationService",

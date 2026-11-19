@@ -5,6 +5,7 @@ from src.domain.interfaces import QueueUnitOfWorkProtocol
 from src.domain.models import (
     BrandMemberRole,
     FulfillmentStatus,
+    OrderStatus,
     QueueItemDomain,
     UserDomain,
 )
@@ -102,5 +103,42 @@ class QueueService:
                 tracking_url=resolved_url,
                 update_tracking_url=update_tracking_url,
             )
+
+            if fulfillment_status is not None:
+                order = await self.uow.orders.get_by_id(
+                    updated_item.order_id, for_update=True
+                )
+                if order is not None:
+                    order_items = await self.uow.orders.list_items(order.id)
+                    item_statuses = [it.fulfillment_status for it in order_items]
+
+                    if all(s == FulfillmentStatus.DELIVERED for s in item_statuses):
+                        order.transition_to(OrderStatus.DELIVERED)
+                        order.passport_series = None
+                        order.passport_number = None
+                        await self.uow.orders.update(order)
+                    elif all(s == FulfillmentStatus.RETURNED for s in item_statuses):
+                        order.transition_to(OrderStatus.RETURNED)
+                        order.passport_series = None
+                        order.passport_number = None
+                        await self.uow.orders.update(order)
+                    elif any(
+                        s in (FulfillmentStatus.RETURNING, FulfillmentStatus.RETURNED)
+                        for s in item_statuses
+                    ):
+                        order.transition_to(OrderStatus.RETURNING)
+                        await self.uow.orders.update(order)
+                    elif all(s == FulfillmentStatus.IN_TRANSIT for s in item_statuses):
+                        order.transition_to(OrderStatus.IN_TRANSIT)
+                        await self.uow.orders.update(order)
+                    elif all(
+                        s == FulfillmentStatus.HANDED_TO_POST for s in item_statuses
+                    ):
+                        order.transition_to(OrderStatus.HANDED_TO_POST)
+                        await self.uow.orders.update(order)
+                    elif all(s == FulfillmentStatus.PACKING for s in item_statuses):
+                        order.transition_to(OrderStatus.PACKING)
+                        await self.uow.orders.update(order)
+
             await self.uow.commit()
             return updated_item
