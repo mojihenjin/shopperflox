@@ -24,18 +24,26 @@ const STATUS_FILTERS: { key: FulfillmentStatus | 'ALL'; label: string }[] = [
   { key: 'handed_to_post', label: 'ОТПРАВЛЕНО НА ПОЧТУ' },
   { key: 'in_transit', label: 'В ПОЧТОВОЙ СЛУЖБЕ' },
   { key: 'delivered', label: 'ПОЛУЧЕНО' },
+  { key: 'returning', label: 'В ОБРАТНОЙ ОТПРАВКЕ' },
+  { key: 'returned', label: 'ВОЗВРАЩЕНО' },
 ];
 
 const STATUS_LABELS: Record<FulfillmentStatus, string> = {
+  awaiting_payment: 'ОЖИДАЕТ ОПЛАТЫ',
   pending: 'ОЖИДАЕТ',
   packing: 'ПАКУЕТСЯ',
   handed_to_post: 'ОТПРАВЛЕНО НА ПОЧТУ',
   in_transit: 'В ПОЧТОВОЙ СЛУЖБЕ',
   delivered: 'ПОЛУЧЕНО',
+  returning: 'В ОБРАТНОЙ ОТПРАВКЕ',
+  returned: 'ВОЗВРАЩЕНО',
+  cancelled: 'ОТМЕНЁН',
 };
 
 function getStatusBadgeStyle(status: FulfillmentStatus): string {
   switch (status) {
+    case 'awaiting_payment':
+      return 'border border-[#3F2021]/20 bg-[#3F2021]/5 text-[#3F2021]';
     case 'pending':
       return 'border border-[#FF8562] bg-[#FF8562]/10 text-[#3F2021]';
     case 'packing':
@@ -46,6 +54,12 @@ function getStatusBadgeStyle(status: FulfillmentStatus): string {
       return 'border border-[#3F2021] bg-[#3F2021]/10 text-[#3F2021]';
     case 'delivered':
       return 'bg-[#3F2021] text-[#F2E9DB] border border-[#3F2021]';
+    case 'returning':
+      return 'border border-[#FF8562] bg-[#FF8562]/15 text-[#3F2021] font-semibold';
+    case 'returned':
+      return 'border border-[#3F2021]/40 bg-[#3F2021]/20 text-[#3F2021] font-semibold';
+    case 'cancelled':
+      return 'border border-[#FF8562]/50 bg-[#FF8562]/20 text-[#3F2021]';
     default:
       return 'border border-[#3F2021]/30 text-[#3F2021]';
   }
@@ -655,6 +669,8 @@ export function QueueAndAnalyticsView({
                         <option value="handed_to_post">3. ОТПРАВЛЕНО НА ПОЧТУ</option>
                         <option value="in_transit">4. В ПОЧТОВОЙ СЛУЖБЕ</option>
                         <option value="delivered">5. ПОЛУЧЕНО</option>
+                        <option value="returning">6. В ОБРАТНОЙ ОТПРАВКЕ</option>
+                        <option value="returned">7. ВОЗВРАЩЕНО</option>
                       </select>
                     </div>
 
