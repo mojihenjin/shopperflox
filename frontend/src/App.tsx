@@ -19,6 +19,9 @@ import { BrandsListPage } from './pages/BrandsListPage';
 import { AdminPage } from './pages/AdminPage';
 import { PublicUserProfilePage } from './pages/PublicUserProfilePage';
 import { QueuePage } from './pages/QueuePage';
+import { CheckoutPage } from './pages/CheckoutPage';
+import { DebugPayPage } from './pages/DebugPayPage';
+import { PaymentUnavailablePage } from './pages/PaymentUnavailablePage';
 
 export function App() {
   return (
@@ -39,6 +42,23 @@ export function App() {
               }
             />
             <Route path="cart" element={<CartPage />} />
+            <Route
+              path="checkout"
+              element={
+                <ProtectedRoute>
+                  <CheckoutPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="checkout/pay/:orderId"
+              element={
+                <ProtectedRoute>
+                  <DebugPayPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="payment-unavailable" element={<PaymentUnavailablePage />} />
             <Route
               path="orders"
               element={
