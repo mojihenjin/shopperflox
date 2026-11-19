@@ -1,7 +1,8 @@
 from datetime import datetime
+from typing import Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .catalog import ProductResponse
 
@@ -25,6 +26,7 @@ class UserPersonalResponse(BaseModel):
     id: UUID
     firstname: str | None = None
     lastname: str | None = None
+    middlename: str | None = None
     phone_number: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -42,16 +44,29 @@ class UpdatePersonalRequest(BaseModel):
 
     firstname: str | None = Field(default=None, max_length=100)
     lastname: str | None = Field(default=None, max_length=100)
+    middlename: str | None = Field(default=None, max_length=100)
     phone_number: str | None = Field(default=None, max_length=30)
 
 
 class CreateAddressRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
+    country: str = Field(default="Россия", max_length=128)
+    region: str | None = Field(default=None, max_length=128)
     city: str = Field(min_length=1, max_length=100)
-    street: str = Field(min_length=1, max_length=255)
+    house: str = Field(default="", max_length=64)
+    apartment: str | None = Field(default=None, max_length=64)
+    street: str | None = Field(default=None, max_length=255)
     postal_code: str = Field(min_length=1, max_length=20)
     is_default: bool = False
+
+    @model_validator(mode="after")
+    def validate_house_or_street(self) -> Self:
+        if not self.house and self.street:
+            self.house = self.street
+        elif not self.house and not self.street:
+            raise ValueError("Поле house обязательно")
+        return self
 
 
 class UserAddressResponse(BaseModel):
@@ -59,8 +74,12 @@ class UserAddressResponse(BaseModel):
 
     id: UUID
     user_id: UUID
+    country: str = "Россия"
+    region: str | None = None
     city: str
-    street: str
+    house: str = ""
+    apartment: str | None = None
+    street: str | None = None
     postal_code: str
     is_default: bool
     created_at: datetime

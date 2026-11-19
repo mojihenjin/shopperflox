@@ -51,6 +51,7 @@ async def update_my_personal(
         target_user_id=current_user.id,
         firstname=req.firstname,
         lastname=req.lastname,
+        middlename=req.middlename,
         phone_number=req.phone_number,
     )
     return ResponseGenerator.answer(body=UserPersonalResponse.model_validate(personal))
@@ -89,7 +90,11 @@ async def create_my_address(
         target_user_id=current_user.id,
         city=req.city,
         street=req.street,
+        house=req.house,
+        apartment=req.apartment,
         postal_code=req.postal_code,
+        country=req.country,
+        region=req.region,
         is_default=req.is_default,
     )
     return ResponseGenerator.answer(

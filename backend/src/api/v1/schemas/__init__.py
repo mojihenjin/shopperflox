@@ -84,6 +84,11 @@ from .payment import (
     PaymentResponse,
     PaymentWebhookPayload,
 )
+from .post_office import (
+    PostOfficeCreateRequest,
+    PostOfficeResponse,
+    PostOfficeUpdateRequest,
+)
 from .queue import (
     QueueCustomerResponse,
     QueueItemResponse,
@@ -149,6 +154,9 @@ __all__ = [
     "PaymentResponse",
     "PaymentWebhookPayload",
     "PendingCountResponse",
+    "PostOfficeCreateRequest",
+    "PostOfficeResponse",
+    "PostOfficeUpdateRequest",
     "ProductCreateRequest",
     "ProductDetailResponse",
     "ProductImageCreateRequest",

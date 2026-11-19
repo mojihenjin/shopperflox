@@ -14,6 +14,7 @@ from src.application.services import (
     NotificationService,
     OrderService,
     PaymentService,
+    PostOfficeService,
     QueueService,
     ReviewService,
     UserModerationService,
@@ -32,6 +33,7 @@ from src.domain.interfaces import (
     OrderUnitOfWorkProtocol,
     PasswordHasherProtocol,
     PaymentGatewayProtocol,
+    PostOfficeUnitOfWorkProtocol,
     QueueUnitOfWorkProtocol,
     ReviewUnitOfWorkProtocol,
     TaskQueueProtocol,
@@ -47,6 +49,7 @@ from src.infrastructure.db import (
     SqlAlchemyCatalogUnitOfWork,
     SqlAlchemyNotificationUnitOfWork,
     SqlAlchemyOrderUnitOfWork,
+    SqlAlchemyPostOfficeUnitOfWork,
     SqlAlchemyQueueUnitOfWork,
     SqlAlchemyReviewUnitOfWork,
     SqlAlchemyUserUnitOfWork,
@@ -236,7 +239,21 @@ def get_order_service(
         uow=uow,
         payment_gateway=payment_gateway,
         notification_service=notification_service,
+        billing_enabled=settings.billing_enabled,
+        billing_url=settings.billing_url,
+        debug=settings.debug,
     )
+
+
+def get_post_office_uow(request: Request) -> PostOfficeUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyPostOfficeUnitOfWork(session_factory=factory)
+
+
+def get_post_office_service(
+    uow: PostOfficeUnitOfWorkProtocol = Depends(get_post_office_uow),
+) -> PostOfficeService:
+    return PostOfficeService(uow=uow)
 
 
 def get_payment_service(
@@ -404,6 +421,20 @@ def require_catalog_or_creator_permission():
         if not has_perm:
             raise PermissionDeniedError(
                 "Permission 'catalog:manage' or 'creator:*' required"
+            )
+        return current_user
+
+    return permission_dependency
+
+
+def require_mail_manager_permission():
+    async def permission_dependency(
+        current_user: UserDomain = Depends(get_current_user),
+    ) -> UserDomain:
+        allowed = {"mod:mail-manager", "admin:access", "*"}
+        if not any(p in allowed for p in current_user.global_permissions):
+            raise PermissionDeniedError(
+                "Access denied: required 'mod:mail-manager' or 'admin:access'"
             )
         return current_user
 
