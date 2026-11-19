@@ -10,6 +10,9 @@ import type {
   AdminUserUpdateRequest,
   CategoryResponse,
   ProductResponse,
+  PostOfficeResponse,
+  PostOfficeCreateRequest,
+  PostOfficeUpdateRequest,
 } from '../types/api';
 
 export interface AdminListUsersParams {
@@ -184,4 +187,30 @@ export const adminApi = {
 
   deleteReview: (reviewId: string) =>
     apiFetch<null>(`/api/v1/admin/reviews/${reviewId}`, { method: 'DELETE' }),
+
+  // --- POST OFFICES ---
+  listPostOffices: (params: { search?: string; city?: string } = {}) => {
+    const sp = new URLSearchParams();
+    if (params.search) sp.set('search', params.search);
+    if (params.city) sp.set('city', params.city);
+    const q = sp.toString() ? `?${sp.toString()}` : '';
+    return apiFetch<PostOfficeResponse[]>(`/api/v1/admin/post-offices${q}`, { method: 'GET' });
+  },
+
+  createPostOffice: (data: PostOfficeCreateRequest) =>
+    apiFetch<PostOfficeResponse>('/api/v1/admin/post-offices', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updatePostOffice: (officeId: string, data: PostOfficeUpdateRequest) =>
+    apiFetch<PostOfficeResponse>(`/api/v1/admin/post-offices/${officeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  deletePostOffice: (officeId: string) =>
+    apiFetch<{ deleted: boolean }>(`/api/v1/admin/post-offices/${officeId}`, {
+      method: 'DELETE',
+    }),
 };

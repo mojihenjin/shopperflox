@@ -43,6 +43,7 @@ export interface UserPersonalResponse {
   id?: string;
   firstname?: string | null;
   lastname?: string | null;
+  middlename?: string | null;
   phone_number?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -90,6 +91,7 @@ export interface VerificationInitResponse {
 export interface UpdatePersonalRequest {
   firstname?: string | null;
   lastname?: string | null;
+  middlename?: string | null;
   phone_number?: string | null;
 }
 
@@ -352,12 +354,19 @@ export interface ReadAllNotificationsResponse {
 }
 
 export type OrderStatus =
+  | 'awaiting_payment'
+  | 'pending'
+  | 'packing'
+  | 'handed_to_post'
+  | 'in_transit'
+  | 'delivered'
+  | 'returning'
+  | 'returned'
+  | 'cancelled'
   | 'pending_payment'
   | 'paid'
   | 'processing'
   | 'shipped'
-  | 'delivered'
-  | 'cancelled'
   | 'refunded';
 
 export interface OrderItemResponse {
@@ -380,9 +389,88 @@ export interface OrderResponse {
   status: OrderStatus;
   tracking_number?: string | null;
   post_code?: string | null;
+  recipient_firstname?: string;
+  recipient_lastname?: string;
+  recipient_middlename?: string | null;
+  passport_series?: string | null;
+  passport_number?: string | null;
+  delivery_type?: string;
+  post_office_id?: string | null;
+  shipping_country?: string;
+  shipping_region?: string | null;
+  shipping_city?: string;
+  shipping_house?: string;
+  shipping_apartment?: string | null;
+  shipping_postal_code?: string;
+  is_paid?: boolean;
+  paid_at?: string | null;
   created_at: string;
   items?: OrderItemResponse[] | null;
   payment?: unknown | null;
+}
+
+export interface CheckoutRequest {
+  recipient_firstname?: string;
+  recipient_lastname?: string;
+  recipient_middlename?: string | null;
+  save_to_profile?: boolean;
+  passport_series?: string;
+  passport_number?: string;
+  delivery_type?: 'address' | 'post_office';
+  country?: string;
+  region?: string | null;
+  city?: string;
+  house?: string;
+  apartment?: string | null;
+  postal_code?: string;
+  save_address_to_profile?: boolean;
+  post_office_id?: string | null;
+  address_id?: string | null;
+  comment?: string | null;
+}
+
+export interface OrderCheckoutResponse {
+  order: OrderResponse;
+  payment?: unknown | null;
+  confirmation_url?: string | null;
+  payment_mode: 'billing' | 'debug' | 'unavailable' | string;
+  payment_url?: string | null;
+}
+
+export interface PostOfficeResponse {
+  id: string;
+  name: string;
+  country: string;
+  region?: string | null;
+  city: string;
+  house: string;
+  postal_code: string;
+  note?: string | null;
+  is_active: boolean;
+  created_by: string;
+  created_at: string;
+}
+
+export interface PostOfficeCreateRequest {
+  name: string;
+  country?: string;
+  region?: string | null;
+  city: string;
+  house: string;
+  postal_code: string;
+  note?: string | null;
+  is_active?: boolean;
+}
+
+export interface PostOfficeUpdateRequest {
+  name?: string | null;
+  country?: string | null;
+  region?: string | null;
+  city?: string | null;
+  house?: string | null;
+  postal_code?: string | null;
+  note?: string | null;
+  is_active?: boolean | null;
 }
 
 export type ModerationRequestType = 'CREATE' | 'EDIT';
@@ -397,8 +485,12 @@ export interface RejectProductRequest {
 }
 
 export interface CreateAddressRequest {
+  country?: string;
+  region?: string | null;
   city: string;
-  street: string;
+  house?: string;
+  apartment?: string | null;
+  street?: string | null;
   postal_code: string;
   is_default?: boolean;
 }
@@ -406,8 +498,12 @@ export interface CreateAddressRequest {
 export interface UserAddressResponse {
   id: string;
   user_id: string;
+  country?: string;
+  region?: string | null;
   city: string;
-  street: string;
+  house?: string;
+  apartment?: string | null;
+  street?: string | null;
   postal_code: string;
   is_default: boolean;
   created_at: string;
@@ -547,11 +643,15 @@ export interface AdminReviewResponse {
 // --- Fulfillment Queue & Analytics Types ---
 
 export type FulfillmentStatus =
+  | 'awaiting_payment'
   | 'pending'
   | 'packing'
   | 'handed_to_post'
   | 'in_transit'
-  | 'delivered';
+  | 'delivered'
+  | 'returning'
+  | 'returned'
+  | 'cancelled';
 
 export interface QueueCustomerResponse {
   id: string;

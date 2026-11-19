@@ -40,6 +40,9 @@ import type {
   QueueItemResponse,
   QueueItemUpdateRequest,
   SalesAnalyticsResponse,
+  CheckoutRequest,
+  OrderCheckoutResponse,
+  PostOfficeResponse,
 } from '../types/api';
 
 export { notificationsApi, moderationApi, brandsApi, adminApi };
@@ -271,6 +274,32 @@ export const ordersApi = {
 
   cancel: (orderId: string) =>
     apiFetch<OrderResponse>(`/api/v1/orders/${orderId}/cancel`, { method: 'POST' }),
+
+  checkout: (data: CheckoutRequest) =>
+    apiFetch<OrderCheckoutResponse>('/api/v1/orders/checkout', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  deletePassport: (orderId: string) =>
+    apiFetch<{ deleted: boolean }>(`/api/v1/orders/${orderId}/passport`, {
+      method: 'DELETE',
+    }),
+
+  debugPay: (orderId: string) =>
+    apiFetch<OrderResponse>(`/api/v1/orders/${orderId}/debug-pay`, {
+      method: 'POST',
+    }),
+};
+
+export const postOfficesApi = {
+  list: (params: { search?: string; city?: string } = {}) => {
+    const sp = new URLSearchParams();
+    if (params.search) sp.set('search', params.search);
+    if (params.city) sp.set('city', params.city);
+    const q = sp.toString() ? `?${sp.toString()}` : '';
+    return apiFetch<PostOfficeResponse[]>(`/api/v1/post-offices${q}`, { method: 'GET' });
+  },
 };
 
 export const analyticsApi = {
