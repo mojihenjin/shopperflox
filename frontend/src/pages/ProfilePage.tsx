@@ -1,10 +1,29 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { authApi, usersApi, brandsApi, addressesApi } from '../api/endpoints';
+import { authApi, usersApi, brandsApi, addressesApi, ordersApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { formatApiError } from '../utils/errorMapper';
+import { formatDate, formatPrice } from '../utils/format';
+import type { OrderStatus, UserAddressResponse } from '../types/api';
 import type { ApiError } from '../api/client';
+
+const ORDER_STATUS_LABELS: Record<OrderStatus, { text: string; bg: string; color: string }> = {
+  awaiting_payment: { text: 'ОЖИДАЕТ ОПЛАТЫ', bg: 'bg-[#3F2021]/10', color: 'text-[#3F2021]' },
+  pending: { text: 'ОЖИДАЕТ ОБРАБОТКИ', bg: 'bg-[#3F2021]/15', color: 'text-[#3F2021]' },
+  packing: { text: 'ПАКУЕТСЯ', bg: 'bg-[#7594B3]/20', color: 'text-[#3F2021]' },
+  handed_to_post: { text: 'ОТПРАВЛЕНО НА ПОЧТУ', bg: 'bg-[#7594B3]/30', color: 'text-[#3F2021]' },
+  in_transit: { text: 'В ПУТИ / В ПОЧТОВОЙ СЛУЖБЕ', bg: 'bg-[#3F2021]', color: 'text-[#F2E9DB]' },
+  delivered: { text: 'ПОЛУЧЕНО', bg: 'bg-[#3F2021]', color: 'text-[#F2E9DB]' },
+  returning: { text: 'В ОБРАТНОЙ ОТПРАВКЕ', bg: 'bg-[#FF8562]/20', color: 'text-[#3F2021]' },
+  returned: { text: 'ВОЗВРАЩЕНО', bg: 'bg-[#3F2021]/20', color: 'text-[#3F2021]' },
+  cancelled: { text: 'ОТМЕНЁН', bg: 'bg-[#FF8562]/20', color: 'text-[#3F2021]' },
+  pending_payment: { text: 'ОЖИДАЕТ ОПЛАТЫ', bg: 'bg-[#3F2021]/10', color: 'text-[#3F2021]' },
+  paid: { text: 'ОПЛАЧЕН', bg: 'bg-[#3F2021]/15', color: 'text-[#3F2021]' },
+  processing: { text: 'В ОБРАБОТКЕ', bg: 'bg-[#3F2021]/20', color: 'text-[#3F2021]' },
+  shipped: { text: 'В ПУТИ / ОТПРАВЛЕН', bg: 'bg-[#3F2021]', color: 'text-[#F2E9DB]' },
+  refunded: { text: 'ВОЗВРАТ СРЕДСТВ', bg: 'bg-[#FF8562]/20', color: 'text-[#3F2021]' },
+};
 
 export function ProfilePage() {
   const navigate = useNavigate();
@@ -31,6 +50,7 @@ export function ProfilePage() {
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [firstnameInput, setFirstnameInput] = useState('');
   const [lastnameInput, setLastnameInput] = useState('');
+  const [middlenameInput, setMiddlenameInput] = useState('');
   const [phoneInput, setPhoneInput] = useState('');
   const [personalError, setPersonalError] = useState<string | null>(null);
   const [personalSuccessMsg, setPersonalSuccessMsg] = useState<string | null>(null);
@@ -78,6 +98,7 @@ export function ProfilePage() {
     if (personal) {
       setFirstnameInput(personal.firstname || '');
       setLastnameInput(personal.lastname || '');
+      setMiddlenameInput(personal.middlename || '');
       setPhoneInput(personal.phone_number || '');
     }
   }, [personal]);
@@ -172,6 +193,7 @@ export function ProfilePage() {
       return usersApi.updatePersonal({
         firstname: firstnameInput.trim() || null,
         lastname: lastnameInput.trim() || null,
+        middlename: middlenameInput.trim() || null,
         phone_number: phoneInput.trim() || null,
       });
     },
@@ -193,41 +215,107 @@ export function ProfilePage() {
   });
   const addresses = addressesData?.data || [];
 
-  // Address Form State
+  // Address Form State (Separated fields)
   const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [addressCountry, setAddressCountry] = useState('Россия');
+  const [addressRegion, setAddressRegion] = useState('');
   const [addressCity, setAddressCity] = useState('');
-  const [addressStreet, setAddressStreet] = useState('');
+  const [addressHouse, setAddressHouse] = useState('');
+  const [addressApartment, setAddressApartment] = useState('');
   const [addressPostalCode, setAddressPostalCode] = useState('');
   const [addressIsDefault, setAddressIsDefault] = useState(false);
   const [addressError, setAddressError] = useState<string | null>(null);
   const [addressSuccessMsg, setAddressSuccessMsg] = useState<string | null>(null);
 
+  // Orders Query (for customer order cards in /profile)
+  const { data: profileOrdersData, isLoading: isProfileOrdersLoading } = useQuery({
+    queryKey: ['profileOrders'],
+    queryFn: () => ordersApi.list({ limit: 20 }),
+    enabled: isAuthenticated,
+  });
+  const profileOrders = profileOrdersData?.data || [];
+  const [passportFeedback, setPassportFeedback] = useState<{ orderId: string; msg: string; isError?: boolean } | null>(null);
+
+  const deletePassportMutation = useMutation({
+    mutationFn: (orderId: string) => ordersApi.deletePassport(orderId),
+    onSuccess: (_res, orderId) => {
+      queryClient.invalidateQueries({ queryKey: ['profileOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      setPassportFeedback({
+        orderId,
+        msg: '✓ ПАСПОРТНЫЕ ДАННЫЕ УСПЕШНО УДАЛЕНЫ',
+      });
+      setTimeout(() => setPassportFeedback(null), 4000);
+    },
+    onError: (err: ApiError, orderId) => {
+      setPassportFeedback({
+        orderId,
+        msg: formatApiError(err, 'ОШИБКА УДАЛЕНИЯ ПАСПОРТНЫХ ДАННЫХ'),
+        isError: true,
+      });
+      setTimeout(() => setPassportFeedback(null), 5000);
+    },
+  });
+
+  const resetAddressForm = () => {
+    setEditingAddressId(null);
+    setAddressCountry('Россия');
+    setAddressRegion('');
+    setAddressCity('');
+    setAddressHouse('');
+    setAddressApartment('');
+    setAddressPostalCode('');
+    setAddressIsDefault(false);
+    setIsAddingAddress(false);
+    setAddressError(null);
+  };
+
+  const startEditAddress = (addr: UserAddressResponse) => {
+    setEditingAddressId(addr.id);
+    setAddressCountry(addr.country || 'Россия');
+    setAddressRegion(addr.region || '');
+    setAddressCity(addr.city);
+    setAddressHouse(addr.house || addr.street || '');
+    setAddressApartment(addr.apartment || '');
+    setAddressPostalCode(addr.postal_code);
+    setAddressIsDefault(addr.is_default);
+    setIsAddingAddress(true);
+    setAddressError(null);
+    setAddressSuccessMsg(null);
+  };
+
   const createAddressMutation = useMutation({
     mutationFn: async () => {
       setAddressError(null);
       setAddressSuccessMsg(null);
-      if (!addressCity.trim() || !addressStreet.trim() || !addressPostalCode.trim()) {
-        throw new Error('Заполните все обязательные поля адреса');
+      if (!addressCity.trim() || !addressHouse.trim() || !addressPostalCode.trim()) {
+        throw new Error('Заполните обязательные поля адреса: Город, Дом, Пост-код');
       }
+
+      // If editing existing address, delete the old one first
+      if (editingAddressId) {
+        await addressesApi.delete(editingAddressId);
+      }
+
       return addressesApi.create({
+        country: addressCountry.trim() || 'Россия',
+        region: addressRegion.trim() || null,
         city: addressCity.trim(),
-        street: addressStreet.trim(),
+        house: addressHouse.trim(),
+        apartment: addressApartment.trim() || null,
         postal_code: addressPostalCode.trim(),
         is_default: addressIsDefault,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userAddresses'] });
-      setAddressSuccessMsg('Адрес успешно добавлен!');
-      setAddressCity('');
-      setAddressStreet('');
-      setAddressPostalCode('');
-      setAddressIsDefault(false);
-      setIsAddingAddress(false);
+      setAddressSuccessMsg(editingAddressId ? 'Адрес успешно обновлён!' : 'Адрес успешно добавлен!');
+      resetAddressForm();
       setTimeout(() => setAddressSuccessMsg(null), 3000);
     },
     onError: (err: ApiError) => {
-      setAddressError(formatApiError(err, 'ОШИБКА ПРИ ДОБАВЛЕНИИ АДРЕСА'));
+      setAddressError(formatApiError(err, 'ОШИБКА ПРИ СОХРАНЕНИИ АДРЕСА'));
     },
   });
 
@@ -492,9 +580,9 @@ export function ProfilePage() {
                 }}
                 className="space-y-4 bg-[#F2E9DB]/40 p-4 border border-sf-dark/15"
               >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1">
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1 font-semibold">
                       ИМЯ
                     </label>
                     <input
@@ -508,7 +596,7 @@ export function ProfilePage() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1">
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1 font-semibold">
                       ФАМИЛИЯ
                     </label>
                     <input
@@ -521,8 +609,22 @@ export function ProfilePage() {
                     />
                   </div>
 
-                  <div className="sm:col-span-2">
-                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1">
+                  <div>
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1 font-semibold">
+                      ОТЧЕСТВО
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={100}
+                      placeholder="Иванович"
+                      value={middlenameInput}
+                      onChange={(e) => setMiddlenameInput(e.target.value)}
+                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1 font-semibold">
                       НОМЕР ТЕЛЕФОНА
                     </label>
                     <input
@@ -554,7 +656,7 @@ export function ProfilePage() {
                 </div>
               </form>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-sans uppercase">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-sans uppercase">
                 <div>
                   <span className="text-sf-muted">ИМЯ: </span>
                   <span className="font-semibold text-sf-dark">
@@ -568,6 +670,12 @@ export function ProfilePage() {
                   </span>
                 </div>
                 <div>
+                  <span className="text-sf-muted">ОТЧЕСТВО: </span>
+                  <span className="font-semibold text-sf-dark">
+                    {personal?.middlename || 'Не указано'}
+                  </span>
+                </div>
+                <div className="sm:col-span-3">
                   <span className="text-sf-muted">ТЕЛЕФОН: </span>
                   <span className="font-semibold text-sf-dark">
                     {personal?.phone_number || 'Не указан'}
@@ -586,9 +694,11 @@ export function ProfilePage() {
               <button
                 type="button"
                 onClick={() => {
-                  setIsAddingAddress(!isAddingAddress);
-                  setAddressError(null);
-                  setAddressSuccessMsg(null);
+                  if (isAddingAddress) {
+                    resetAddressForm();
+                  } else {
+                    setIsAddingAddress(true);
+                  }
                 }}
                 className="text-[11px] font-sans uppercase tracking-wider text-sf-dark underline underline-offset-4 hover:opacity-70"
               >
@@ -607,7 +717,7 @@ export function ProfilePage() {
               </div>
             )}
 
-            {/* Inline Add Address Form */}
+            {/* Inline Add / Edit Address Form */}
             {isAddingAddress && (
               <form
                 onSubmit={(e) => {
@@ -616,9 +726,40 @@ export function ProfilePage() {
                 }}
                 className="space-y-4 bg-[#F2E9DB]/40 p-4 border border-sf-dark/15"
               >
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="text-[11px] font-sans uppercase tracking-wider font-semibold text-[#3F2021]">
+                  {editingAddressId ? 'РЕДАКТИРОВАНИЕ АДРЕСА' : 'НОВЫЙ АДРЕС ДОСТАВКИ'}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1">
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1 font-semibold">
+                      СТРАНА *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Россия"
+                      value={addressCountry}
+                      onChange={(e) => setAddressCountry(e.target.value)}
+                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1 font-semibold">
+                      ОБЛАСТЬ / РЕГИОН
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Московская область"
+                      value={addressRegion}
+                      onChange={(e) => setAddressRegion(e.target.value)}
+                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1 font-semibold">
                       ГОРОД *
                     </label>
                     <input
@@ -630,22 +771,37 @@ export function ProfilePage() {
                       className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1">
-                      УЛИЦА И ДОМ / КВАРТИРА *
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1 font-semibold">
+                      ДОМ / УЛИЦА *
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="ул. Тверская, д. 1, кв. 10"
-                      value={addressStreet}
-                      onChange={(e) => setAddressStreet(e.target.value)}
+                      placeholder="ул. Тверская, д. 1"
+                      value={addressHouse}
+                      onChange={(e) => setAddressHouse(e.target.value)}
                       className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1">
-                      ПОЧТОВЫЙ ИНДЕКС *
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1 font-semibold">
+                      КВАРТИРА / ОФИС
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="кв. 10"
+                      value={addressApartment}
+                      onChange={(e) => setAddressApartment(e.target.value)}
+                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-sans uppercase tracking-wider text-sf-muted mb-1 font-semibold">
+                      ПОСТ-КОД (ИНДЕКС) *
                     </label>
                     <input
                       type="text"
@@ -653,7 +809,7 @@ export function ProfilePage() {
                       placeholder="101000"
                       value={addressPostalCode}
                       onChange={(e) => setAddressPostalCode(e.target.value)}
-                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-sans outline-none font-mono"
+                      className="w-full bg-[#FFFFFF] border border-sf-dark/30 focus:border-sf-dark px-3 py-2 text-xs font-mono outline-none"
                     />
                   </div>
                 </div>
@@ -677,11 +833,15 @@ export function ProfilePage() {
                     disabled={createAddressMutation.isPending}
                     className="bg-sf-dark text-sf-cream hover:bg-sf-black px-5 py-2 text-xs font-sans uppercase tracking-wider disabled:opacity-50 transition-colors"
                   >
-                    {createAddressMutation.isPending ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ АДРЕС ↗'}
+                    {createAddressMutation.isPending
+                      ? 'СОХРАНЕНИЕ...'
+                      : editingAddressId
+                      ? 'СОХРАНИТЬ ИЗМЕНЕНИЯ ↗'
+                      : 'СОХРАНИТЬ АДРЕС ↗'}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsAddingAddress(false)}
+                    onClick={resetAddressForm}
                     className="text-xs font-sans uppercase tracking-wider text-sf-muted hover:text-sf-dark px-2"
                   >
                     ОТМЕНА
@@ -709,7 +869,10 @@ export function ProfilePage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-sans font-bold text-xs uppercase text-sf-dark">
-                          Г. {addr.city}, {addr.street}
+                          {addr.country ? `${addr.country}, ` : ''}
+                          {addr.region ? `${addr.region}, ` : ''}
+                          Г. {addr.city}, Д. {addr.house || addr.street || ''}
+                          {addr.apartment ? `, КВ. ${addr.apartment}` : ''}
                         </span>
                         {addr.is_default && (
                           <span className="inline-flex items-center gap-1.5 text-[10px] font-sans uppercase font-bold tracking-wider text-sf-dark">
@@ -721,11 +884,18 @@ export function ProfilePage() {
                         )}
                       </div>
                       <div className="text-[11px] font-mono text-sf-muted">
-                        ИНДЕКС: {addr.postal_code}
+                        ПОСТ-КОД: {addr.postal_code}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => startEditAddress(addr)}
+                        className="text-[11px] font-sans uppercase tracking-wider text-sf-dark underline underline-offset-4 hover:opacity-70"
+                      >
+                        РЕДАКТИРОВАТЬ
+                      </button>
                       {!addr.is_default && (
                         <button
                           type="button"
@@ -747,6 +917,122 @@ export function ProfilePage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Orders Section (Customer orders with passport deletion and returning/returned statuses) */}
+          <div className="space-y-4 pb-6 border-b border-sf-dark/15">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-sans font-semibold uppercase tracking-widest text-sf-muted">
+                ( ВАШИ ЗАКАЗЫ )
+              </div>
+              <Link
+                to="/orders"
+                className="text-[11px] font-sans uppercase tracking-wider text-sf-dark underline underline-offset-4 hover:opacity-70"
+              >
+                ВСЕ ЗАКАЗЫ ↗
+              </Link>
+            </div>
+
+            {passportFeedback && (
+              <div
+                className={`p-2.5 text-xs font-sans uppercase tracking-wider text-center font-semibold rounded-none ${
+                  passportFeedback.isError
+                    ? 'bg-red-700 text-[#F2E9DB]'
+                    : 'bg-[#3F2021] text-[#F2E9DB]'
+                }`}
+              >
+                {passportFeedback.msg}
+              </div>
+            )}
+
+            {isProfileOrdersLoading ? (
+              <div className="text-xs font-sans uppercase tracking-wider text-sf-muted py-2">
+                ( ЗАГРУЗКА ЗАКАЗОВ... )
+              </div>
+            ) : profileOrders.length === 0 ? (
+              <div className="text-xs font-sans uppercase tracking-wider text-sf-muted py-2">
+                ( У ВАС ПОКА НЕТ ЗАКАЗОВ )
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {profileOrders.slice(0, 5).map((order) => {
+                  const statusInfo = ORDER_STATUS_LABELS[order.status] || {
+                    text: order.status,
+                    bg: 'bg-[#3F2021]/15',
+                    color: 'text-[#3F2021]',
+                  };
+                  const hasPassport = Boolean(order.passport_series || order.passport_number);
+                  const isFinished = order.status === 'delivered' || order.status === 'returned';
+
+                  return (
+                    <div
+                      key={order.id}
+                      className="p-4 bg-[#FFFFFF] border border-[#3F2021]/30 rounded-none space-y-3"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#3F2021]/10 pb-2.5">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-sm font-bold text-[#3F2021] tracking-wider">
+                            ЗАКАЗ #{order.id.slice(0, 8).toUpperCase()}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 text-[10px] font-sans uppercase tracking-wider font-semibold rounded-none ${statusInfo.bg} ${statusInfo.color}`}
+                          >
+                            {statusInfo.text}
+                          </span>
+                        </div>
+                        <div className="font-serif text-base font-bold text-[#3F2021]">
+                          {formatPrice(order.total_amount)}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-sans text-[#3F2021]/70">
+                        <div>
+                          ОФОРМЛЕН: <span className="font-mono">{formatDate(order.created_at)}</span>
+                        </div>
+                        <div>
+                          {order.delivery_type === 'post_office' || order.post_office_id
+                            ? 'ДОСТАВКА: В ПОЧТОВОЕ ОТДЕЛЕНИЕ'
+                            : order.shipping_city
+                            ? `АДРЕС: Г. ${order.shipping_city}, ${order.shipping_house || ''}`
+                            : 'ДОСТАВКА ПО АДРЕСУ'}
+                        </div>
+                      </div>
+
+                      {/* Passport Management Block */}
+                      <div className="pt-2 border-t border-[#3F2021]/10 flex flex-wrap items-center justify-between gap-3">
+                        <div className="text-[11px] font-sans text-[#3F2021]/80">
+                          {isFinished ? (
+                            hasPassport ? (
+                              <span>ПАСПОРТНЫЕ ДАННЫЕ В ЗАКАЗЕ: {order.passport_series} ******</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 font-semibold text-[#3F2021] bg-[#F2E9DB] px-2 py-0.5 border border-[#3F2021]/20">
+                                <span>ПАСПОРТНЫЕ ДАННЫЕ УДАЛЕНЫ</span>
+                                <span>✓</span>
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-[10px] text-[#3F2021]/60">
+                              ( ПАСПОРТНЫЕ ДАННЫЕ ХРАНЯТСЯ ДЛЯ ТАМОЖЕННОГО/ПОЧТОВОГО ОФОРМЛЕНИЯ )
+                            </span>
+                          )}
+                        </div>
+
+                        {isFinished && hasPassport && (
+                          <button
+                            type="button"
+                            disabled={deletePassportMutation.isPending}
+                            onClick={() => deletePassportMutation.mutate(order.id)}
+                            className="bg-red-700 hover:bg-red-800 text-white px-3 py-1.5 text-xs font-sans font-semibold uppercase tracking-wider transition-colors cursor-pointer rounded-none disabled:opacity-50"
+                          >
+                            УДАЛИТЬ ПАСПОРТНЫЕ ДАННЫЕ ×
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

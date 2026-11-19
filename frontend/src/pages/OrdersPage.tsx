@@ -1,26 +1,37 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ordersApi } from '../api/endpoints';
 import { useAuthStore } from '../store/auth';
 import { formatDate, formatPrice } from '../utils/format';
+import { formatApiError } from '../utils/errorMapper';
 import type { OrderStatus } from '../types/api';
+import type { ApiError } from '../api/client';
 
 const STATUS_LABELS: Record<OrderStatus, { text: string; bg: string; color: string }> = {
+  awaiting_payment: { text: 'ОЖИДАЕТ ОПЛАТЫ', bg: 'bg-[#3F2021]/10', color: 'text-[#3F2021]' },
+  pending: { text: 'ОЖИДАЕТ ОБРАБОТКИ', bg: 'bg-[#3F2021]/15', color: 'text-[#3F2021]' },
+  packing: { text: 'ПАКУЕТСЯ', bg: 'bg-[#7594B3]/20', color: 'text-[#3F2021]' },
+  handed_to_post: { text: 'ОТПРАВЛЕНО НА ПОЧТУ', bg: 'bg-[#7594B3]/30', color: 'text-[#3F2021]' },
+  in_transit: { text: 'В ПУТИ / В ПОЧТОВОЙ СЛУЖБЕ', bg: 'bg-[#3F2021]', color: 'text-[#F2E9DB]' },
+  delivered: { text: 'ПОЛУЧЕНО', bg: 'bg-[#3F2021]', color: 'text-[#F2E9DB]' },
+  returning: { text: 'В ОБРАТНОЙ ОТПРАВКЕ', bg: 'bg-[#FF8562]/20', color: 'text-[#3F2021]' },
+  returned: { text: 'ВОЗВРАЩЕНО', bg: 'bg-[#3F2021]/20', color: 'text-[#3F2021]' },
+  cancelled: { text: 'ОТМЕНЁН', bg: 'bg-[#FF8562]/20', color: 'text-[#3F2021]' },
   pending_payment: { text: 'ОЖИДАЕТ ОПЛАТЫ', bg: 'bg-[#3F2021]/10', color: 'text-[#3F2021]' },
   paid: { text: 'ОПЛАЧЕН', bg: 'bg-[#3F2021]/15', color: 'text-[#3F2021]' },
   processing: { text: 'В ОБРАБОТКЕ', bg: 'bg-[#3F2021]/20', color: 'text-[#3F2021]' },
   shipped: { text: 'В ПУТИ / ОТПРАВЛЕН', bg: 'bg-[#3F2021]', color: 'text-[#F2E9DB]' },
-  delivered: { text: 'ДОСТАВЛЕН', bg: 'bg-[#3F2021]', color: 'text-[#F2E9DB]' },
-  cancelled: { text: 'ОТМЕНЁН', bg: 'bg-[#FF8562]/20', color: 'text-[#3F2021]' },
   refunded: { text: 'ВОЗВРАТ СРЕДСТВ', bg: 'bg-[#FF8562]/20', color: 'text-[#3F2021]' },
 };
 
 export function OrdersPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [passportFeedback, setPassportFeedback] = useState<{ orderId: string; msg: string; isError?: boolean } | null>(null);
 
   const currentPath = `${location.pathname}${location.search}`;
   const loginRedirectUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
@@ -32,6 +43,27 @@ export function OrdersPage() {
   });
 
   const orders = ordersData?.data || [];
+
+  const deletePassportMutation = useMutation({
+    mutationFn: (orderId: string) => ordersApi.deletePassport(orderId),
+    onSuccess: (_res, orderId) => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['profileOrders'] });
+      setPassportFeedback({
+        orderId,
+        msg: '✓ ПАСПОРТНЫЕ ДАННЫЕ УСПЕШНО УДАЛЕНЫ',
+      });
+      setTimeout(() => setPassportFeedback(null), 4000);
+    },
+    onError: (err: ApiError, orderId) => {
+      setPassportFeedback({
+        orderId,
+        msg: formatApiError(err, 'ОШИБКА УДАЛЕНИЯ ПАСПОРТНЫХ ДАННЫХ'),
+        isError: true,
+      });
+      setTimeout(() => setPassportFeedback(null), 5000);
+    },
+  });
 
   const handleCopyPostCode = async (postCode: string) => {
     try {
@@ -189,6 +221,70 @@ export function OrdersPage() {
                       <span className="font-mono font-semibold text-[#3F2021]">{order.tracking_number}</span>
                     </div>
                   )}
+
+                  {/* Delivery & Recipient Info */}
+                  <div className="px-4 sm:px-6 py-2.5 bg-[#FFFFFF] flex flex-wrap items-center justify-between gap-3 text-xs font-sans text-[#3F2021]/80">
+                    <div>
+                      {order.delivery_type === 'post_office' || order.post_office_id
+                        ? 'ДОСТАВКА: В ПОЧТОВОЕ ОТДЕЛЕНИЕ'
+                        : order.shipping_city
+                        ? `ДОСТАВКА: Г. ${order.shipping_city}, ${order.shipping_house || ''}`
+                        : 'ДОСТАВКА ПО АДРЕСУ'}
+                    </div>
+                    {order.recipient_firstname && (
+                      <div>
+                        ПОЛУЧАТЕЛЬ:{' '}
+                        <span className="font-semibold uppercase text-[#3F2021]">
+                          {order.recipient_firstname} {order.recipient_lastname || ''} {order.recipient_middlename || ''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Passport Feedback Banner */}
+                  {passportFeedback && passportFeedback.orderId === order.id && (
+                    <div
+                      className={`p-2.5 text-xs font-sans uppercase tracking-wider text-center font-semibold rounded-none ${
+                        passportFeedback.isError
+                          ? 'bg-red-700 text-[#F2E9DB]'
+                          : 'bg-[#3F2021] text-[#F2E9DB]'
+                      }`}
+                    >
+                      {passportFeedback.msg}
+                    </div>
+                  )}
+
+                  {/* Passport Management Block */}
+                  <div className="px-4 sm:px-6 py-3 bg-[#F2E9DB]/40 flex flex-wrap items-center justify-between gap-3 border-t border-[#3F2021]/10">
+                    <div className="text-[11px] font-sans text-[#3F2021]/80">
+                      {order.status === 'delivered' || order.status === 'returned' ? (
+                        order.passport_series || order.passport_number ? (
+                          <span>ПАСПОРТНЫЕ ДАННЫЕ В ЗАКАЗЕ: {order.passport_series} ******</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 font-semibold text-[#3F2021] bg-[#F2E9DB] px-2.5 py-1 border border-[#3F2021]/20">
+                            <span>ПАСПОРТНЫЕ ДАННЫЕ УДАЛЕНЫ</span>
+                            <span>✓</span>
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-[10px] text-[#3F2021]/60">
+                          ( ПАСПОРТНЫЕ ДАННЫЕ ХРАНЯТСЯ ДЛЯ ТАМОЖЕННОГО/ПОЧТОВОГО ОФОРМЛЕНИЯ )
+                        </span>
+                      )}
+                    </div>
+
+                    {(order.status === 'delivered' || order.status === 'returned') &&
+                      (order.passport_series || order.passport_number) && (
+                        <button
+                          type="button"
+                          disabled={deletePassportMutation.isPending}
+                          onClick={() => deletePassportMutation.mutate(order.id)}
+                          className="bg-red-700 hover:bg-red-800 text-white px-3 py-1.5 text-xs font-sans font-semibold uppercase tracking-wider transition-colors cursor-pointer rounded-none disabled:opacity-50"
+                        >
+                          УДАЛИТЬ ПАСПОРТНЫЕ ДАННЫЕ ×
+                        </button>
+                      )}
+                  </div>
 
                   {/* Items List */}
                   <div className="p-4 sm:p-6 space-y-4">
