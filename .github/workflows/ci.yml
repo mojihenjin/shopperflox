@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "dev", "feat/**" ]
+    branches: [ "main", "dev" ]
   pull_request:
     branches: [ "main", "dev" ]
 
@@ -14,6 +14,31 @@ jobs:
   backend-test:
     name: Backend Tests & Lint
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: shopperflox
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d shopperflox"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
 
     defaults:
       run:
@@ -37,8 +62,15 @@ jobs:
       - name: Install backend dependencies
         run: uv sync --all-groups
 
-      - name: Test environment generation script
-        run: uv run get_env.py --auto
+      - name: Generate and configure CI environment
+        run: |
+          uv run get_env.py --auto
+          sed -i 's/^POSTGRES_USER=.*/POSTGRES_USER=postgres/' .env
+          sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=postgres/' .env
+          sed -i 's|^DB_URL=.*|DB_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/shopperflox|' .env
+
+      - name: Run database migrations
+        run: uv run alembic upgrade head
 
       - name: Run test suite
         run: uv run pytest
