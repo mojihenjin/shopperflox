@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**Современная маркетплейс-платформа для брендов, независимых мастеров и покупателей**
+**Modern Marketplace Platform for Creator Brands, Independent Artisans, and Shoppers**
 
 [![Python 3.13](https://img.shields.io/badge/Python-3.13-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.162+-009688.svg)](https://fastapi.tiangolo.com/)
@@ -10,40 +10,42 @@
 [![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://docs.docker.com/compose/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+**English** | [Русский](README-ru.md)
+
 </div>
 
 ---
 
-## 📖 О проекте
+## 📖 About the Project
 
-**Shopperflox** — это масштабируемая e-commerce экосистема, ориентированная на бренды, независимых авторов (artisans / self-worked creators) и розничных покупателей. Платформа решает полный цикл задач маркетплейса: от публикации товаров с премодерацией до управления очередью сборки заказов, мультивалютных расчетов (RUB / CNY), логистики с сетью почтовых отделений и интеграции с платёжными шлюзами.
+**Shopperflox** is a full-featured, scalable e-commerce ecosystem designed for creator brands, independent artisans, and shoppers. The platform supports the complete marketplace lifecycle: from product publication with pre-moderation to order assembly queues, multi-currency pricing (RUB / CNY), postal logistics networks, and payment gateway integration.
 
-### Ключевые возможности
+### Key Features
 
-- 🛍️ **Каталог товаров и вариативность**: поддержка размеров, цветов, остатков на складах, группировки по коллекциям и брендам, загрузки галереи с сортировкой и индикаторов ограниченных тиражей (`is_limited`).
-- 🎨 **Кабинет брендов и авторов**: возможность создания брендов, управления участниками с разграничением прав (`creator:brand`), загрузки брендинга и логотипов.
-- ⚖️ **Система премодерации**: жизненный цикл товаров (черновик -> на модерации -> одобрен / отклонен с причиной), защита витрины от некорректного контента.
-- 📦 **Оформление заказов и логистика**:
-  - Гибкие варианты доставки (Почта России / ПВЗ, курьер, самовывоз).
-  - Справочник почтовых отделений с разделением доступа для операторов доставки (`mod:mail-manager`).
-  - Управление паспортами для таможенного декларирования и международных отправлений.
-  - Конвейер исполнения заказов (очередь производства, статусы: `pending`, `paid`, `in_production`, `dispatched`, `in_transit`, `ready_for_pickup`, `delivered`, `returning`, `returned`, `cancelled`).
-- 💳 **Мультивалютность и платежи**: расчет цен в рублях и юанях (CNY) с динамической конвертацией; режим отладочной оплаты (`debug_pay`) для локальной разработки и интеграция с платежным шлюзом (`BILLING_ENABLED`).
-- 🔐 **Безопасность корпоративного уровня**:
-  - Асимметричная аутентификация по алгоритму **EdDSA (Ed25519)** с открытым ключом.
-  - Хеширование паролей **Argon2id** с дополнительной солью-перцем (PEPPER).
-  - Моментальный отзыв токенов (Token Blacklist & Revocation) в Redis при изменении прав пользователя или смене пароля.
-  - Иерархический RBAC: суперпользователь (`*`), администраторы (`admin:access`), модераторы каталога (`mod:approve_manager`), менеджеры доставки (`mod:mail-manager`).
-- ⚡ **Фоновые задачи и SMTPless-режим**: асинхронный брокер **Taskiq + Redis** для отправки писем, верификационных кодов и сброса паролей. В dev-режиме не требует внешнего SMTP — все коды направляются прямо в логи воркера.
-- 📊 **Наблюдаемость (Observability)**: встроенные эндпоинты Prometheus (`/metrics`), готовые дашборды в Grafana, Healthchecks (`/health/live`, `/health/ready`).
+- 🛍️ **Product Catalog & Variations**: Multi-attribute variants (sizes, colors, stock counts), collection & brand grouping, draggable gallery reordering, and limited-edition badges (`is_limited`).
+- 🎨 **Brand & Artisan Studio**: Brand creation, multi-user member management with granular role assignment (`creator:brand`), and logo/branding upload.
+- ⚖️ **Pre-moderation System**: Product review pipeline (Draft -> Pending Moderation -> Approved / Rejected with reason), preventing unverified content from entering the public storefront.
+- 📦 **Order Fulfillment & Logistics**:
+  - Flexible shipping modes: post offices / pickup points, courier delivery, and local pickup.
+  - Post offices directory with dedicated access control for postal managers (`mod:mail-manager`).
+  - Passport and identity document management for customs declaration and international shipping.
+  - Order fulfillment pipeline with status tracking: `pending`, `paid`, `in_production`, `dispatched`, `in_transit`, `ready_for_pickup`, `delivered`, `returning`, `returned`, `cancelled`.
+- 💳 **Multi-currency & Payments**: Prices in Russian Rubles (RUB) and Chinese Yuan (CNY) with real-time conversion; built-in debug payment mode (`debug_pay`) for local testing and production billing gateway support (`BILLING_ENABLED`).
+- 🔐 **Enterprise-Grade Security**:
+  - Asymmetric authentication using **EdDSA (Ed25519)** with public key verification.
+  - Password hashing with **Argon2id** and a secret system pepper.
+  - Real-time token revocation and blacklist in Redis upon permission modification or password change.
+  - Hierarchical RBAC: Superuser (`*`), Admins (`admin:access`), Catalog Moderators (`mod:approve_manager`), Mail Managers (`mod:mail-manager`).
+- ⚡ **Background Processing & SMTPless Mode**: Asynchronous task execution using **Taskiq + Redis** for email dispatch and verification codes. In development mode, no external SMTP server is required — all codes and passwords are automatically routed to worker logs.
+- 📊 **Observability & Metrics**: Built-in Prometheus metrics endpoint (`/metrics`), pre-configured Grafana dashboards, and liveness/readiness healthchecks (`/health/live`, `/health/ready`).
 
 ---
 
-## 🏛️ Архитектура системы
+## 🏛️ System Architecture
 
 ```mermaid
 flowchart TD
-    Client(["Клиент (Браузер / API)"]) -->|HTTP:80| NGINX["Nginx Reverse Proxy\n(Rate Limiting & Static/Media)"]
+    Client(["Client (Browser / API)"]) -->|HTTP:80| NGINX["Nginx Reverse Proxy\n(Rate Limiting & Static/Media)"]
     
     subgraph Frontend["Frontend SPA"]
         NGINX -->|/| SPA["React 19 + TypeScript + Vite\n(Tailwind CSS, Zustand, React Query)"]
@@ -69,35 +71,35 @@ flowchart TD
 
 ---
 
-## 🛠️ Стек технологий
+## 🛠️ Tech Stack
 
-| Область | Технологии |
+| Domain | Technologies |
 |---|---|
 | **Backend** | Python 3.13, FastAPI, SQLAlchemy 2.0 (asyncio), Asyncpg, Alembic, Pydantic v2 |
-| **Очереди & Фоновые задачи** | Taskiq, Taskiq-Redis, Redis 7 |
-| **База данных** | PostgreSQL 17 (с расширением `pg_trgm` для быстрого нечеткого поиска) |
-| **Безопасность** | Ed25519 (EdDSA JWT via PyJWT & Cryptography), Argon2id (pwdlib) |
+| **Queues & Background Tasks** | Taskiq, Taskiq-Redis, Redis 7 |
+| **Database** | PostgreSQL 17 (with `pg_trgm` extension for fast fuzzy search) |
+| **Security** | Ed25519 (EdDSA JWT via PyJWT & Cryptography), Argon2id (pwdlib) |
 | **Frontend** | React 19, TypeScript, Vite, Tailwind CSS, TanStack React Query v5, Zustand |
-| **Инфраструктура** | Docker, Docker Compose, Nginx 1.27 Alpine |
-| **Мониторинг** | Prometheus 2.54, Grafana 11.2, Loguru |
-| **Пакетные менеджеры** | `uv` (Python), `npm` (Node.js) |
+| **Infrastructure** | Docker, Docker Compose, Nginx 1.27 Alpine |
+| **Monitoring** | Prometheus 2.54, Grafana 11.2, Loguru |
+| **Package Managers** | `uv` (Python), `npm` (Node.js) |
 
 ---
 
-## 🚀 Быстрый старт
+## 🚀 Quick Start
 
-### Требования
+### Prerequisites
 
-- **Docker** и **Docker Compose** (версии v2 / Compose CLI)
-- **Python >= 3.13** и пакетный менеджер **[uv](https://docs.astral.sh/uv/)**
+- **Docker** and **Docker Compose** (v2 / Compose CLI)
+- **Python >= 3.13** and the **[uv](https://docs.astral.sh/uv/)** package manager
 
 ---
 
-### Пошаговая инструкция запуска
+### Step-by-Step Setup
 
-#### 1. Синхронизация зависимостей и генерация конфигурации (.env)
+#### 1. Sync Dependencies and Generate Configuration (.env)
 
-Перейдите в директорию `backend`, выполните синхронизацию окружения и генерацию ключей шифрования, пользователей и базы данных:
+Navigate to the `backend` directory, synchronize the environment, and generate cryptographic keys, database credentials, and admin passwords:
 
 ```bash
 cd backend
@@ -106,22 +108,22 @@ uv run get_env.py
 ```
 
 > [!TIP]
-> Утилита `get_env.py` автоматически сгенерирует приватный/публичный ключ Ed25519 для JWT, стойкий pepper для Argon2, пароли для PostgreSQL и Grafana, а также скопирует готовый файл конфигурации в корневой `.env`.
-> Для полностью автоматического режима без интерактивных запросов можно вызвать:
+> The `get_env.py` utility automatically generates an Ed25519 keypair for JWT, a strong pepper for Argon2, PostgreSQL and Grafana credentials, and copies the generated file to the root `.env`.
+> For unattended/non-interactive execution, pass `--auto`:
 > ```bash
 > uv run get_env.py --auto
 > ```
 
-Вернитесь в корень проекта:
+Return to the repository root:
 ```bash
 cd ..
 ```
 
 ---
 
-#### 2. Сборка и запуск контейнеров в Docker
+#### 2. Build and Start Services in Docker
 
-Запустите все сервисы платформы (Nginx, Frontend, Backend, Taskiq Worker, PostgreSQL, Redis, Prometheus, Grafana) в фоновом режиме:
+Start all platform services (Nginx, Frontend, Backend, Taskiq Worker, PostgreSQL, Redis, Prometheus, Grafana) in detached mode:
 
 ```bash
 docker-compose up -d --build
@@ -129,40 +131,40 @@ docker-compose up -d --build
 
 ---
 
-#### 3. Применение миграций базы данных
+#### 3. Run Database Migrations
 
-После успешного старта контейнеров накатите схему базы данных с помощью Alembic:
+Apply database schema migrations via Alembic:
 
 ```bash
 docker-compose exec backend alembic upgrade head
 ```
 
-*(или через прямое обращение к контейнеру)*:
+*(or directly via the container name)*:
 ```bash
 docker exec shopperflox-backend alembic upgrade head
 ```
 
 ---
 
-#### 4. Работа в режиме SMTPless (получение паролей и кодов подтверждения)
+#### 4. SMTPless Mode (Obtaining Passwords & Verification Codes)
 
-По умолчанию проект настроен в режиме `EMAIL_BACKEND=console`. Все отправляемые системой электронные письма (верификационные коды, ссылки активации, сгенерированные пароли) выводятся в стандартный поток вывода воркера Taskiq.
+By default, the platform runs in `EMAIL_BACKEND=console` mode. All outgoing emails (verification codes, password reset links, generated credentials) are output directly to the Taskiq worker logs.
 
-Чтобы посмотреть последние события или получить сгенерированный пароль / код:
+To view dispatched codes or passwords:
 
 ```bash
-# Просмотр последнего сообщения:
+# View the latest message:
 docker-compose logs worker --tail 1
 
-# Просмотр последних 5 строк (или по имени контейнера):
+# View the last 5 lines (or by container name):
 docker logs shopperflox-worker --tail 5
 ```
 
 ---
 
-#### 5. Полная остановка и очистка проекта в Docker
+#### 5. Stop and Wipe Project Resources in Docker
 
-Для полной очистки всех запущенных сервисов, пользовательских томов данных (volumes) и собранных docker-образов:
+To completely stop all running containers, remove persistent volumes, and clean up built images:
 
 ```bash
 docker-compose down -v --rmi all
@@ -170,54 +172,54 @@ docker-compose down -v --rmi all
 
 ---
 
-## 🌐 Сетевые порты и доступ к сервисам
+## 🌐 Network Ports & Service Access
 
-После запуска контейнеров доступны следующие эндпоинты:
+Once running, the following services are accessible locally:
 
-| Сервис | URL | Назначение |
+| Service | URL | Purpose |
 |---|---|---|
-| **Веб-интерфейс (Frontend)** | [http://localhost](http://localhost) | Витрина магазина, каталог, корзина, чекаут, админка |
-| **REST API & Swagger UI** | [http://localhost/docs](http://localhost/docs) | Интерактивная документация OpenAPI / Swagger |
-| **ReDoc API Документация** | [http://localhost/redoc](http://localhost/redoc) | Альтернативная спецификация API |
-| **Healthcheck (Live)** | [http://localhost/health/live](http://localhost/health/live) | Проверка работоспособности сервиса |
-| **Prometheus Metrics** | [http://localhost/metrics](http://localhost/metrics) | Сырые метрики бэкенда для сбора |
-| **Grafana Dashboard** | [http://localhost:3000](http://localhost:3000) | Дашборды мониторинга (логин/пароль из `.env`) |
-| **Prometheus UI** | [http://localhost:9090](http://localhost:9090) | Прямой интерфейс метрик Prometheus |
+| **Web Storefront (Frontend)** | [http://localhost](http://localhost) | Catalog, shopping cart, checkout, profile, admin panel |
+| **REST API & Swagger UI** | [http://localhost/docs](http://localhost/docs) | Interactive OpenAPI documentation |
+| **ReDoc API Documentation** | [http://localhost/redoc](http://localhost/redoc) | Alternative API reference |
+| **Healthcheck (Live)** | [http://localhost/health/live](http://localhost/health/live) | Liveness probe endpoint |
+| **Prometheus Metrics** | [http://localhost/metrics](http://localhost/metrics) | Backend Prometheus metrics exporter |
+| **Grafana Dashboards** | [http://localhost:3000](http://localhost:3000) | Observability dashboards (credentials from `.env`) |
+| **Prometheus Web UI** | [http://localhost:9090](http://localhost:9090) | Prometheus TSDB console |
 
 ---
 
-## ⚙️ Переменные окружения
+## ⚙️ Environment Variables
 
-Файл `.env` формируется скриптом `backend/get_env.py` (шаблоны доступны в [`.env.example`](.env.example) и [`backend/.env.example`](backend/.env.example)):
+The `.env` file is generated by `backend/get_env.py` (templates available in [`.env.example`](.env.example) and [`backend/.env.example`](backend/.env.example)):
 
-| Переменная | Описание | Значение по умолчанию |
+| Variable | Description | Default |
 |---|---|---|
-| `APP_ENV` | Окружение приложения (`dev`, `test`, `production`) | `dev` |
-| `DEBUG` | Режим отладки (в `production` строго запрещен) | `True` |
-| `DATABASE_URL` / `DB_URL` | Строка подключения к PostgreSQL через asyncpg | Автогенерация |
-| `REDIS_URL` | Строка подключения к Redis | `redis://localhost:6379/0` |
-| `JWT_ALGORITHM` | Алгоритм подписи JWT-токенов | `EdDSA` |
-| `JWT_PRIVATE_KEY` | Hex-представление приватного ключа Ed25519 (32 байта) | Автогенерация |
-| `JWT_PUBLIC_KEY` | Hex-представление публичного ключа Ed25519 | Автодеривация |
-| `PEPPER` | Секретная соль для Argon2id | Автогенерация |
-| `EMAIL_BACKEND` | Режим почты: `console` (SMTPless в логи) или `smtp` | `console` |
-| `STORAGE_BACKEND` | Хранилище медиа: `local` или `s3` | `local` |
-| `BILLING_ENABLED` | Включение внешнего биллинга (платежного шлюза) | `False` |
+| `APP_ENV` | Application environment (`dev`, `test`, `production`) | `dev` |
+| `DEBUG` | Debug mode (strictly prohibited when `APP_ENV=production`) | `True` |
+| `DATABASE_URL` / `DB_URL` | PostgreSQL asyncpg connection string | Auto-generated |
+| `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
+| `JWT_ALGORITHM` | Algorithm used for JWT signing | `EdDSA` |
+| `JWT_PRIVATE_KEY` | Hex-encoded Ed25519 private seed (32 bytes) | Auto-generated |
+| `JWT_PUBLIC_KEY` | Hex-encoded Ed25519 public key | Derived |
+| `PEPPER` | Secret pepper for Argon2id password hashing | Auto-generated |
+| `EMAIL_BACKEND` | Mail transport: `console` (SMTPless in logs) or `smtp` | `console` |
+| `STORAGE_BACKEND` | Media storage backend: `local` or `s3` | `local` |
+| `BILLING_ENABLED` | Enable production billing/payment gateway integration | `False` |
 
 ---
 
-## 🧪 Тестирование и локальная разработка
+## 🧪 Testing & Local Development
 
-### Тесты бэкенда
+### Backend Tests
 
-Тестовый набор бэкенда включает более 220 интеграционных и модульных тестов с использованием in-memory SQLite и мок-брокеров:
+The backend test suite includes over 220 unit and integration tests using in-memory SQLite and mock brokers:
 
 ```bash
 cd backend
 uv run pytest
 ```
 
-### Проверка типов и сборка фронтенда
+### Frontend Typecheck & Build
 
 ```bash
 cd frontend
@@ -227,6 +229,6 @@ npm run build
 
 ---
 
-## 📄 Лицензия
+## 📄 License
 
-Проект распространяется под лицензией MIT. Подробности в файле [LICENSE](LICENSE).
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
