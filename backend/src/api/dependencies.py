@@ -158,8 +158,9 @@ def get_user_service(
 
 def get_moderation_service(
     uow: UserUnitOfWorkProtocol = Depends(get_user_uow),
+    token_blacklist: TokenBlacklistProtocol = Depends(get_token_blacklist),
 ) -> UserModerationService:
-    return UserModerationService(uow=uow)
+    return UserModerationService(uow=uow, token_blacklist=token_blacklist)
 
 
 def get_notification_uow(request: Request) -> NotificationUnitOfWorkProtocol:
@@ -242,6 +243,7 @@ def get_order_service(
         billing_enabled=settings.billing_enabled,
         billing_url=settings.billing_url,
         debug=settings.debug,
+        app_env=settings.app_env,
     )
 
 
@@ -345,13 +347,6 @@ async def get_current_user(
     iat = payload.get("iat")
     if await token_blacklist.is_user_revoked(user_id, token_iat=iat):
         raise AuthenticationError("Token has been revoked")
-    token_perms = payload.get("global_permissions")
-    if token_perms is None:
-        token_perms = payload.get("permissions")
-    if token_perms and isinstance(token_perms, list):
-        user.global_permissions = list(
-            dict.fromkeys(user.global_permissions + token_perms)
-        )
     return user
 
 
@@ -381,13 +376,6 @@ async def get_optional_current_user(
         iat = payload.get("iat")
         if await token_blacklist.is_user_revoked(user_id, token_iat=iat):
             return None
-        token_perms = payload.get("global_permissions")
-        if token_perms is None:
-            token_perms = payload.get("permissions")
-        if token_perms and isinstance(token_perms, list):
-            user.global_permissions = list(
-                dict.fromkeys(user.global_permissions + token_perms)
-            )
         return user
     except Exception:
         return None

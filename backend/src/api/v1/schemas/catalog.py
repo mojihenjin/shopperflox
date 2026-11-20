@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .common import SafeMediaOrHttpUrl
+
 
 class CategoryCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -146,7 +148,7 @@ class ProductVariantResponse(BaseModel):
 class ProductImageCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    url: str = Field(min_length=1, max_length=512)
+    url: SafeMediaOrHttpUrl = Field(min_length=1, max_length=512)
     variant_id: UUID | None = None
     color: str | None = Field(default=None, max_length=100)
     alt_text: str | None = Field(default=None, max_length=255)

@@ -16,7 +16,7 @@ from src.api.v1.schemas.order import (
 )
 from src.api.v1.schemas.payment import PaymentResponse
 from src.application.services import OrderService
-from src.core import BaseResponse, ResponseGenerator
+from src.core import BaseResponse, ResponseGenerator, settings
 from src.domain.models import (
     OrderDomain,
     OrderItemDomain,
@@ -163,15 +163,16 @@ async def delete_order_passport(
     return ResponseGenerator.answer(body={"deleted": True}, status_code=200)
 
 
-@router.post("/{order_id}/debug-pay", response_model=BaseResponse[OrderResponse])
-async def debug_pay_order(
-    order_id: UUID,
-    current_user: UserDomain = Depends(get_current_user),
-    order_service: OrderService = Depends(get_order_service),
-):
-    order = await order_service.debug_pay(actor=current_user, order_id=order_id)
-    order_resp = _domain_to_order_response(order=order)
-    return ResponseGenerator.answer(body=order_resp, status_code=200)
+if settings.debug and settings.app_env != "production":
+    @router.post("/{order_id}/debug-pay", response_model=BaseResponse[OrderResponse])
+    async def debug_pay_order(
+        order_id: UUID,
+        current_user: UserDomain = Depends(get_current_user),
+        order_service: OrderService = Depends(get_order_service),
+    ):
+        order = await order_service.debug_pay(actor=current_user, order_id=order_id)
+        order_resp = _domain_to_order_response(order=order)
+        return ResponseGenerator.answer(body=order_resp, status_code=200)
 
 
 @router.get("", response_model=BaseResponse[list[OrderResponse]])

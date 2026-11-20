@@ -43,13 +43,14 @@ async def lifespan(app: FastAPI):
 
 
 def create_app(settings: Settings):
+    is_prod = settings.app_env == "production"
     return FastAPI(
         title=settings.app_title,
         version=settings.version,
         lifespan=lifespan,
-        docs_url="/api/docs",
-        redoc_url="/api/redoc",
-        openapi_url="/api/openapi.json",
+        docs_url=None if is_prod else "/api/docs",
+        redoc_url=None if is_prod else "/api/redoc",
+        openapi_url=None if is_prod else "/api/openapi.json",
     )
 
 
@@ -157,9 +158,18 @@ def configurate_app(app: FastAPI, settings: Settings | None = None):
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
     ):
+        raw_errors = []
+        for err in exc.errors():
+            item = dict(err)
+            if "ctx" in item and isinstance(item["ctx"], dict):
+                ctx = dict(item["ctx"])
+                if "error" in ctx:
+                    ctx["error"] = str(ctx["error"])
+                item["ctx"] = ctx
+            raw_errors.append(item)
         return ResponseGenerator.json_error(
             status_code=422,
-            errors=exc.errors(),
+            errors=raw_errors,
         )
 
     @app.exception_handler(Exception)
@@ -178,16 +188,17 @@ def configurate_app(app: FastAPI, settings: Settings | None = None):
     app.include_router(metrics.router)
     app.include_router(v1_router)
 
-    from fastapi.responses import RedirectResponse
+    if settings.app_env != "production":
+        from fastapi.responses import RedirectResponse
 
-    @app.get("/api", include_in_schema=False)
-    @app.get("/api/", include_in_schema=False)
-    async def redirect_api_root():
-        return RedirectResponse(url="/api/docs")
+        @app.get("/api", include_in_schema=False)
+        @app.get("/api/", include_in_schema=False)
+        async def redirect_api_root():
+            return RedirectResponse(url="/api/docs")
 
-    @app.get("/docs", include_in_schema=False)
-    async def redirect_legacy_docs():
-        return RedirectResponse(url="/api/docs")
+        @app.get("/docs", include_in_schema=False)
+        async def redirect_legacy_docs():
+            return RedirectResponse(url="/api/docs")
 
     return app
 

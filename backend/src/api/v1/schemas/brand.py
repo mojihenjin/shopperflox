@@ -4,19 +4,21 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .common import SafeUrl
+
 
 class BrandCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     name: str = Field(min_length=1, max_length=150)
-    his_url: str | None = Field(default=None, max_length=512)
+    his_url: SafeUrl | None = Field(default=None, max_length=512)
 
 
 class BrandUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     name: str | None = Field(default=None, min_length=1, max_length=150)
-    his_url: str | None = Field(default=None, max_length=512)
+    his_url: SafeUrl | None = Field(default=None, max_length=512)
 
 
 class BrandResponse(BaseModel):

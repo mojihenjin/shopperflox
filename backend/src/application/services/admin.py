@@ -121,8 +121,16 @@ class AdminService:
                         )
                     target.login = clean_login
 
+            permissions_changed = False
             if global_permissions is not None:
                 perms = list(dict.fromkeys(global_permissions))
+                if "*" not in actor.global_permissions:
+                    actor_perms = set(actor.global_permissions)
+                    for perm in perms:
+                        if perm == "*" or perm not in actor_perms:
+                            raise PermissionDeniedError(
+                                "Cannot grant permissions exceeding your own"
+                            )
                 if "*" in target.global_permissions and "*" not in perms:
                     superadmins_count = await self.user_uow.users.count_superadmins()
                     if superadmins_count <= 1:
@@ -130,6 +138,7 @@ class AdminService:
                             "Cannot remove superadmin permission from the last active superadmin"
                         )
                 target.global_permissions = perms
+                permissions_changed = True
 
             if verified_profile is not None:
                 target.verified_profile = verified_profile
@@ -137,6 +146,9 @@ class AdminService:
             target.updated_at = factory_now()
             await self.user_uow.users.update(target)
             await self.user_uow.commit()
+
+            if permissions_changed and self.token_blacklist:
+                await self.token_blacklist.revoke_user(target.id)
 
             active_ban = await self.user_uow.bans.get_active_by_user_id(target_user_id)
             return target, active_ban

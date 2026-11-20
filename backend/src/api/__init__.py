@@ -1,4 +1,4 @@
-from . import dependencies, health, metrics, v1
+from . import dependencies, health, metrics, utils, v1
 from .dependencies import (
     get_admin_service,
     get_auth_service,
@@ -31,6 +31,7 @@ from .dependencies import (
     require_catalog_or_creator_permission,
     require_permission,
 )
+from .utils import read_upload_with_limit
 
 __all__ = [
     "dependencies",
@@ -64,7 +65,9 @@ __all__ = [
     "get_user_uow",
     "health",
     "metrics",
+    "read_upload_with_limit",
     "require_catalog_or_creator_permission",
     "require_permission",
+    "utils",
     "v1",
 ]

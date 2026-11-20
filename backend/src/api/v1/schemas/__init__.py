@@ -61,6 +61,10 @@ from .catalog import (
     ProductVariantUpdateRequest,
     VariantCreateItem,
 )
+from .common import (
+    SafeMediaOrHttpUrl,
+    SafeUrl,
+)
 from .moderation import (
     BanUserRequest,
     PendingCountResponse,
@@ -185,6 +189,8 @@ __all__ = [
     "RejectProductRequest",
     "RemoveMemberResponse",
     "ReviewResponse",
+    "SafeMediaOrHttpUrl",
+    "SafeUrl",
     "SalesAnalyticsResponse",
     "SearchResultResponse",
     "SendEmailCodeRequest",

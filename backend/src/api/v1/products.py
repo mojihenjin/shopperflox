@@ -9,6 +9,7 @@ from src.api.dependencies import (
     get_optional_current_user,
     require_catalog_or_creator_permission,
 )
+from src.api.utils import read_upload_with_limit
 from src.api.v1.schemas import (
     ProductCreateRequest,
     ProductDetailResponse,
@@ -261,7 +262,7 @@ async def upload_product_image(
     current_user: UserDomain = Depends(get_current_user),
     catalog_service: CatalogService = Depends(get_catalog_service),
 ):
-    data = await file.read()
+    data = await read_upload_with_limit(file)
     image = await catalog_service.upload_product_image(
         actor=current_user,
         product_id=product_id,

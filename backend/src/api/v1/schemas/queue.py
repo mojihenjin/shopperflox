@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from src.domain.models import FulfillmentStatus
 
+from .common import SafeUrl
+
 
 class QueueProductResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -68,4 +70,4 @@ class QueueItemUpdateRequest(BaseModel):
 
     fulfillment_status: FulfillmentStatus | None = None
     post_code: str | None = Field(default=None, max_length=100)
-    tracking_url: str | None = Field(default=None, max_length=512)
+    tracking_url: SafeUrl | None = Field(default=None, max_length=512)

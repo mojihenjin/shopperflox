@@ -7,14 +7,22 @@ from src.domain.exceptions import (
     EntityNotFoundError,
     PermissionDeniedError,
 )
-from src.domain.interfaces import UserUnitOfWorkProtocol
+from src.domain.interfaces import (
+    TokenBlacklistProtocol,
+    UserUnitOfWorkProtocol,
+)
 from src.domain.models import UserBanDomain, UserDomain
 from src.utils import factory_now
 
 
 class UserModerationService:
-    def __init__(self, uow: UserUnitOfWorkProtocol) -> None:
+    def __init__(
+        self,
+        uow: UserUnitOfWorkProtocol,
+        token_blacklist: TokenBlacklistProtocol | None = None,
+    ) -> None:
         self.uow = uow
+        self.token_blacklist = token_blacklist
 
     async def ban_user(
         self,
@@ -55,7 +63,8 @@ class UserModerationService:
             )
             await self.uow.bans.add(ban)
             await self.uow.commit()
-            return ban
+
+        return ban
 
     async def unban_user(
         self,
@@ -129,4 +138,8 @@ class UserModerationService:
             target.updated_at = factory_now()
             await self.uow.users.update(target)
             await self.uow.commit()
-            return target
+
+        if self.token_blacklist:
+            await self.token_blacklist.revoke_user(target_user_id)
+
+        return target

@@ -91,6 +91,7 @@ class OrderService:
         billing_enabled: bool = False,
         billing_url: str = "",
         debug: bool = False,
+        app_env: str = "dev",
     ) -> None:
         self.uow = uow
         self.payment_gateway = payment_gateway
@@ -98,6 +99,7 @@ class OrderService:
         self.billing_enabled = billing_enabled
         self.billing_url = billing_url
         self.debug = debug
+        self.app_env = app_env
 
     async def _restore_order_stock(self, order: OrderDomain) -> None:
         items = await self.uow.orders.list_items(order.id)
@@ -512,10 +514,8 @@ class OrderService:
             return order
 
     async def debug_pay(self, actor: UserDomain, order_id: UUID) -> OrderDomain:
-        if not self.debug or self.billing_enabled:
-            raise PermissionDeniedError(
-                "Debug payment is only available when DEBUG is True and BILLING_ENABLED is False"
-            )
+        if self.app_env == "production" or not self.debug or self.billing_enabled:
+            raise PermissionDeniedError("Debug payment is disabled")
 
         async with self.uow:
             order = await self.uow.orders.get_by_id(order_id, for_update=True)

@@ -8,6 +8,7 @@ from src.api.dependencies import (
     get_optional_current_user,
     require_permission,
 )
+from src.api.utils import read_upload_with_limit
 from src.api.v1.schemas import (
     AddBrandMemberRequest,
     BrandCreateRequest,
@@ -141,7 +142,7 @@ async def upload_brand_logo(
     current_user: UserDomain = Depends(get_current_user),
     brand_service: BrandService = Depends(get_brand_service),
 ):
-    file_data = await file.read()
+    file_data = await read_upload_with_limit(file)
     brand = await brand_service.upload_brand_logo(
         actor=current_user,
         brand_id=brand_id,
