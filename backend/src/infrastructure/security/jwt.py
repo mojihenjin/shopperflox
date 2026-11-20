@@ -161,12 +161,30 @@ class JwtTokenProvider:
             self._private_key = None
             self._public_key = None
 
-    def create_access_token(self, user_id: UUID, permissions: list[str]) -> str:
+    def create_access_token(
+        self,
+        user_id: UUID,
+        permissions: list[str] | None = None,
+        *,
+        login: str | None = None,
+        global_permissions: list[str] | None = None,
+        verified_profile: bool = False,
+        verified_email: bool = False,
+    ) -> str:
         now = factory_now()
         expire = now + timedelta(minutes=self.access_ttl_minutes)
+        effective_perms = (
+            global_permissions
+            if global_permissions is not None
+            else (permissions or [])
+        )
         payload = {
             "sub": str(user_id),
-            "permissions": permissions,
+            "permissions": effective_perms,
+            "login": login or "",
+            "global_permissions": effective_perms,
+            "verified_profile": bool(verified_profile),
+            "verified_email": bool(verified_email),
             "type": "access",
             "jti": str(uuid7()),
             "iat": int(now.timestamp()),

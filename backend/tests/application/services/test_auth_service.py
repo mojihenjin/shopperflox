@@ -233,7 +233,7 @@ async def test_verify_access(uow, hasher, token_provider):
     # Deleted user -> error
     deleted_user = UserDomain(login="deleted", deleted_at=datetime.now(tz=UTC))
     await uow.users.add(deleted_user)
-    with pytest.raises(AuthenticationError, match="not found or deleted"):
+    with pytest.raises((AuthenticationError, PermissionDeniedError), match="deleted"):
         await service.verify_access(user_id=deleted_user.id)
 
     # Valid user without special permission

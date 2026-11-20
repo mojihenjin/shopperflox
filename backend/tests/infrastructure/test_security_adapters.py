@@ -87,6 +87,10 @@ def test_jwt_eddsa_default_from_settings():
     payload = provider.decode_token(access_token, expected_type="access")
     assert payload["sub"] == str(user_id)
     assert payload["permissions"] == permissions
+    assert payload["global_permissions"] == permissions
+    assert payload["login"] == ""
+    assert payload["verified_profile"] is False
+    assert payload["verified_email"] is False
     assert payload["type"] == "access"
     assert "jti" in payload
 
@@ -95,6 +99,25 @@ def test_jwt_eddsa_default_from_settings():
     assert payload_refresh["sub"] == str(user_id)
     assert payload_refresh["type"] == "refresh"
     assert "jti" in payload_refresh
+
+
+def test_jwt_access_token_custom_claims():
+    provider = JwtTokenProvider()
+    user_id = uuid7()
+    token = provider.create_access_token(
+        user_id,
+        login="custom_user",
+        global_permissions=["catalog:manage", "orders:read"],
+        verified_profile=True,
+        verified_email=True,
+    )
+    payload = provider.decode_token(token, expected_type="access")
+    assert payload["sub"] == str(user_id)
+    assert payload["login"] == "custom_user"
+    assert payload["global_permissions"] == ["catalog:manage", "orders:read"]
+    assert payload["permissions"] == ["catalog:manage", "orders:read"]
+    assert payload["verified_profile"] is True
+    assert payload["verified_email"] is True
 
 
 def test_jwt_eddsa_hex_keys():

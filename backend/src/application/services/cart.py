@@ -20,6 +20,8 @@ class CartItemDetail:
     unit_price: Decimal
     total_price: Decimal
     is_available: bool
+    product_slug: str = ""
+    image_url: str | None = None
 
 
 class CartService:
@@ -46,7 +48,9 @@ class CartService:
                 if variant and product:
                     unit_price = product.resolve_price(variant)
                     is_available = (
-                        product.is_available and variant.stock_quantity >= item.quantity
+                        product.is_available
+                        and not product.brand_is_deleted
+                        and variant.stock_quantity >= item.quantity
                     )
                 else:
                     unit_price = Decimal("0.00")
@@ -56,6 +60,22 @@ class CartService:
                 if is_available:
                     total_cart_amount += item_total
 
+                product_slug = product.slug if product else ""
+                image_url = None
+                if product and getattr(self.uow, "images", None):
+                    images = await self.uow.images.list_by_product_id(product.id)
+                    variant_color = (
+                        (variant.color_name or variant.color) if variant else None
+                    )
+                    if variant_color:
+                        norm_color = variant_color.strip().lower()
+                        for img in images:
+                            if img.color and img.color.strip().lower() == norm_color:
+                                image_url = img.url
+                                break
+                    if not image_url and images:
+                        image_url = images[0].url
+
                 details.append(
                     CartItemDetail(
                         item=item,
@@ -64,6 +84,8 @@ class CartService:
                         unit_price=unit_price,
                         total_price=item_total,
                         is_available=is_available,
+                        product_slug=product_slug,
+                        image_url=image_url,
                     )
                 )
 
@@ -87,6 +109,9 @@ class CartService:
             product = await self.uow.products.get_by_id(variant.product_id)
             if product is None or not product.is_available:
                 raise DomainValidationError("Product is not available for purchase")
+
+            if product.brand_is_deleted:
+                raise DomainValidationError("Заказ невозможен, бренд снялся с продажи")
 
             if quantity > variant.stock_quantity:
                 raise DomainValidationError(

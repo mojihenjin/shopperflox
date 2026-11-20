@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import String, delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,20 +50,26 @@ class SqlAlchemyUserRepository:
         model = result.scalar_one_or_none()
         return self._to_domain(model) if model else None
 
-    async def get_by_login(self, login: str) -> UserDomain | None:
+    async def get_by_login(
+        self, login: str, *, include_deleted: bool = False
+    ) -> UserDomain | None:
         stmt = select(UserModel).where(
-            func.lower(UserModel.login) == login.strip().lower(),
-            UserModel.deleted_at.is_(None),
+            func.lower(UserModel.login) == login.strip().lower()
         )
+        if not include_deleted:
+            stmt = stmt.where(UserModel.deleted_at.is_(None))
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
         return self._to_domain(model) if model else None
 
-    async def get_by_email(self, email: str) -> UserDomain | None:
+    async def get_by_email(
+        self, email: str, *, include_deleted: bool = False
+    ) -> UserDomain | None:
         stmt = select(UserModel).where(
-            func.lower(UserModel.email) == email.strip().lower(),
-            UserModel.deleted_at.is_(None),
+            func.lower(UserModel.email) == email.strip().lower()
         )
+        if not include_deleted:
+            stmt = stmt.where(UserModel.deleted_at.is_(None))
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
         return self._to_domain(model) if model else None
@@ -117,6 +123,109 @@ class SqlAlchemyUserRepository:
                 f"User with login '{user.login}' or email '{user.email}' already exists"
             ) from exc
 
+    async def count_superadmins(self) -> int:
+        stmt = select(func.count(UserModel.id)).where(
+            UserModel.deleted_at.is_(None),
+            UserModel.global_permissions.cast(String).contains('"*"'),
+        )
+        return await self.session.scalar(stmt) or 0
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        status: str = "all",
+        verified_profile: bool | None = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[tuple[UserDomain, UserBanDomain | None]], int]:
+        now = factory_now()
+
+        ban_subq = (
+            select(
+                UserBanModel.id.label("ban_id"),
+                UserBanModel.user_id.label("ban_user_id"),
+                UserBanModel.reason.label("ban_reason"),
+                UserBanModel.created_by.label("ban_created_by"),
+                UserBanModel.created_at.label("ban_created_at"),
+                UserBanModel.ended_at.label("ban_ended_at"),
+            )
+            .where(
+                or_(
+                    UserBanModel.ended_at.is_(None),
+                    UserBanModel.ended_at > now,
+                )
+            )
+            .subquery()
+        )
+
+        base_stmt = select(UserModel, ban_subq).outerjoin(
+            ban_subq, UserModel.id == ban_subq.c.ban_user_id
+        )
+
+        conditions = []
+        if search:
+            s = f"%{search.strip().lower()}%"
+            conditions.append(
+                or_(
+                    func.lower(UserModel.login).ilike(s),
+                    func.lower(UserModel.email).ilike(s),
+                )
+            )
+
+        if status == "active":
+            conditions.append(UserModel.deleted_at.is_(None))
+            conditions.append(ban_subq.c.ban_id.is_(None))
+        elif status == "banned":
+            conditions.append(ban_subq.c.ban_id.is_not(None))
+        elif status == "unbanned":
+            conditions.append(ban_subq.c.ban_id.is_(None))
+        elif status == "deleted":
+            conditions.append(UserModel.deleted_at.is_not(None))
+
+        if verified_profile is not None:
+            conditions.append(UserModel.verified_profile.is_(verified_profile))
+
+        if conditions:
+            base_stmt = base_stmt.where(*conditions)
+
+        count_stmt = select(func.count(UserModel.id)).outerjoin(
+            ban_subq, UserModel.id == ban_subq.c.ban_user_id
+        )
+        if conditions:
+            count_stmt = count_stmt.where(*conditions)
+        total_count = await self.session.scalar(count_stmt) or 0
+
+        sort_col = UserModel.login if sort_by == "login" else UserModel.created_at
+        if sort_order == "asc":
+            base_stmt = base_stmt.order_by(sort_col.asc())
+        else:
+            base_stmt = base_stmt.order_by(sort_col.desc())
+
+        base_stmt = base_stmt.limit(limit).offset(offset)
+        result = await self.session.execute(base_stmt)
+
+        users_with_bans: list[tuple[UserDomain, UserBanDomain | None]] = []
+        for row in result.all():
+            user_model = row[0]
+            ban_id = row[1]
+            user_domain = self._to_domain(user_model)
+            ban_domain = None
+            if ban_id is not None:
+                ban_domain = UserBanDomain(
+                    id=ban_id,
+                    user_id=row[2],
+                    reason=row[3],
+                    created_by=row[4],
+                    created_at=row[5],
+                    ended_at=row[6],
+                )
+            users_with_bans.append((user_domain, ban_domain))
+
+        return users_with_bans, total_count
+
 
 class SqlAlchemyUserPersonalRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -127,6 +236,7 @@ class SqlAlchemyUserPersonalRepository:
             id=model.id,
             firstname=model.firstname,
             lastname=model.lastname,
+            middlename=getattr(model, "middlename", None),
             phone_number=model.phone_number,
             created_by=model.created_by,
             created_at=model.created_at,
@@ -150,6 +260,7 @@ class SqlAlchemyUserPersonalRepository:
             id=personal.id,
             firstname=personal.firstname,
             lastname=personal.lastname,
+            middlename=personal.middlename,
             phone_number=personal.phone_number,
             created_by=personal.created_by,
             created_at=personal.created_at,
@@ -169,6 +280,7 @@ class SqlAlchemyUserPersonalRepository:
             raise EntityNotFoundError("Personal profile not found")
         model.firstname = personal.firstname
         model.lastname = personal.lastname
+        model.middlename = personal.middlename
         model.phone_number = personal.phone_number
         model.updated_at = personal.updated_at
         try:
@@ -184,12 +296,20 @@ class SqlAlchemyUserAddressRepository:
         self.session = session
 
     def _to_domain(self, model: UserAddressModel) -> UserAddressDomain:
+        street_val = getattr(model, "street", None)
+        house_val = getattr(model, "house", "")
+        if not house_val and street_val:
+            house_val = street_val
         return UserAddressDomain(
             id=model.id,
             user_id=model.user_id,
+            country=getattr(model, "country", "Россия"),
+            region=getattr(model, "region", None),
             city=model.city,
-            street=model.street,
+            house=house_val,
+            apartment=getattr(model, "apartment", None),
             postal_code=model.postal_code,
+            street=street_val,
             is_default=model.is_default,
             created_by=model.created_by,
             created_at=model.created_at,
@@ -234,11 +354,19 @@ class SqlAlchemyUserAddressRepository:
         await self.session.flush()
 
     async def add(self, address: UserAddressDomain) -> None:
+        house_val = address.house or address.street or ""
+        street_val = address.street or (
+            f"{address.city}, {address.house}" if address.house else None
+        )
         model = UserAddressModel(
             id=address.id,
             user_id=address.user_id,
+            country=address.country,
+            region=address.region,
             city=address.city,
-            street=address.street,
+            house=house_val,
+            apartment=address.apartment,
+            street=street_val,
             postal_code=address.postal_code,
             is_default=address.is_default,
             created_by=address.created_by,
@@ -256,8 +384,14 @@ class SqlAlchemyUserAddressRepository:
         model = await self.session.get(UserAddressModel, address.id)
         if model is None:
             raise EntityNotFoundError("Address not found")
+        model.country = address.country
+        model.region = address.region
         model.city = address.city
-        model.street = address.street
+        model.house = address.house or address.street or ""
+        model.apartment = address.apartment
+        model.street = address.street or (
+            f"{address.city}, {address.house}" if address.house else None
+        )
         model.postal_code = address.postal_code
         model.is_default = address.is_default
         try:

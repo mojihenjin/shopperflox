@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-serif: 'Times New Roman', Georgia, serif;
+    --font-sans: 'Golos Text', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  }
+
+  *,
+  *::before,
+  *::after {
+    border-radius: 0px !important;
+    box-shadow: none !important;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #F2E9DB;
+    color: #000000;
+    font-family: var(--font-sans);
+    margin: 0;
+    padding: 0;
+  }
+
+  h1, h2, h3, .font-serif {
+    font-family: var(--font-serif);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F2E9DB;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3F2021;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #000000;
+}

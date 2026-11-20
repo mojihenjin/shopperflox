@@ -1,39 +1,64 @@
 from fastapi import APIRouter
 
+from .admin import router as admin_router
+from .analytics import router as analytics_router
 from .auth import router as auth_router
+from .brands import router as brands_router
 from .cart import router as cart_router
 from .categories import router as categories_router
 from .favorites import router as favorites_router
 from .moderation import router as moderation_router
+from .notifications import router as notifications_router
 from .orders import router as orders_router
 from .payments import router as payments_router
+from .post_offices import (
+    admin_router as admin_post_offices_router,
+)
+from .post_offices import (
+    router as post_offices_router,
+)
 from .products import router as products_router
+from .queue import router as queue_router
 from .reviews import router as reviews_router
 from .search import router as search_router
 from .users import router as users_router
 
 v1_router = APIRouter(prefix="/api/v1")
+v1_router.include_router(admin_router)
+v1_router.include_router(analytics_router)
 v1_router.include_router(auth_router)
+v1_router.include_router(brands_router)
 v1_router.include_router(users_router)
 v1_router.include_router(moderation_router)
+v1_router.include_router(notifications_router)
 v1_router.include_router(categories_router)
 v1_router.include_router(products_router)
 v1_router.include_router(favorites_router)
 v1_router.include_router(cart_router)
 v1_router.include_router(orders_router)
 v1_router.include_router(payments_router)
+v1_router.include_router(post_offices_router)
+v1_router.include_router(admin_post_offices_router)
+v1_router.include_router(queue_router)
 v1_router.include_router(reviews_router)
 v1_router.include_router(search_router)
 
 __all__ = [
+    "admin_router",
+    "analytics_router",
     "auth_router",
+    "brands_router",
     "cart_router",
     "categories_router",
     "favorites_router",
     "moderation_router",
+    "notifications_router",
     "orders_router",
     "payments_router",
+    "post_offices_router",
+    "admin_post_offices_router",
     "products_router",
+    "queue_router",
     "reviews_router",
     "search_router",
     "users_router",

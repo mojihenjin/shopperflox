@@ -70,7 +70,10 @@ class Console:
         color = color or self.colored.RESET
         reset = reset or self.colored.RESET
 
-        return input(f"{color}{text}: {reset}")
+        try:
+            return input(f"{color}{text}: {reset}")
+        except EOFError:
+            return ""
 
     def prompt_def(
         self,

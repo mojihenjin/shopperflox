@@ -1,3 +1,11 @@
+from .analytics import (
+    AnalyticsRepositoryProtocol,
+    AnalyticsUnitOfWorkProtocol,
+)
+from .brand import (
+    BrandRepositoryProtocol,
+    BrandUnitOfWorkProtocol,
+)
 from .cart import (
     CartRepositoryProtocol,
     CartUnitOfWorkProtocol,
@@ -18,12 +26,24 @@ from .integrations import (
     PaymentSessionResult,
     TaskQueueProtocol,
 )
+from .notification import (
+    NotificationRepositoryProtocol,
+    NotificationUnitOfWorkProtocol,
+)
 from .order import (
     OrderRepositoryProtocol,
     OrderUnitOfWorkProtocol,
     PaymentRepositoryProtocol,
     ReviewRepositoryProtocol,
     ReviewUnitOfWorkProtocol,
+)
+from .post_office import (
+    PostOfficeRepositoryProtocol,
+    PostOfficeUnitOfWorkProtocol,
+)
+from .queue import (
+    FulfillmentQueueRepositoryProtocol,
+    QueueUnitOfWorkProtocol,
 )
 from .security import (
     PasswordHasherProtocol,
@@ -40,6 +60,10 @@ from .user import (
 )
 
 __all__ = [
+    "AnalyticsRepositoryProtocol",
+    "AnalyticsUnitOfWorkProtocol",
+    "BrandRepositoryProtocol",
+    "BrandUnitOfWorkProtocol",
     "CartRepositoryProtocol",
     "CartUnitOfWorkProtocol",
     "CatalogUnitOfWorkProtocol",
@@ -48,15 +72,21 @@ __all__ = [
     "EmailVerificationStoreProtocol",
     "FavoriteRepositoryProtocol",
     "FileStorageProtocol",
+    "FulfillmentQueueRepositoryProtocol",
+    "NotificationRepositoryProtocol",
+    "NotificationUnitOfWorkProtocol",
     "OrderRepositoryProtocol",
     "OrderUnitOfWorkProtocol",
     "PasswordHasherProtocol",
     "PaymentGatewayProtocol",
     "PaymentRepositoryProtocol",
     "PaymentSessionResult",
+    "PostOfficeRepositoryProtocol",
+    "PostOfficeUnitOfWorkProtocol",
     "ProductImageRepositoryProtocol",
     "ProductRepositoryProtocol",
     "ProductVariantRepositoryProtocol",
+    "QueueUnitOfWorkProtocol",
     "ReviewRepositoryProtocol",
     "ReviewUnitOfWorkProtocol",
     "TaskQueueProtocol",

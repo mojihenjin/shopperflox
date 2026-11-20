@@ -1,12 +1,14 @@
 from uuid import UUID
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.exceptions import EntityAlreadyExistsError, EntityNotFoundError
 from src.domain.models import (
+    AdminReviewItemDomain,
     FitFeedback,
+    FulfillmentStatus,
     OrderDomain,
     OrderItemDomain,
     OrderStatus,
@@ -18,8 +20,10 @@ from src.infrastructure.db.models import (
     OrderItemModel,
     OrderModel,
     PaymentModel,
+    ProductModel,
     ProductVariantModel,
     ReviewModel,
+    UserModel,
 )
 
 
@@ -35,12 +39,31 @@ class SqlAlchemyOrderRepository:
             shipping_address=model.shipping_address,
             status=OrderStatus(model.status),
             tracking_number=model.tracking_number,
+            post_code=model.post_code,
+            recipient_firstname=getattr(model, "recipient_firstname", ""),
+            recipient_lastname=getattr(model, "recipient_lastname", ""),
+            recipient_middlename=getattr(model, "recipient_middlename", None),
+            passport_series=getattr(model, "passport_series", None),
+            passport_number=getattr(model, "passport_number", None),
+            delivery_type=getattr(model, "delivery_type", "address"),
+            post_office_id=getattr(model, "post_office_id", None),
+            shipping_country=getattr(model, "shipping_country", "Россия"),
+            shipping_region=getattr(model, "shipping_region", None),
+            shipping_city=getattr(model, "shipping_city", ""),
+            shipping_house=getattr(model, "shipping_house", ""),
+            shipping_apartment=getattr(model, "shipping_apartment", None),
+            shipping_postal_code=getattr(model, "shipping_postal_code", ""),
+            is_paid=getattr(model, "is_paid", False),
+            paid_at=getattr(model, "paid_at", None),
+            currency=getattr(model, "currency", "RUB"),
             created_by=model.created_by,
             created_at=model.created_at,
             updated_at=model.updated_at,
         )
 
-    def _item_to_domain(self, model: OrderItemModel) -> OrderItemDomain:
+    def _item_to_domain(
+        self, model: OrderItemModel, product_slug: str | None = None
+    ) -> OrderItemDomain:
         return OrderItemDomain(
             id=model.id,
             order_id=model.order_id,
@@ -51,8 +74,15 @@ class SqlAlchemyOrderRepository:
             color_snapshot=model.color_snapshot,
             unit_price=model.unit_price,
             quantity=model.quantity,
+            product_slug=product_slug,
+            fulfillment_status=FulfillmentStatus(model.fulfillment_status)
+            if model.fulfillment_status
+            else FulfillmentStatus.PENDING,
+            post_code=model.post_code,
+            tracking_url=model.tracking_url,
             created_by=model.created_by,
             created_at=model.created_at,
+            updated_at=model.updated_at,
         )
 
     async def get_by_id(
@@ -67,12 +97,23 @@ class SqlAlchemyOrderRepository:
 
     async def list_items(self, order_id: UUID) -> list[OrderItemDomain]:
         stmt = (
-            select(OrderItemModel)
+            select(OrderItemModel, ProductModel.slug)
+            .outerjoin(
+                ProductVariantModel,
+                OrderItemModel.variant_id == ProductVariantModel.id,
+            )
+            .outerjoin(
+                ProductModel,
+                ProductVariantModel.product_id == ProductModel.id,
+            )
             .where(OrderItemModel.order_id == order_id)
             .order_by(OrderItemModel.created_at.asc())
         )
         res = await self.session.execute(stmt)
-        return [self._item_to_domain(m) for m in res.scalars().all()]
+        return [
+            self._item_to_domain(item_model, product_slug)
+            for item_model, product_slug in res.all()
+        ]
 
     async def list_by_user_id(
         self, user_id: UUID, limit: int = 20, offset: int = 0
@@ -147,6 +188,23 @@ class SqlAlchemyOrderRepository:
             shipping_address=order.shipping_address,
             status=str(order.status),
             tracking_number=order.tracking_number,
+            post_code=order.post_code,
+            recipient_firstname=order.recipient_firstname,
+            recipient_lastname=order.recipient_lastname,
+            recipient_middlename=order.recipient_middlename,
+            passport_series=order.passport_series,
+            passport_number=order.passport_number,
+            delivery_type=order.delivery_type,
+            post_office_id=order.post_office_id,
+            shipping_country=order.shipping_country,
+            shipping_region=order.shipping_region,
+            shipping_city=order.shipping_city,
+            shipping_house=order.shipping_house,
+            shipping_apartment=order.shipping_apartment,
+            shipping_postal_code=order.shipping_postal_code,
+            is_paid=order.is_paid,
+            paid_at=order.paid_at,
+            currency=order.currency,
             created_by=order.created_by,
             created_at=order.created_at,
             updated_at=order.updated_at,
@@ -165,11 +223,45 @@ class SqlAlchemyOrderRepository:
                     color_snapshot=item.color_snapshot,
                     unit_price=item.unit_price,
                     quantity=item.quantity,
+                    fulfillment_status=str(item.fulfillment_status),
+                    post_code=item.post_code,
+                    tracking_url=item.tracking_url,
                     created_by=item.created_by,
                     created_at=item.created_at,
+                    updated_at=item.updated_at,
                 )
                 self.session.add(item_model)
 
+        await self.session.flush()
+
+    async def get_item_by_id(self, item_id: UUID) -> OrderItemDomain | None:
+        stmt = (
+            select(OrderItemModel, ProductModel.slug)
+            .outerjoin(
+                ProductVariantModel,
+                OrderItemModel.variant_id == ProductVariantModel.id,
+            )
+            .outerjoin(
+                ProductModel,
+                ProductVariantModel.product_id == ProductModel.id,
+            )
+            .where(OrderItemModel.id == item_id)
+        )
+        res = await self.session.execute(stmt)
+        row = res.first()
+        if not row:
+            return None
+        item_model, product_slug = row
+        return self._item_to_domain(item_model, product_slug)
+
+    async def update_item(self, item: OrderItemDomain) -> None:
+        model = await self.session.get(OrderItemModel, item.id)
+        if model is None:
+            raise EntityNotFoundError("Order item not found")
+        model.fulfillment_status = str(item.fulfillment_status)
+        model.post_code = item.post_code
+        model.tracking_url = item.tracking_url
+        model.updated_at = item.updated_at
         await self.session.flush()
 
     async def update(self, order: OrderDomain) -> None:
@@ -178,6 +270,11 @@ class SqlAlchemyOrderRepository:
             raise EntityNotFoundError("Order not found")
         model.status = str(order.status)
         model.tracking_number = order.tracking_number
+        model.post_code = order.post_code
+        model.passport_series = order.passport_series
+        model.passport_number = order.passport_number
+        model.is_paid = order.is_paid
+        model.paid_at = order.paid_at
         model.updated_at = order.updated_at
         await self.session.flush()
 
@@ -349,3 +446,76 @@ class SqlAlchemyReviewRepository:
         stmt = delete(ReviewModel).where(ReviewModel.id == review_id)
         await self.session.execute(stmt)
         await self.session.flush()
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        rating: int | None = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[AdminReviewItemDomain], int]:
+        base_stmt = (
+            select(
+                ReviewModel,
+                UserModel.login,
+                ProductModel.title,
+                ProductModel.slug,
+            )
+            .join(UserModel, ReviewModel.user_id == UserModel.id)
+            .join(ProductModel, ReviewModel.product_id == ProductModel.id)
+        )
+
+        conditions = []
+        if search:
+            s = f"%{search.strip().lower()}%"
+            conditions.append(
+                or_(
+                    func.lower(ReviewModel.comment).ilike(s),
+                    func.lower(UserModel.login).ilike(s),
+                    func.lower(ProductModel.title).ilike(s),
+                )
+            )
+        if rating is not None:
+            conditions.append(ReviewModel.rating == rating)
+
+        if conditions:
+            base_stmt = base_stmt.where(*conditions)
+
+        count_stmt = (
+            select(func.count(ReviewModel.id))
+            .join(UserModel, ReviewModel.user_id == UserModel.id)
+            .join(ProductModel, ReviewModel.product_id == ProductModel.id)
+        )
+        if conditions:
+            count_stmt = count_stmt.where(*conditions)
+
+        total = await self.session.scalar(count_stmt) or 0
+
+        sort_col = ReviewModel.rating if sort_by == "rating" else ReviewModel.created_at
+        if sort_order == "asc":
+            base_stmt = base_stmt.order_by(sort_col.asc())
+        else:
+            base_stmt = base_stmt.order_by(sort_col.desc())
+
+        base_stmt = base_stmt.limit(limit).offset(offset)
+        res = await self.session.execute(base_stmt)
+
+        items = []
+        for row in res.all():
+            review_model = row[0]
+            user_login = row[1]
+            prod_title = row[2]
+            prod_slug = row[3]
+            items.append(
+                AdminReviewItemDomain(
+                    review=self._to_domain(review_model),
+                    user_login=user_login,
+                    product_title=prod_title,
+                    product_slug=prod_slug,
+                )
+            )
+
+        return items, total

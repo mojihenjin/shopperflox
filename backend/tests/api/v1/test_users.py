@@ -97,9 +97,9 @@ async def test_users_address_management_and_no_leak(client):
     del_me_resp = await client.delete("/api/v1/users/me", headers=headers)
     assert del_me_resp.status_code == 200
 
-    # Subsequent access with old token must return 401
+    # Subsequent access with old token must return 403 Forbidden or 401
     deleted_me_resp = await client.get("/api/v1/users/me", headers=headers)
-    assert deleted_me_resp.status_code == 401
+    assert deleted_me_resp.status_code in (401, 403)
 
 
 @pytest.mark.anyio

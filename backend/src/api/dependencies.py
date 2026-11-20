@@ -4,12 +4,18 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.application.services import (
+    AdminService,
+    AnalyticsService,
     AuthService,
+    BrandService,
     CartService,
     CatalogService,
     FavoriteService,
+    NotificationService,
     OrderService,
     PaymentService,
+    PostOfficeService,
+    QueueService,
     ReviewService,
     UserModerationService,
     UserService,
@@ -17,13 +23,18 @@ from src.application.services import (
 from src.core import settings
 from src.domain.exceptions import AuthenticationError, PermissionDeniedError
 from src.domain.interfaces import (
+    AnalyticsUnitOfWorkProtocol,
+    BrandUnitOfWorkProtocol,
     CartUnitOfWorkProtocol,
     CatalogUnitOfWorkProtocol,
     EmailVerificationStoreProtocol,
     FileStorageProtocol,
+    NotificationUnitOfWorkProtocol,
     OrderUnitOfWorkProtocol,
     PasswordHasherProtocol,
     PaymentGatewayProtocol,
+    PostOfficeUnitOfWorkProtocol,
+    QueueUnitOfWorkProtocol,
     ReviewUnitOfWorkProtocol,
     TaskQueueProtocol,
     TokenBlacklistProtocol,
@@ -32,9 +43,14 @@ from src.domain.interfaces import (
 )
 from src.domain.models import UserDomain
 from src.infrastructure.db import (
+    SqlAlchemyAnalyticsUnitOfWork,
+    SqlAlchemyBrandUnitOfWork,
     SqlAlchemyCartUnitOfWork,
     SqlAlchemyCatalogUnitOfWork,
+    SqlAlchemyNotificationUnitOfWork,
     SqlAlchemyOrderUnitOfWork,
+    SqlAlchemyPostOfficeUnitOfWork,
+    SqlAlchemyQueueUnitOfWork,
     SqlAlchemyReviewUnitOfWork,
     SqlAlchemyUserUnitOfWork,
     async_session_maker,
@@ -142,8 +158,38 @@ def get_user_service(
 
 def get_moderation_service(
     uow: UserUnitOfWorkProtocol = Depends(get_user_uow),
+    token_blacklist: TokenBlacklistProtocol = Depends(get_token_blacklist),
 ) -> UserModerationService:
-    return UserModerationService(uow=uow)
+    return UserModerationService(uow=uow, token_blacklist=token_blacklist)
+
+
+def get_notification_uow(request: Request) -> NotificationUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyNotificationUnitOfWork(session_factory=factory)
+
+
+def get_notification_service(
+    uow: NotificationUnitOfWorkProtocol = Depends(get_notification_uow),
+    task_queue: TaskQueueProtocol = Depends(get_task_queue),
+) -> NotificationService:
+    return NotificationService(uow=uow, task_queue=task_queue)
+
+
+def get_brand_uow(request: Request) -> BrandUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyBrandUnitOfWork(session_factory=factory)
+
+
+def get_brand_service(
+    uow: BrandUnitOfWorkProtocol = Depends(get_brand_uow),
+    storage: FileStorageProtocol = Depends(get_file_storage),
+    notification_service: NotificationService = Depends(get_notification_service),
+) -> BrandService:
+    return BrandService(
+        uow=uow,
+        storage=storage,
+        notification_service=notification_service,
+    )
 
 
 def get_catalog_uow(request: Request) -> CatalogUnitOfWorkProtocol:
@@ -154,8 +200,13 @@ def get_catalog_uow(request: Request) -> CatalogUnitOfWorkProtocol:
 def get_catalog_service(
     uow: CatalogUnitOfWorkProtocol = Depends(get_catalog_uow),
     storage: FileStorageProtocol = Depends(get_file_storage),
+    notification_service: NotificationService = Depends(get_notification_service),
 ) -> CatalogService:
-    return CatalogService(uow=uow, storage=storage)
+    return CatalogService(
+        uow=uow,
+        storage=storage,
+        notification_service=notification_service,
+    )
 
 
 def get_favorite_service(
@@ -183,8 +234,28 @@ def get_order_uow(request: Request) -> OrderUnitOfWorkProtocol:
 def get_order_service(
     uow: OrderUnitOfWorkProtocol = Depends(get_order_uow),
     payment_gateway: PaymentGatewayProtocol = Depends(get_payment_gateway),
+    notification_service: NotificationService = Depends(get_notification_service),
 ) -> OrderService:
-    return OrderService(uow=uow, payment_gateway=payment_gateway)
+    return OrderService(
+        uow=uow,
+        payment_gateway=payment_gateway,
+        notification_service=notification_service,
+        billing_enabled=settings.billing_enabled,
+        billing_url=settings.billing_url,
+        debug=settings.debug,
+        app_env=settings.app_env,
+    )
+
+
+def get_post_office_uow(request: Request) -> PostOfficeUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyPostOfficeUnitOfWork(session_factory=factory)
+
+
+def get_post_office_service(
+    uow: PostOfficeUnitOfWorkProtocol = Depends(get_post_office_uow),
+) -> PostOfficeService:
+    return PostOfficeService(uow=uow)
 
 
 def get_payment_service(
@@ -202,6 +273,48 @@ def get_review_service(
     uow: ReviewUnitOfWorkProtocol = Depends(get_review_uow),
 ) -> ReviewService:
     return ReviewService(uow=uow)
+
+
+def get_queue_uow(request: Request) -> QueueUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyQueueUnitOfWork(session_factory=factory)
+
+
+def get_queue_service(
+    uow: QueueUnitOfWorkProtocol = Depends(get_queue_uow),
+) -> QueueService:
+    return QueueService(uow=uow)
+
+
+def get_analytics_uow(request: Request) -> AnalyticsUnitOfWorkProtocol:
+    factory = getattr(request.app.state, "async_session_factory", async_session_maker)
+    return SqlAlchemyAnalyticsUnitOfWork(session_factory=factory)
+
+
+def get_analytics_service(
+    uow: AnalyticsUnitOfWorkProtocol = Depends(get_analytics_uow),
+) -> AnalyticsService:
+    return AnalyticsService(uow=uow)
+
+
+def get_admin_service(
+    user_uow: UserUnitOfWorkProtocol = Depends(get_user_uow),
+    catalog_uow: CatalogUnitOfWorkProtocol = Depends(get_catalog_uow),
+    brand_uow: BrandUnitOfWorkProtocol = Depends(get_brand_uow),
+    review_uow: ReviewUnitOfWorkProtocol = Depends(get_review_uow),
+    hasher: PasswordHasherProtocol = Depends(get_password_hasher),
+    token_blacklist: TokenBlacklistProtocol = Depends(get_token_blacklist),
+    task_queue: TaskQueueProtocol = Depends(get_task_queue),
+) -> AdminService:
+    return AdminService(
+        user_uow=user_uow,
+        catalog_uow=catalog_uow,
+        brand_uow=brand_uow,
+        review_uow=review_uow,
+        hasher=hasher,
+        token_blacklist=token_blacklist,
+        task_queue=task_queue,
+    )
 
 
 async def get_current_user(
@@ -229,7 +342,43 @@ async def get_current_user(
     except (ValueError, TypeError) as exc:
         raise AuthenticationError(f"Invalid token user id: {exc}") from exc
 
-    return await auth_service.verify_access(user_id=user_id)
+    user = await auth_service.verify_access(user_id=user_id)
+
+    iat = payload.get("iat")
+    if await token_blacklist.is_user_revoked(user_id, token_iat=iat):
+        raise AuthenticationError("Token has been revoked")
+    return user
+
+
+async def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    auth_service: AuthService = Depends(get_auth_service),
+    token_provider: TokenProviderProtocol = Depends(get_token_provider),
+    token_blacklist: TokenBlacklistProtocol = Depends(get_token_blacklist),
+) -> UserDomain | None:
+    if not credentials or not credentials.credentials:
+        return None
+
+    try:
+        payload = token_provider.decode_token(
+            credentials.credentials, expected_type="access"
+        )
+        jti = payload.get("jti")
+        if jti and await token_blacklist.is_revoked(jti):
+            return None
+
+        user_id_raw = payload.get("sub")
+        if not user_id_raw:
+            return None
+
+        user_id = UUID(str(user_id_raw))
+        user = await auth_service.verify_access(user_id=user_id)
+        iat = payload.get("iat")
+        if await token_blacklist.is_user_revoked(user_id, token_iat=iat):
+            return None
+        return user
+    except Exception:
+        return None
 
 
 def require_permission(permission: str):
@@ -242,6 +391,39 @@ def require_permission(permission: str):
         )
         if not has_perm:
             raise PermissionDeniedError(f"Missing required permission: '{permission}'")
+        return current_user
+
+    return permission_dependency
+
+
+def require_catalog_or_creator_permission():
+    async def permission_dependency(
+        current_user: UserDomain = Depends(get_current_user),
+    ) -> UserDomain:
+        user_perms = current_user.global_permissions
+        has_perm = (
+            "*" in user_perms
+            or "catalog:manage" in user_perms
+            or any(p.startswith("creator:") or p == "creator" for p in user_perms)
+        )
+        if not has_perm:
+            raise PermissionDeniedError(
+                "Permission 'catalog:manage' or 'creator:*' required"
+            )
+        return current_user
+
+    return permission_dependency
+
+
+def require_mail_manager_permission():
+    async def permission_dependency(
+        current_user: UserDomain = Depends(get_current_user),
+    ) -> UserDomain:
+        allowed = {"mod:mail-manager", "admin:access", "*"}
+        if not any(p in allowed for p in current_user.global_permissions):
+            raise PermissionDeniedError(
+                "Access denied: required 'mod:mail-manager' or 'admin:access'"
+            )
         return current_user
 
     return permission_dependency

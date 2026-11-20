@@ -24,6 +24,8 @@ class CartItemResponse(BaseModel):
     unit_price: Decimal
     total_price: Decimal
     is_available: bool
+    product_slug: str = ""
+    image_url: str | None = None
 
 
 class CartResponse(BaseModel):

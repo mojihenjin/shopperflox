@@ -3,6 +3,7 @@ from typing import Protocol, Self
 from uuid import UUID
 
 from src.domain.interfaces.catalog import (
+    ProductImageRepositoryProtocol,
     ProductRepositoryProtocol,
     ProductVariantRepositoryProtocol,
 )
@@ -33,6 +34,7 @@ class CartUnitOfWorkProtocol(Protocol):
     carts: CartRepositoryProtocol
     variants: ProductVariantRepositoryProtocol
     products: ProductRepositoryProtocol
+    images: ProductImageRepositoryProtocol
 
     async def commit(self) -> None: ...
 

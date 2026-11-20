@@ -2,13 +2,20 @@ from types import TracebackType
 from typing import Protocol, Self
 from uuid import UUID
 
+from src.domain.interfaces.brand import BrandRepositoryProtocol
 from src.domain.interfaces.cart import CartRepositoryProtocol
 from src.domain.interfaces.catalog import (
     ProductRepositoryProtocol,
     ProductVariantRepositoryProtocol,
 )
-from src.domain.interfaces.user import UserAddressRepositoryProtocol
+from src.domain.interfaces.post_office import PostOfficeRepositoryProtocol
+from src.domain.interfaces.user import (
+    UserAddressRepositoryProtocol,
+    UserPersonalRepositoryProtocol,
+    UserRepositoryProtocol,
+)
 from src.domain.models import (
+    AdminReviewItemDomain,
     OrderDomain,
     OrderItemDomain,
     OrderStatus,
@@ -45,6 +52,10 @@ class OrderRepositoryProtocol(Protocol):
 
     async def update(self, order: OrderDomain) -> None: ...
 
+    async def get_item_by_id(self, item_id: UUID) -> OrderItemDomain | None: ...
+
+    async def update_item(self, item: OrderItemDomain) -> None: ...
+
 
 class PaymentRepositoryProtocol(Protocol):
     async def get_by_id(
@@ -79,6 +90,17 @@ class ReviewRepositoryProtocol(Protocol):
 
     async def delete(self, review_id: UUID) -> None: ...
 
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        rating: int | None = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[AdminReviewItemDomain], int]: ...
+
 
 class OrderUnitOfWorkProtocol(Protocol):
     orders: OrderRepositoryProtocol
@@ -87,6 +109,10 @@ class OrderUnitOfWorkProtocol(Protocol):
     products: ProductRepositoryProtocol
     addresses: UserAddressRepositoryProtocol
     payments: PaymentRepositoryProtocol
+    brands: BrandRepositoryProtocol
+    post_offices: PostOfficeRepositoryProtocol
+    personal: UserPersonalRepositoryProtocol
+    users: UserRepositoryProtocol
 
     async def commit(self) -> None: ...
 

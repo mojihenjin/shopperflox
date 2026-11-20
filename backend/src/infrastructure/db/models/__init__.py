@@ -1,4 +1,5 @@
 from .base import Base
+from .brand import BrandMemberModel, BrandModel
 from .catalog import (
     CategoryModel,
     FavoriteModel,
@@ -6,6 +7,7 @@ from .catalog import (
     ProductModel,
     ProductVariantModel,
 )
+from .notification import NotificationModel
 from .order import (
     CartItemModel,
     CartModel,
@@ -14,6 +16,7 @@ from .order import (
     PaymentModel,
     ReviewModel,
 )
+from .post_office import PostOfficeModel
 from .user import (
     UserAddressModel,
     UserBanModel,
@@ -23,13 +26,17 @@ from .user import (
 
 __all__ = [
     "Base",
+    "BrandMemberModel",
+    "BrandModel",
     "CartItemModel",
     "CartModel",
     "CategoryModel",
     "FavoriteModel",
+    "NotificationModel",
     "OrderItemModel",
     "OrderModel",
     "PaymentModel",
+    "PostOfficeModel",
     "ProductImageModel",
     "ProductModel",
     "ProductVariantModel",

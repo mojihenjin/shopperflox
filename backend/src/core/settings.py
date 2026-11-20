@@ -13,7 +13,9 @@ class Settings(BaseSettings):
     enduro_attack: bool = Field(
         default=False, validation_alias=AliasChoices("ENDURO_ATTACK", "enduro_attack")
     )
-    debug: bool = Field(default=False, validation_alias=AliasChoices("DEBUG", "debug"))
+    debug: bool | None = Field(
+        default=None, validation_alias=AliasChoices("DEBUG", "debug")
+    )
     log_level: str = "INFO"
     log_json: bool = False
 
@@ -133,6 +135,38 @@ class Settings(BaseSettings):
         default="stub",
         validation_alias=AliasChoices("PAYMENT_BACKEND", "payment_backend"),
     )
+    billing_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("BILLING_ENABLED", "billing_enabled"),
+    )
+    billing_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("BILLING_URL", "billing_url"),
+    )
+
+    @property
+    def BILLING_ENABLED(self) -> bool:
+        return self.billing_enabled
+
+    @BILLING_ENABLED.setter
+    def BILLING_ENABLED(self, value: bool) -> None:
+        self.billing_enabled = value
+
+    @property
+    def BILLING_URL(self) -> str:
+        return self.billing_url
+
+    @BILLING_URL.setter
+    def BILLING_URL(self, value: str) -> None:
+        self.billing_url = value
+
+    @property
+    def DEBUG(self) -> bool:
+        return bool(self.debug)
+
+    @DEBUG.setter
+    def DEBUG(self, value: bool) -> None:
+        self.debug = value
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="UTF-8", extra="ignore"
@@ -140,10 +174,16 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_configuration(self) -> Self:
+        if self.debug is None:
+            self.debug = self.app_env != "production"
         if self.app_env == "production":
             if self.enduro_attack:
                 raise ValueError(
                     "ENDURO_ATTACK mode is strictly prohibited when APP_ENV is 'production'"
+                )
+            if self.debug:
+                raise ValueError(
+                    "DEBUG must be set to False when APP_ENV is 'production'"
                 )
             if (
                 not self.webhook_secret

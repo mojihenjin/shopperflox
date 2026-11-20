@@ -31,7 +31,7 @@ async def test_full_catalog_and_favorites_flow(client):
     uow = uow_factory()
     async with uow:
         admin = await uow.users.get_by_id(UUID(admin_id))
-        admin.global_permissions = ["catalog:manage"]
+        admin.global_permissions = ["catalog:manage", "mod:approve_manager"]
         await uow.users.update(admin)
         await uow.commit()
 
@@ -128,6 +128,13 @@ async def test_full_catalog_and_favorites_flow(client):
     assert create_img.status_code == 201
     assert create_img.json()["body"]["is_main"] is True
 
+    # Approve product via moderation
+    approve_res = await client.post(
+        f"/api/v1/moderation/products/{prod_id}/approve",
+        headers=admin_headers,
+    )
+    assert approve_res.status_code == 200
+
     # 8. Public list products with pagination & metadata
     list_prods = await client.get("/api/v1/products?limit=10&offset=0")
     assert list_prods.status_code == 200
@@ -185,3 +192,105 @@ async def test_full_catalog_and_favorites_flow(client):
     # Detail after deletion returns 404
     detail_deleted = await client.get("/api/v1/products/cool-hoodie")
     assert detail_deleted.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_cyrillic_variants_auto_sku_regression(client):
+    # 1. Register admin
+    reg_admin = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "login": "cyrillic_admin",
+            "password": "Password123!",
+        },
+    )
+    admin_id = reg_admin.json()["body"]["user"]["id"]
+
+    uow_factory = client._transport.app.dependency_overrides.get(get_user_uow)
+    uow = uow_factory()
+    async with uow:
+        admin = await uow.users.get_by_id(UUID(admin_id))
+        admin.global_permissions = ["catalog:manage", "mod:approve_manager"]
+        await uow.users.update(admin)
+        await uow.commit()
+
+    login_admin = await client.post(
+        "/api/v1/auth/login",
+        json={"identifier": "cyrillic_admin", "password": "Password123!"},
+    )
+    admin_token = login_admin.json()["body"]["access_token"]
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+    # 2. Create category
+    create_cat = await client.post(
+        "/api/v1/categories",
+        headers=admin_headers,
+        json={"name": "Платья", "slug": "platya"},
+    )
+    assert create_cat.status_code == 201
+    cat_id = create_cat.json()["body"]["id"]
+
+    # 3. Create product with two cyrillic colors and same cyrillic size without sku
+    create_prod = await client.post(
+        "/api/v1/products",
+        headers=admin_headers,
+        json={
+            "category_id": cat_id,
+            "title": "Шелковое платье",
+            "slug": "shelkovoe-platye",
+            "base_price": 5000.0,
+            "is_published": True,
+            "variants": [
+                {
+                    "color": "ЛЕОПАРДОВЫЙ",
+                    "size": "МАЛЕНЬКИЙ",
+                    "stock_quantity": 5,
+                },
+                {
+                    "color": "РОЗОВЫЙ",
+                    "size": "МАЛЕНЬКИЙ",
+                    "stock_quantity": 10,
+                },
+            ],
+        },
+    )
+    assert create_prod.status_code == 201
+    prod_data = create_prod.json()["body"]
+    prod_id = prod_data["id"]
+
+    # Approve product to check detail
+    await client.post(
+        f"/api/v1/moderation/products/{prod_id}/approve",
+        headers=admin_headers,
+    )
+
+    detail_res = await client.get("/api/v1/products/shelkovoe-platye")
+    assert detail_res.status_code == 200
+    detail_data = detail_res.json()["body"]
+    variants = detail_data["variants"]
+    assert len(variants) == 2
+
+    sku1 = variants[0]["sku"]
+    sku2 = variants[1]["sku"]
+    assert sku1 != sku2
+    assert len(sku1) > 0
+    assert len(sku2) > 0
+    assert any("LEOPARD" in s for s in (sku1, sku2))
+    assert any("ROZOV" in s for s in (sku1, sku2))
+
+    # 4. Also verify duplicate explicit SKUs in a batch are rejected with 422
+    dup_res = await client.post(
+        "/api/v1/products",
+        headers=admin_headers,
+        json={
+            "category_id": cat_id,
+            "title": "Дубликат SKU",
+            "slug": "dublikat-sku",
+            "base_price": 1000.0,
+            "variants": [
+                {"sku": "DUP-SKU-1", "color": "Красный", "size": "M"},
+                {"sku": "DUP-SKU-1", "color": "Синий", "size": "L"},
+            ],
+        },
+    )
+    assert dup_res.status_code == 422

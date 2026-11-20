@@ -7,12 +7,17 @@ from sqlalchemy.pool import StaticPool
 
 from main import app
 from src.api.dependencies import (
+    get_analytics_uow,
+    get_brand_uow,
     get_cart_uow,
     get_catalog_uow,
     get_email_verification_store,
     get_file_storage,
+    get_notification_uow,
     get_order_uow,
     get_payment_gateway,
+    get_post_office_uow,
+    get_queue_uow,
     get_review_uow,
     get_task_queue,
     get_token_blacklist,
@@ -21,9 +26,14 @@ from src.api.dependencies import (
 from src.infrastructure.db.models import Base
 from src.infrastructure.db.session import create_sessionmaker
 from src.infrastructure.db.uow import (
+    SqlAlchemyAnalyticsUnitOfWork,
+    SqlAlchemyBrandUnitOfWork,
     SqlAlchemyCartUnitOfWork,
     SqlAlchemyCatalogUnitOfWork,
+    SqlAlchemyNotificationUnitOfWork,
     SqlAlchemyOrderUnitOfWork,
+    SqlAlchemyPostOfficeUnitOfWork,
+    SqlAlchemyQueueUnitOfWork,
     SqlAlchemyReviewUnitOfWork,
     SqlAlchemyUserUnitOfWork,
 )
@@ -33,12 +43,28 @@ from src.infrastructure.payments import StubPaymentGateway
 class InMemoryTokenBlacklist:
     def __init__(self) -> None:
         self.revoked: set[str] = set()
+        self.revoked_users: dict[UUID, float] = {}
 
     async def is_revoked(self, jti: str) -> bool:
         return jti in self.revoked
 
     async def revoke(self, jti: str, ttl_seconds: int) -> None:
         self.revoked.add(jti)
+
+    async def revoke_user(self, user_id: UUID, ttl_seconds: int = 2592000) -> None:
+        from src.utils import factory_now
+
+        self.revoked_users[user_id] = factory_now().timestamp()
+
+    async def is_user_revoked(
+        self, user_id: UUID, token_iat: float | None = None
+    ) -> bool:
+        revoked_at = self.revoked_users.get(user_id)
+        if revoked_at is None:
+            return False
+        if token_iat is None:
+            return True
+        return revoked_at >= float(token_iat)
 
 
 class InMemoryEmailVerificationStore:
@@ -142,20 +168,40 @@ async def client(test_email_store, test_task_queue, test_file_storage):
     def _get_test_catalog_uow():
         return SqlAlchemyCatalogUnitOfWork(session_factory=factory)
 
+    def _get_test_brand_uow():
+        return SqlAlchemyBrandUnitOfWork(session_factory=factory)
+
     def _get_test_cart_uow():
         return SqlAlchemyCartUnitOfWork(session_factory=factory)
+
+    def _get_test_notification_uow():
+        return SqlAlchemyNotificationUnitOfWork(session_factory=factory)
 
     def _get_test_order_uow():
         return SqlAlchemyOrderUnitOfWork(session_factory=factory)
 
+    def _get_test_post_office_uow():
+        return SqlAlchemyPostOfficeUnitOfWork(session_factory=factory)
+
     def _get_test_review_uow():
         return SqlAlchemyReviewUnitOfWork(session_factory=factory)
 
+    def _get_test_queue_uow():
+        return SqlAlchemyQueueUnitOfWork(session_factory=factory)
+
+    def _get_test_analytics_uow():
+        return SqlAlchemyAnalyticsUnitOfWork(session_factory=factory)
+
     app.dependency_overrides[get_user_uow] = _get_test_uow
+    app.dependency_overrides[get_brand_uow] = _get_test_brand_uow
     app.dependency_overrides[get_catalog_uow] = _get_test_catalog_uow
     app.dependency_overrides[get_cart_uow] = _get_test_cart_uow
+    app.dependency_overrides[get_notification_uow] = _get_test_notification_uow
     app.dependency_overrides[get_order_uow] = _get_test_order_uow
+    app.dependency_overrides[get_post_office_uow] = _get_test_post_office_uow
     app.dependency_overrides[get_review_uow] = _get_test_review_uow
+    app.dependency_overrides[get_queue_uow] = _get_test_queue_uow
+    app.dependency_overrides[get_analytics_uow] = _get_test_analytics_uow
     app.dependency_overrides[get_token_blacklist] = lambda: blacklist
     app.dependency_overrides[get_email_verification_store] = lambda: test_email_store
     app.dependency_overrides[get_task_queue] = lambda: test_task_queue
@@ -168,10 +214,15 @@ async def client(test_email_store, test_task_queue, test_file_storage):
         yield ac
 
     app.dependency_overrides.pop(get_user_uow, None)
+    app.dependency_overrides.pop(get_brand_uow, None)
     app.dependency_overrides.pop(get_catalog_uow, None)
     app.dependency_overrides.pop(get_cart_uow, None)
+    app.dependency_overrides.pop(get_notification_uow, None)
     app.dependency_overrides.pop(get_order_uow, None)
+    app.dependency_overrides.pop(get_post_office_uow, None)
     app.dependency_overrides.pop(get_review_uow, None)
+    app.dependency_overrides.pop(get_queue_uow, None)
+    app.dependency_overrides.pop(get_analytics_uow, None)
     app.dependency_overrides.pop(get_token_blacklist, None)
     app.dependency_overrides.pop(get_email_verification_store, None)
     app.dependency_overrides.pop(get_task_queue, None)

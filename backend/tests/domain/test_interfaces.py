@@ -34,15 +34,23 @@ class FakeUserRepository:
             return None
         return user
 
-    async def get_by_login(self, login: str) -> UserDomain | None:
+    async def get_by_login(
+        self, login: str, *, include_deleted: bool = False
+    ) -> UserDomain | None:
         for user in self.store.values():
-            if user.login == login and not user.is_deleted:
+            if user.login == login:
+                if user.is_deleted and not include_deleted:
+                    continue
                 return user
         return None
 
-    async def get_by_email(self, email: str) -> UserDomain | None:
+    async def get_by_email(
+        self, email: str, *, include_deleted: bool = False
+    ) -> UserDomain | None:
         for user in self.store.values():
-            if user.email == email and not user.is_deleted:
+            if user.email == email:
+                if user.is_deleted and not include_deleted:
+                    continue
                 return user
         return None
 

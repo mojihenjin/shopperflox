@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 
 from src.domain.models import (
@@ -12,6 +12,9 @@ from src.domain.models import (
 )
 
 from .uow import UnitOfWorkProtocol
+
+if TYPE_CHECKING:
+    from .brand import BrandRepositoryProtocol
 
 
 class CategoryRepositoryProtocol(Protocol):
@@ -27,6 +30,14 @@ class CategoryRepositoryProtocol(Protocol):
 
     async def delete(self, category_id: UUID) -> None: ...
 
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        sort_by: str = "sort_order",
+        sort_order: str = "asc",
+    ) -> list[CategoryDomain]: ...
+
 
 class ProductRepositoryProtocol(Protocol):
     async def get_by_id(
@@ -41,12 +52,25 @@ class ProductRepositoryProtocol(Protocol):
         self,
         *,
         category_id: UUID | None = None,
+        brand_id: UUID | None = None,
+        brand_slug: str | None = None,
         min_price: Decimal | None = None,
         max_price: Decimal | None = None,
         search: str | None = None,
+        size: str | None = None,
+        color: str | None = None,
+        is_limited: bool | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[ProductDomain], int]: ...
+
+    async def list_self_worked_by_creator(
+        self, creator_id: UUID
+    ) -> list[ProductDomain]: ...
+
+    async def increment_views(self, product_id: UUID) -> None: ...
+
+    async def increment_orders(self, product_id: UUID, quantity: int) -> None: ...
 
     async def add(self, product: ProductDomain) -> None: ...
 
@@ -59,6 +83,37 @@ class ProductRepositoryProtocol(Protocol):
     async def search_brands(
         self, query: str, limit: int = 10
     ) -> list[BrandSearchResult]: ...
+
+    async def update_brand_name_for_products(
+        self, brand_id: UUID, brand_name: str
+    ) -> None: ...
+
+    async def list_pending_products(
+        self,
+        *,
+        request_type: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[ProductDomain], int]: ...
+
+    async def count_pending_products(self) -> int: ...
+
+    async def count_by_category_id(self, category_id: UUID) -> int: ...
+
+    async def hide_all_by_brand_id(self, brand_id: UUID) -> int: ...
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        moderation_status: str | None = None,
+        is_hidden: int | None = None,
+        is_limited: bool | None = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[ProductDomain], int]: ...
 
 
 class ProductVariantRepositoryProtocol(Protocol):
@@ -81,6 +136,8 @@ class ProductVariantRepositoryProtocol(Protocol):
     async def add(self, variant: ProductVariantDomain) -> None: ...
 
     async def update(self, variant: ProductVariantDomain) -> None: ...
+
+    async def increment_orders(self, variant_id: UUID, quantity: int) -> None: ...
 
     async def delete(self, variant_id: UUID) -> None: ...
 
@@ -119,3 +176,4 @@ class CatalogUnitOfWorkProtocol(UnitOfWorkProtocol, Protocol):
     variants: ProductVariantRepositoryProtocol
     images: ProductImageRepositoryProtocol
     favorites: FavoriteRepositoryProtocol
+    brands: "BrandRepositoryProtocol"

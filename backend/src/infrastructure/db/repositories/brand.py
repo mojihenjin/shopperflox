@@ -1,0 +1,367 @@
+from uuid import UUID
+
+from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.domain.exceptions import EntityAlreadyExistsError
+from src.domain.models import (
+    BrandDomain,
+    BrandMemberDomain,
+    BrandMemberRole,
+    ModerationStatus,
+)
+from src.infrastructure.db.models import BrandMemberModel, BrandModel, UserModel
+
+
+class SqlAlchemyBrandRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    def _to_domain(self, model: BrandModel) -> BrandDomain:
+        return BrandDomain(
+            id=model.id,
+            name=model.name,
+            slug=model.slug,
+            his_url=model.his_url,
+            logo_url=model.logo_url,
+            is_deleted=model.is_deleted,
+            views_count=model.views_count,
+            orders_count=model.orders_count,
+            moderation_status=ModerationStatus(model.moderation_status)
+            if model.moderation_status
+            else ModerationStatus.PENDING,
+            rejection_reason=model.rejection_reason,
+            is_verified=model.is_verified,
+            products_hidden_override=model.products_hidden_override,
+            created_at=model.created_at,
+        )
+
+    async def get_by_id(self, brand_id: UUID) -> BrandDomain | None:
+        model = await self.session.get(BrandModel, brand_id)
+        return self._to_domain(model) if model else None
+
+    async def get_by_slug(self, slug: str) -> BrandDomain | None:
+        stmt = select(BrandModel).where(BrandModel.slug == slug)
+        res = await self.session.execute(stmt)
+        model = res.scalar_one_or_none()
+        return self._to_domain(model) if model else None
+
+    async def get_by_name(self, name: str) -> BrandDomain | None:
+        stmt = select(BrandModel).where(
+            func.lower(BrandModel.name) == func.lower(name.strip())
+        )
+        res = await self.session.execute(stmt)
+        model = res.scalar_one_or_none()
+        return self._to_domain(model) if model else None
+
+    async def list_active(self, limit: int = 100, offset: int = 0) -> list[BrandDomain]:
+        stmt = (
+            select(BrandModel)
+            .where(
+                BrandModel.is_deleted.is_(False),
+                BrandModel.moderation_status == ModerationStatus.APPROVED.value,
+            )
+            .order_by(BrandModel.name.asc())
+            .limit(limit)
+            .offset(offset)
+        )
+        res = await self.session.execute(stmt)
+        return [self._to_domain(m) for m in res.scalars().all()]
+
+    async def list_pending(
+        self, limit: int = 100, offset: int = 0
+    ) -> list[BrandDomain]:
+        stmt = (
+            select(BrandModel)
+            .where(
+                BrandModel.is_deleted.is_(False),
+                BrandModel.moderation_status == ModerationStatus.PENDING.value,
+            )
+            .order_by(BrandModel.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        res = await self.session.execute(stmt)
+        return [self._to_domain(m) for m in res.scalars().all()]
+
+    async def count_pending(self) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(BrandModel)
+            .where(
+                BrandModel.is_deleted.is_(False),
+                BrandModel.moderation_status == ModerationStatus.PENDING.value,
+            )
+        )
+        res = await self.session.execute(stmt)
+        return res.scalar_one() or 0
+
+    async def list_admin(
+        self,
+        *,
+        search: str | None = None,
+        moderation_status: str | None = None,
+        is_verified: bool | None = None,
+        include_deleted: bool = True,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[tuple[BrandDomain, list[BrandMemberDomain]]], int]:
+        base_stmt = select(BrandModel)
+        conditions = []
+
+        if not include_deleted:
+            conditions.append(BrandModel.is_deleted.is_(False))
+
+        if search:
+            s = f"%{search.strip().lower()}%"
+            conditions.append(
+                or_(
+                    func.lower(BrandModel.name).ilike(s),
+                    func.lower(BrandModel.slug).ilike(s),
+                )
+            )
+
+        if moderation_status:
+            mod_val = (
+                moderation_status.value
+                if isinstance(moderation_status, ModerationStatus)
+                else str(moderation_status)
+            )
+            conditions.append(BrandModel.moderation_status == mod_val)
+
+        if is_verified is not None:
+            conditions.append(BrandModel.is_verified.is_(is_verified))
+
+        if conditions:
+            base_stmt = base_stmt.where(*conditions)
+
+        count_stmt = select(func.count(BrandModel.id))
+        if conditions:
+            count_stmt = count_stmt.where(*conditions)
+        total = await self.session.scalar(count_stmt) or 0
+
+        if sort_by == "name":
+            sort_col = BrandModel.name
+        elif sort_by == "views_count":
+            sort_col = BrandModel.views_count
+        elif sort_by == "orders_count":
+            sort_col = BrandModel.orders_count
+        else:
+            sort_col = BrandModel.created_at
+
+        if sort_order == "asc":
+            base_stmt = base_stmt.order_by(sort_col.asc())
+        else:
+            base_stmt = base_stmt.order_by(sort_col.desc())
+
+        base_stmt = base_stmt.limit(limit).offset(offset)
+        res = await self.session.execute(base_stmt)
+        brands = [self._to_domain(m) for m in res.scalars().all()]
+
+        if not brands:
+            return [], total
+
+        brand_ids = [b.id for b in brands]
+        member_stmt = (
+            select(BrandMemberModel, UserModel.login)
+            .outerjoin(UserModel, BrandMemberModel.user_id == UserModel.id)
+            .where(BrandMemberModel.brand_id.in_(brand_ids))
+            .order_by(BrandMemberModel.created_at.asc())
+        )
+        member_res = await self.session.execute(member_stmt)
+        members_by_brand: dict[UUID, list[BrandMemberDomain]] = {
+            b.id: [] for b in brands
+        }
+        for mm, login in member_res.all():
+            members_by_brand[mm.brand_id].append(
+                BrandMemberDomain(
+                    brand_id=mm.brand_id,
+                    user_id=mm.user_id,
+                    role=BrandMemberRole(mm.role),
+                    user_login=login,
+                    created_at=mm.created_at,
+                )
+            )
+
+        result = [(b, members_by_brand.get(b.id, [])) for b in brands]
+        return result, total
+
+    async def increment_views(self, brand_id: UUID) -> None:
+        stmt = (
+            update(BrandModel)
+            .where(BrandModel.id == brand_id)
+            .values(views_count=BrandModel.views_count + 1)
+        )
+        await self.session.execute(stmt)
+
+    async def increment_orders(self, brand_id: UUID, quantity: int) -> None:
+        stmt = (
+            update(BrandModel)
+            .where(BrandModel.id == brand_id)
+            .values(orders_count=BrandModel.orders_count + quantity)
+        )
+        await self.session.execute(stmt)
+
+    async def list_by_user_id(
+        self, user_id: UUID
+    ) -> list[tuple[BrandDomain, BrandMemberRole]]:
+        stmt = (
+            select(BrandModel, BrandMemberModel.role)
+            .join(BrandMemberModel, BrandModel.id == BrandMemberModel.brand_id)
+            .where(BrandMemberModel.user_id == user_id)
+            .order_by(BrandModel.name.asc())
+        )
+        res = await self.session.execute(stmt)
+        rows = res.all()
+        return [
+            (self._to_domain(brand_model), BrandMemberRole(role_str))
+            for brand_model, role_str in rows
+        ]
+
+    async def add(self, brand: BrandDomain) -> None:
+        model = BrandModel(
+            id=brand.id,
+            name=brand.name,
+            slug=brand.slug,
+            his_url=brand.his_url,
+            logo_url=brand.logo_url,
+            is_deleted=brand.is_deleted,
+            views_count=brand.views_count,
+            orders_count=brand.orders_count,
+            moderation_status=brand.moderation_status.value
+            if isinstance(brand.moderation_status, ModerationStatus)
+            else str(brand.moderation_status),
+            rejection_reason=brand.rejection_reason,
+            is_verified=brand.is_verified,
+            products_hidden_override=brand.products_hidden_override,
+            created_at=brand.created_at,
+        )
+        self.session.add(model)
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            raise EntityAlreadyExistsError(
+                f"Brand with name '{brand.name}' or slug '{brand.slug}' already exists"
+            ) from exc
+
+    async def update(self, brand: BrandDomain) -> None:
+        stmt = (
+            update(BrandModel)
+            .where(BrandModel.id == brand.id)
+            .values(
+                name=brand.name,
+                slug=brand.slug,
+                his_url=brand.his_url,
+                logo_url=brand.logo_url,
+                is_deleted=brand.is_deleted,
+                views_count=brand.views_count,
+                orders_count=brand.orders_count,
+                moderation_status=brand.moderation_status.value
+                if isinstance(brand.moderation_status, ModerationStatus)
+                else str(brand.moderation_status),
+                rejection_reason=brand.rejection_reason,
+                is_verified=brand.is_verified,
+                products_hidden_override=brand.products_hidden_override,
+            )
+        )
+        try:
+            await self.session.execute(stmt)
+            await self.session.flush()
+        except IntegrityError as exc:
+            raise EntityAlreadyExistsError(
+                f"Brand with name '{brand.name}' or slug '{brand.slug}' already exists"
+            ) from exc
+
+    async def add_member(self, member: BrandMemberDomain) -> None:
+        model = BrandMemberModel(
+            brand_id=member.brand_id,
+            user_id=member.user_id,
+            role=member.role.value,
+            created_at=member.created_at,
+        )
+        self.session.add(model)
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            raise EntityAlreadyExistsError(
+                "User is already a member of this brand"
+            ) from exc
+
+    async def update_member(self, member: BrandMemberDomain) -> None:
+        stmt = (
+            update(BrandMemberModel)
+            .where(
+                BrandMemberModel.brand_id == member.brand_id,
+                BrandMemberModel.user_id == member.user_id,
+            )
+            .values(role=member.role.value)
+        )
+        await self.session.execute(stmt)
+        await self.session.flush()
+
+    async def remove_member(self, brand_id: UUID, user_id: UUID) -> None:
+        stmt = delete(BrandMemberModel).where(
+            BrandMemberModel.brand_id == brand_id,
+            BrandMemberModel.user_id == user_id,
+        )
+        await self.session.execute(stmt)
+        await self.session.flush()
+
+    async def get_member(
+        self, brand_id: UUID, user_id: UUID
+    ) -> BrandMemberDomain | None:
+        stmt = (
+            select(BrandMemberModel, UserModel.login)
+            .outerjoin(UserModel, BrandMemberModel.user_id == UserModel.id)
+            .where(
+                BrandMemberModel.brand_id == brand_id,
+                BrandMemberModel.user_id == user_id,
+            )
+        )
+        res = await self.session.execute(stmt)
+        row = res.first()
+        if not row:
+            return None
+        model, login = row
+        return BrandMemberDomain(
+            brand_id=model.brand_id,
+            user_id=model.user_id,
+            role=BrandMemberRole(model.role),
+            user_login=login,
+            created_at=model.created_at,
+        )
+
+    async def list_members(self, brand_id: UUID) -> list[BrandMemberDomain]:
+        stmt = (
+            select(BrandMemberModel, UserModel.login)
+            .outerjoin(UserModel, BrandMemberModel.user_id == UserModel.id)
+            .where(BrandMemberModel.brand_id == brand_id)
+            .order_by(BrandMemberModel.created_at.asc())
+        )
+        res = await self.session.execute(stmt)
+        rows = res.all()
+        return [
+            BrandMemberDomain(
+                brand_id=m.brand_id,
+                user_id=m.user_id,
+                role=BrandMemberRole(m.role),
+                user_login=login,
+                created_at=m.created_at,
+            )
+            for m, login in rows
+        ]
+
+    async def count_representatives(self, brand_id: UUID) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(BrandMemberModel)
+            .where(
+                BrandMemberModel.brand_id == brand_id,
+                BrandMemberModel.role == BrandMemberRole.REPRESENTATIVE.value,
+            )
+        )
+        res = await self.session.execute(stmt)
+        return res.scalar_one() or 0

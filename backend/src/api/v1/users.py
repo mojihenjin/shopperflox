@@ -2,16 +2,22 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 
-from src.api.dependencies import get_current_user, get_user_service
+from src.api.dependencies import (
+    get_catalog_service,
+    get_current_user,
+    get_user_service,
+)
 from src.api.v1.schemas import (
     CreateAddressRequest,
+    ProductResponse,
+    PublicUserProfileResponse,
     UpdatePersonalRequest,
     UserAddressResponse,
     UserPersonalResponse,
     UserProfileResponse,
     UserResponse,
 )
-from src.application.services import UserService
+from src.application.services import CatalogService, UserService
 from src.core import BaseResponse, ResponseGenerator
 from src.domain.models import UserDomain
 
@@ -45,6 +51,7 @@ async def update_my_personal(
         target_user_id=current_user.id,
         firstname=req.firstname,
         lastname=req.lastname,
+        middlename=req.middlename,
         phone_number=req.phone_number,
     )
     return ResponseGenerator.answer(body=UserPersonalResponse.model_validate(personal))
@@ -83,7 +90,11 @@ async def create_my_address(
         target_user_id=current_user.id,
         city=req.city,
         street=req.street,
+        house=req.house,
+        apartment=req.apartment,
         postal_code=req.postal_code,
+        country=req.country,
+        region=req.region,
         is_default=req.is_default,
     )
     return ResponseGenerator.answer(
@@ -133,3 +144,21 @@ async def delete_my_account(
         target_user_id=current_user.id,
     )
     return ResponseGenerator.answer(body=None, status_code=200)
+
+
+@router.get("/{login}", response_model=BaseResponse[PublicUserProfileResponse])
+async def get_public_user_profile(
+    login: str,
+    user_service: UserService = Depends(get_user_service),
+    catalog_service: CatalogService = Depends(get_catalog_service),
+):
+    user = await user_service.get_by_login(login)
+    products = await catalog_service.list_creator_self_worked_products(user.id)
+    profile = PublicUserProfileResponse(
+        id=user.id,
+        login=user.login,
+        verified_profile=user.verified_profile,
+        created_at=user.created_at,
+        products=[ProductResponse.model_validate(p) for p in products],
+    )
+    return ResponseGenerator.answer(body=profile)

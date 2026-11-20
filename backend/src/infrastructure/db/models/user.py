@@ -52,6 +52,7 @@ class UserPersonalModel(Base):
     )
     firstname: Mapped[str | None] = mapped_column(String(128), nullable=True)
     lastname: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    middlename: Mapped[str | None] = mapped_column(String(128), nullable=True)
     phone_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_by: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
@@ -102,9 +103,17 @@ class UserAddressModel(Base):
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    country: Mapped[str] = mapped_column(
+        String(128), default="Россия", server_default="Россия", nullable=False
+    )
+    region: Mapped[str | None] = mapped_column(String(128), nullable=True)
     city: Mapped[str] = mapped_column(String(128), nullable=False)
-    street: Mapped[str] = mapped_column(String(255), nullable=False)
+    house: Mapped[str] = mapped_column(
+        String(64), default="", server_default="", nullable=False
+    )
+    apartment: Mapped[str | None] = mapped_column(String(64), nullable=True)
     postal_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    street: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_by: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
