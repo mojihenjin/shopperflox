@@ -1,27 +1,29 @@
+import { lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { HomePage } from './pages/HomePage';
-import { CatalogPage } from './pages/CatalogPage';
-import { ProductDetailPage } from './pages/ProductDetailPage';
-import { LoginPage } from './pages/LoginPage';
-import { RegisterPage } from './pages/RegisterPage';
-import { FavoritesPage } from './pages/FavoritesPage';
-import { CartPage } from './pages/CartPage';
-import { OrdersPage } from './pages/OrdersPage';
-import { ProfilePage } from './pages/ProfilePage';
-import { CreatorNewProductPage } from './pages/CreatorNewProductPage';
-import { CreatorEditProductPage } from './pages/CreatorEditProductPage';
-import { ModerationRequestsPage } from './pages/ModerationRequestsPage';
-import { BrandsManagePage } from './pages/BrandsManagePage';
-import { BrandDetailPage } from './pages/BrandDetailPage';
-import { BrandsListPage } from './pages/BrandsListPage';
-import { AdminPage } from './pages/AdminPage';
-import { PublicUserProfilePage } from './pages/PublicUserProfilePage';
-import { QueuePage } from './pages/QueuePage';
-import { CheckoutPage } from './pages/CheckoutPage';
-import { DebugPayPage } from './pages/DebugPayPage';
-import { PaymentUnavailablePage } from './pages/PaymentUnavailablePage';
+
+const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
+const CatalogPage = lazy(() => import('./pages/CatalogPage').then((m) => ({ default: m.CatalogPage })));
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then((m) => ({ default: m.ProductDetailPage })));
+const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('./pages/RegisterPage').then((m) => ({ default: m.RegisterPage })));
+const FavoritesPage = lazy(() => import('./pages/FavoritesPage').then((m) => ({ default: m.FavoritesPage })));
+const CartPage = lazy(() => import('./pages/CartPage').then((m) => ({ default: m.CartPage })));
+const OrdersPage = lazy(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
+const CreatorNewProductPage = lazy(() => import('./pages/CreatorNewProductPage').then((m) => ({ default: m.CreatorNewProductPage })));
+const CreatorEditProductPage = lazy(() => import('./pages/CreatorEditProductPage').then((m) => ({ default: m.CreatorEditProductPage })));
+const ModerationRequestsPage = lazy(() => import('./pages/ModerationRequestsPage').then((m) => ({ default: m.ModerationRequestsPage })));
+const BrandsManagePage = lazy(() => import('./pages/BrandsManagePage').then((m) => ({ default: m.BrandsManagePage })));
+const BrandDetailPage = lazy(() => import('./pages/BrandDetailPage').then((m) => ({ default: m.BrandDetailPage })));
+const BrandsListPage = lazy(() => import('./pages/BrandsListPage').then((m) => ({ default: m.BrandsListPage })));
+const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
+const PublicUserProfilePage = lazy(() => import('./pages/PublicUserProfilePage').then((m) => ({ default: m.PublicUserProfilePage })));
+const QueuePage = lazy(() => import('./pages/QueuePage').then((m) => ({ default: m.QueuePage })));
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage').then((m) => ({ default: m.CheckoutPage })));
+const DebugPayPage = lazy(() => import('./pages/DebugPayPage').then((m) => ({ default: m.DebugPayPage })));
+const PaymentUnavailablePage = lazy(() => import('./pages/PaymentUnavailablePage').then((m) => ({ default: m.PaymentUnavailablePage })));
 
 export function App() {
   return (
